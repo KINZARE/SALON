@@ -106,6 +106,8 @@ try {
   await page.waitForLoadState("networkidle");
   const revertedTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
   assert.equal(revertedTop, beforeTop, "Rejected move must roll back to the original position");
+  const expectedConflictLog = runtimeErrors.findIndex((entry) => entry.includes("Failed to load resource") && entry.includes("409"));
+  if (expectedConflictLog >= 0) runtimeErrors.splice(expectedConflictLog, 1);
 
   for (const authPath of ["/login", "/signup", "/onboarding"]) {
     await page.goto(base + authPath, { waitUntil: "networkidle" });
