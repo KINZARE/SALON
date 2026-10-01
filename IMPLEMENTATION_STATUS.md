@@ -2,96 +2,95 @@
 
 ## Implemented in code
 
-- Supabase SSR auth wiring and tenant memberships.
-- RLS policies for salon-scoped data and narrower staff appointment access.
-- Transactional onboarding with salon, owner, opening hours, first service, first staff profile and schedule.
-- Owner service management and staff creation with service assignments + default schedules.
-- Owner booking settings and opening-hours management.
-- Owner/manager blocks for salon-wide or staff-specific unavailable time.
-- Mobile-first Today, Calendar, Customers, customer history/notes, Services, Staff, Blocks, Reports and Settings.
-- Internal appointment creation with existing-customer selection or safe customer creation/deduplication.
-- Public booking with configurable staff choice and “geen voorkeur”.
-- One pure availability engine for candidate slots, using salon/staff windows, breaks, blocks, appointments, duration and buffer.
-- Atomic database booking with authoritative service snapshots and a PostgreSQL exclusion constraint against concurrent overlap.
-- Central appointment status transitions, audit events and atomic rescheduling of the same appointment.
-- Payment schema/boundary where browser state is never financial truth.
+- Supabase SSR auth wiring and salon memberships.
+- Multi-tenant RLS policies with narrower staff appointment access.
+- Transactional onboarding: salon, owner membership, opening hours, first service, first staff profile and schedules.
+- Mobile-first Today, Calendar, Customers, Services, Staff, Blocks, Reports and Settings.
+- Internal appointment creation and public booking with configurable staff choice / “geen voorkeur”.
+- Central availability engine using opening hours, staff schedules, breaks, blocks, appointments, duration and buffer.
+- Atomic database booking with authoritative snapshots and PostgreSQL exclusion protection against staff overlap.
+- Central status transitions, audit events and atomic rescheduling.
+- Payment data boundary where browser state is never financial truth.
 - Notification outbox separated from appointment persistence.
+- Explicit demo mode remains available only when `SALON_PREVIEW_DEMO_MODE=1`.
 
-## Verified in this environment
+## Verification — 2026-10-01
 
-- Pure domain tests: 9 passing.
-- All TypeScript/TSX source files parse successfully with the available TypeScript parser.
-- No source TODO/FIXME/localStorage/client `paid=true` shortcuts found in the final static scan.
-- The migration contains RLS enablement on all tenant-domain tables and the overlap exclusion constraint.
+### GitHub / application quality
 
-## Not yet verifiable here
+Verified on GitHub Actions:
+- 13/13 tests passing;
+- TypeScript typecheck passing;
+- ESLint passing;
+- Next.js production build passing.
 
-The current runtime has no reachable npm registry and no connected Supabase project, GitHub repository or Vercel team/project. Therefore these are **not** claimed as passed yet:
+GitHub repository:
+- `KINZARE/SALON`
+- `main` is the source of truth.
 
-- dependency installation / lockfile;
-- full TypeScript typecheck against installed package types;
-- ESLint;
-- Next.js production build;
-- executing the PostgreSQL migration;
-- RLS integration tests against a real Supabase database;
-- concurrent two-request booking race test against PostgreSQL;
-- browser QA at 320/375/390/430/tablet/desktop widths;
-- preview deployment and production smoke test.
-
-## Next after connections exist
-
-1. Apply the migration to a Supabase development/preview project.
-2. Pull real environment variables and install dependencies.
-3. Run typecheck, lint, tests and production build.
-4. Add database integration tests for tenant leakage, role permissions, DST and concurrent double booking.
-5. Run browser QA for owner onboarding, internal booking, public no-preference booking, reschedule/status flow, blocks and mobile navigation.
-6. Only after those pass: create PR, preview deploy, verify exact QA commit SHA, merge, production deploy and smoke-test.
-
-## Intentionally deferred from Core MVP
-
-- payment provider checkout/webhooks;
-- notification delivery worker/provider (outbox exists);
-- staff invite/account-linking UX;
-- WhatsApp/SMS;
-- loyalty, memberships, inventory, payroll, marketplace, accounting and advanced analytics.
-
-## Preview preparation — 2026-10-01
-
-- Added an explicit `SALON_PREVIEW_DEMO_MODE=1` path for visual Vercel previews only.
-- Preview data is isolated in `src/demo/preview-data.ts`; production Supabase/RLS services remain the default when the flag is off.
-- Preview mode is visibly labeled in the authenticated shell and public booking flow and does not claim persistence.
-- Internal new-appointment and public-booking flows can complete against ephemeral demo responses and resolve to an appointment detail screen.
-- Pure tests: 13 passing (9 existing domain tests + 4 preview-data tests).
-- TypeScript/TSX syntax transpile scan: 0 diagnostics.
-- Dependency installation, framework-aware typecheck, ESLint and `next build` remain unverified in the current runtime because DNS access to `registry.npmjs.org` fails (`EAI_AGAIN` / timeout).
-- Supabase migration/RLS/concurrency remain unverified and are not required for this visual preview mode.
-
-
-## Supabase Phase 0 verification — 2026-10-01
+### Supabase Phase 0
 
 Connected Supabase project:
 - project: `SALON`
 - project ref: `pqozwzakdqtueunictid`
 - region: `eu-central-1`
-- status observed during verification: `ACTIVE_HEALTHY`
+- observed status: `ACTIVE_HEALTHY`
 
-Applied database migrations:
-- core schema
-- privileged-function security hardening
-- security-advisor cleanup
+Applied migrations:
+- `0001_core.sql`
+- `0002_security_hardening.sql`
+- `0003_security_advisor_cleanup.sql`
 
-Fresh verification evidence:
+Verified database evidence:
 - all public application tables have RLS enabled;
 - Supabase Security Advisor: **0 findings** after hardening;
-- privileged `SECURITY DEFINER` logic moved behind the non-exposed `private` schema;
+- privileged `SECURITY DEFINER` logic is isolated behind the non-exposed `private` schema;
 - public RPC wrappers are `SECURITY INVOKER`;
-- `create_appointment_atomic` remains executable by `service_role` only;
-- rollback integration suite: **14/14 checks passed** covering owner/manager/staff tenant isolation, write boundaries, staff appointment scope, snapshot preservation, overlap rejection and adjacent-boundary booking;
-- overlapping active appointments for the same staff member are rejected by the PostgreSQL exclusion constraint with SQLSTATE `23P01`;
-- appointment price snapshots remain unchanged when the underlying service price changes.
+- `create_appointment_atomic` is executable by `service_role` only;
+- rollback integration suite: **14/14 checks passed** for owner/manager/staff tenant isolation, write boundaries, staff appointment scope, snapshots, overlap rejection and adjacent booking boundaries;
+- an overlapping active appointment for the same staff member is rejected by PostgreSQL with SQLSTATE `23P01`;
+- appointment price snapshots remain unchanged when the service price changes.
 
-Still not claimed as fully verified:
-- a true two-database-connection simultaneous booking race has not yet been executed; database overlap enforcement itself is verified;
-- Vercel has not yet been switched from explicit demo mode to this real Supabase project;
-- a server-side Supabase secret/service-role key still needs to be configured in the deployment environment before the real public booking path can run;
-- end-to-end browser QA against the real Supabase-backed deployment remains pending.
+Still not claimed:
+- a true two-database-connection simultaneous race test has not yet been executed; the database overlap constraint itself is verified;
+- DST/timezone integration coverage still needs expansion.
+
+### Vercel preview
+
+The preview deployment now uses the **real Supabase backend**:
+- `SALON_PREVIEW_DEMO_MODE=0`;
+- real Supabase project URL and publishable key;
+- server secret supplied through GitHub Actions only;
+- Vercel Deployment Protection remains enabled.
+
+Automated protected-preview smoke checks pass:
+- homepage resolves successfully;
+- login resolves successfully;
+- unauthenticated `/app/today` ends at `/login`;
+- unknown public salon returns HTTP 404;
+- no demo-mode banner is present;
+- no application-error page is detected in the smoke responses.
+
+The deployment workflow is stored in `.github/workflows/vercel-preview.yml` and triggers only from the `preview` branch.
+
+## Remaining before a commercial production launch
+
+- full browser QA on mobile widths (320/375/390/430), tablet and desktop;
+- authenticated end-to-end onboarding and owner workflow against the real Supabase project;
+- public booking end-to-end with persisted appointment data;
+- explicit concurrent two-connection booking race test;
+- expanded timezone/DST integration tests;
+- notification delivery provider/worker;
+- payment provider checkout/webhooks if deposits are included in launch scope;
+- production deployment and post-deploy smoke test.
+
+## Intentionally deferred from Core MVP
+
+- advanced POS;
+- inventory;
+- payroll/HR;
+- loyalty/memberships;
+- marketplace;
+- accounting;
+- marketing automation;
+- enterprise analytics.
