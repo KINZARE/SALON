@@ -49,10 +49,24 @@ async function inspectRoute(route, viewport, { screenshot = false } = {}) {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
       overlay: Boolean(document.querySelector("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")),
       title: document.title,
+      overflowOffenders: Array.from(document.querySelectorAll("body *"))
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            tag: element.tagName,
+            className: typeof element.className === "string" ? element.className : "",
+            text: (element.textContent || "").trim().slice(0, 80),
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            width: Math.round(rect.width),
+          };
+        })
+        .filter((item) => item.left < -1 || item.right > window.innerWidth + 1)
+        .slice(0, 12),
     }));
 
     if (state.textLength < 50) recordFailure(label, `body too small (${state.textLength} chars)`);
-    if (state.overflow > 1) recordFailure(label, `horizontal overflow +${state.overflow}px`);
+    if (state.overflow > 1) recordFailure(label, `horizontal overflow +${state.overflow}px offenders=${JSON.stringify(state.overflowOffenders)}`);
     if (state.overlay) recordFailure(label, "framework error overlay detected");
 
     await page.waitForTimeout(200);
@@ -101,7 +115,7 @@ async function interactiveChecks() {
     await page.goto(`${baseURL}/`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Menu" }).click();
     if (!(await page.locator("dialog[open]").isVisible())) recordFailure("mobile menu", "dialog did not open");
-    if (!(await page.getByText("Hoe het werkt", { exact: true }).isVisible())) recordFailure("mobile menu", "navigation content missing");
+    if (!(await page.locator("dialog").getByText("Hoe het werkt", { exact: true }).isVisible())) recordFailure("mobile menu", "navigation content missing");
     await page.getByRole("button", { name: "Menu sluiten" }).click();
     if (await page.locator("dialog[open]").count()) recordFailure("mobile menu", "dialog remained open");
     console.log("PASS-CHECK mobile menu open/close");
