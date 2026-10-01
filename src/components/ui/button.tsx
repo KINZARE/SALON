@@ -6,17 +6,22 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants = {
-  primary: "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] border-transparent",
-  secondary: "bg-white text-[var(--foreground)] border-[var(--border)] hover:bg-[#f3f3f0]",
-  ghost: "bg-transparent text-[var(--foreground)] border-transparent hover:bg-[#ededE9]",
-  danger: "bg-white text-[var(--danger)] border-[#efc7c2] hover:bg-[#fff5f4]",
+  primary: "border-transparent bg-[var(--ink)] text-white hover:bg-[#242424]",
+  secondary: "border-[var(--line)] bg-white text-[var(--foreground)] hover:bg-[var(--surface)]",
+  ghost: "border-transparent bg-transparent text-[var(--foreground)] hover:bg-[var(--surface)]",
+  danger: "border-[#e7c3bd] bg-white text-[var(--danger)] hover:bg-[#fff7f5]",
 };
-const sizes = { sm: "h-9 px-3 text-sm", md: "h-11 px-4 text-sm", lg: "h-12 px-5 text-[15px]" };
+
+const sizes = {
+  sm: "min-h-10 px-4 text-sm",
+  md: "min-h-11 px-5 text-sm",
+  lg: "min-h-12 px-6 text-[15px]",
+};
 
 export function Button({ variant = "primary", size = "md", className = "", ...props }: Props) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-[11px] border font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-[var(--radius-pill)] border font-medium tracking-[-0.01em] transition-[transform,background-color,border-color,color,opacity] duration-200 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100 ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     />
   );
