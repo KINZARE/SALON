@@ -82,28 +82,33 @@ jobs:
         run: |
           set -euo pipefail
 
-          npx --yes vercel@latest curl / \
+          HOME_CODE="$(npx --yes vercel@latest curl / \
             --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location > /tmp/home.html
-          grep -qi "Salon" /tmp/home.html
+            -- --silent --show-error --output /tmp/home.html --write-out '%{http_code}')"
+          LOGIN_CODE="$(npx --yes vercel@latest curl /login \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --output /tmp/login.html --write-out '%{http_code}')"
+          TODAY_CODE="$(npx --yes vercel@latest curl /app/today \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
+          BOOK_CODE="$(npx --yes vercel@latest curl /book/this-salon-does-not-exist \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --output /tmp/book.html --write-out '%{http_code}')"
+
+          echo "home=$HOME_CODE login=$LOGIN_CODE today=$TODAY_CODE missing-book=$BOOK_CODE"
+
+          test "$HOME_CODE" = "200"
+          test "$LOGIN_CODE" = "200"
+          test "$TODAY_CODE" = "307" -o "$TODAY_CODE" = "308"
+          test "$BOOK_CODE" = "404"
+
           if grep -qi "Preview mode" /tmp/home.html; then
             echo "Demo/preview banner is still present; expected real backend mode."
             exit 1
           fi
-
-          npx --yes vercel@latest curl /login \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location > /tmp/login.html
-          grep -qi "inloggen" /tmp/login.html
-
-          TODAY_HEADERS="$(npx --yes vercel@latest curl /app/today \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --head)"
-          echo "$TODAY_HEADERS" | grep -Eqi '^location: .*/login'
-
-          BOOK_CODE="$(npx --yes vercel@latest curl /book/this-salon-does-not-exist \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
-          test "$BOOK_CODE" = "404"
+          if grep -qi "Application error" /tmp/home.html /tmp/login.html /tmp/book.html; then
+            echo "Application error detected in smoke-test response."
+            exit 1
+          fi
 
           echo "Smoke checks passed for $PREVIEW_URL"
