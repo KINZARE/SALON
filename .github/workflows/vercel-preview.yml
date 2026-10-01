@@ -3,12 +3,15 @@ name: vercel-preview
 on:
   push:
     branches: [workspace/operational-core]
+  pull_request:
+    branches: [main]
 
 env:
   SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
   SALON_PREVIEW_DEMO_MODE: "1"
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
+  SALON_QA_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
 
 jobs:
   browser-qa:
@@ -16,6 +19,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: "${{ env.SALON_QA_SHA }}"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -51,7 +56,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: workspace-browser-qa-${{ github.sha }}
+          name: workspace-browser-qa-${{ env.SALON_QA_SHA }}
           path: qa-artifacts
           if-no-files-found: ignore
           retention-days: 14
@@ -64,6 +69,8 @@ jobs:
       VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: "${{ env.SALON_QA_SHA }}"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -93,7 +100,7 @@ jobs:
             --yes \
             --project salon \
             --token="$VERCEL_TOKEN" \
-            --meta salonQaSha="$GITHUB_SHA" \
+            --meta salonQaSha="$SALON_QA_SHA" \
             --build-env SALON_PREVIEW_DEMO_MODE=1 \
             --build-env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
@@ -104,7 +111,7 @@ jobs:
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "### SALON operational preview" >> "$GITHUB_STEP_SUMMARY"
-          echo "SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "SHA: $SALON_QA_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
       - name: Verify Vercel preview is READY
         shell: bash
