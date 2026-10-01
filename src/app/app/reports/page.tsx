@@ -1,12 +1,12 @@
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { requireAppContext } from "@/lib/auth";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/format";
 
 export default async function ReportsPage() {
   const { salon, membership } = await requireAppContext();
   if (membership.role === "staff") return <div><h1 className="text-3xl font-semibold tracking-[-0.04em]">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Rapportage is alleen beschikbaar voor owner en manager.</p></div>;
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const month = formatInTimeZone(new Date(), salon.timezone, "yyyy-MM");
   const [year, monthNumber] = month.split("-").map(Number);
   const nextMonthYear = monthNumber === 12 ? year + 1 : year;
