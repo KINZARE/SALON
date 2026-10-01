@@ -1,8 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { createUserSupabaseClient } from "@/lib/supabase/server";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
-import { PREVIEW_DEMO } from "@/demo/preview-data";
 
 export type AppContext = {
   user: { id: string; email?: string };
@@ -18,13 +16,6 @@ export async function requireUser() {
 }
 
 export async function requireAppContext(): Promise<AppContext> {
-  if (isPreviewDemoMode()) {
-    return {
-      user: { ...PREVIEW_DEMO.user },
-      membership: { ...PREVIEW_DEMO.membership },
-      salon: { id: PREVIEW_DEMO.salon.id, name: PREVIEW_DEMO.salon.name, slug: PREVIEW_DEMO.salon.slug, timezone: PREVIEW_DEMO.salon.timezone, currency: PREVIEW_DEMO.salon.currency },
-    };
-  }
   const { supabase, user } = await requireUser();
   const membershipResult = await supabase
     .from("memberships")
