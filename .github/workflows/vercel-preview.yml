@@ -74,12 +74,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Require deployment secrets
+      - name: Require deployment secrets and exact SHA
         shell: bash
         run: |
           set -euo pipefail
           test -n "$VERCEL_TOKEN"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test "$(git rev-parse HEAD)" = "$SALON_QA_SHA"
+          echo "Exact deployment SHA verified: $SALON_QA_SHA"
       - name: Ensure Vercel project exists
         shell: bash
         run: |
@@ -119,7 +121,7 @@ jobs:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
         run: |
           set -euo pipefail
-          npx --yes vercel@latest inspect "$PREVIEW_URL" --token="$VERCEL_TOKEN" | tee /tmp/vercel-inspect.txt
+          npx --yes vercel@latest inspect "$PREVIEW_URL" --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-inspect.txt
           grep -Eqi 'Ready' /tmp/vercel-inspect.txt
 
       - name: Smoke test no-login synthetic preview
