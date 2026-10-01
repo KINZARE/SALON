@@ -1,0 +1,127 @@
+name: vercel-preview
+
+on:
+  push:
+    branches: [preview]
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}"
+      SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+      SALON_PREVIEW_DEMO_MODE: "0"
+      NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Require deployment secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN" || {
+            echo "Missing repository secret VERCEL_TOKEN"
+            exit 1
+          }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || {
+            echo "Missing repository secret SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          }
+
+      - name: Ensure Vercel project exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! npx --yes vercel@latest project inspect salon --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
+            npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
+          fi
+
+      - name: Link Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
+
+      - name: Configure Vercel as Next.js
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest project update salon \
+            --framework nextjs \
+            --auto-detect output-directory \
+            --token="$VERCEL_TOKEN" \
+            --non-interactive \
+            --yes
+
+      - name: Deploy real Supabase preview
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(npx --yes vercel@latest deploy \
+            --yes \
+            --project salon \
+            --token="$VERCEL_TOKEN" \
+            --build-env SALON_PREVIEW_DEMO_MODE=0 \
+            --build-env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+            --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            --build-env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+            --env SALON_PREVIEW_DEMO_MODE=0 \
+            --env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+            --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "### SALON Vercel Preview — real Supabase backend" >> "$GITHUB_STEP_SUMMARY"
+          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test real-backend preview
+        shell: bash
+        env:
+          PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
+        run: |
+          set -euo pipefail
+
+          HOME_RESULT="$(npx --yes vercel@latest curl / \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --location --output /tmp/home.html --write-out '%{http_code}|%{url_effective}')"
+          LOGIN_RESULT="$(npx --yes vercel@latest curl /login \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --location --output /tmp/login.html --write-out '%{http_code}|%{url_effective}')"
+          TODAY_RESULT="$(npx --yes vercel@latest curl /app/today \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --location --output /tmp/today.html --write-out '%{http_code}|%{url_effective}')"
+          BOOK_RESULT="$(npx --yes vercel@latest curl /book/this-salon-does-not-exist \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --location --output /tmp/book.html --write-out '%{http_code}|%{url_effective}')"
+
+          HOME_CODE="${HOME_RESULT%%|*}"
+          LOGIN_CODE="${LOGIN_RESULT%%|*}"
+          TODAY_CODE="${TODAY_RESULT%%|*}"
+          BOOK_CODE="${BOOK_RESULT%%|*}"
+          TODAY_URL="${TODAY_RESULT#*|}"
+
+          echo "home=$HOME_RESULT login=$LOGIN_RESULT today=$TODAY_RESULT missing-book=$BOOK_RESULT"
+
+          test "$HOME_CODE" = "200"
+          test "$LOGIN_CODE" = "200"
+          test "$TODAY_CODE" = "200"
+          echo "$TODAY_URL" | grep -Eqi '/login([?#].*)?$'
+          test "$BOOK_CODE" = "404"
+
+          if grep -qi "Preview mode" /tmp/home.html; then
+            echo "Demo/preview banner is still present; expected real backend mode."
+            exit 1
+          fi
+          if grep -qi "Application error" /tmp/home.html /tmp/login.html /tmp/today.html /tmp/book.html; then
+            echo "Application error detected in smoke-test response."
+            exit 1
+          fi
+
+          echo "Smoke checks passed for $PREVIEW_URL"
