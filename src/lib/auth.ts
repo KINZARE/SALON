@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createUserSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -16,7 +17,7 @@ export async function requireUser() {
   return { supabase, user: data.user };
 }
 
-export async function requireAppContext(): Promise<AppContext> {
+export const requireAppContext = cache(async (): Promise<AppContext> => {
   const db = createAdminSupabaseClient();
   const salonResult = await db
     .from("salons")
@@ -30,4 +31,4 @@ export async function requireAppContext(): Promise<AppContext> {
     membership: { salonId: salonResult.data.id, role: "owner" },
     salon: salonResult.data,
   } as AppContext;
-}
+});
