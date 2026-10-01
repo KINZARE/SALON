@@ -33,14 +33,24 @@ function DropCell({ staffId, minute, startMinute, disabled }: { staffId: string;
 
 function AppointmentCard({ item, timezone, canManage }: { item: Appointment; timezone: string; canManage: boolean }) {
   const active = !["completed","cancelled","no_show"].includes(item.status);
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id, disabled: !canManage || !active, data: { appointment: item } });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({ id: item.id, disabled: !canManage || !active, data: { appointment: item } });
   const start = localParts(item.starts_at, timezone).time;
   const end = localParts(item.service_ends_at, timezone).time;
-  return <div ref={setNodeRef} style={{ transform: transform ? `translate3d(${transform.x}px,${transform.y}px,0)` : undefined, opacity: isDragging ? .62 : 1 }} className="relative z-20">
-    <Link href={`/app/appointments/${item.id}`} data-appointment-id={item.id} {...attributes} {...listeners} className={`block h-full overflow-hidden rounded-[10px] border bg-white px-2.5 py-2 shadow-sm transition ${canManage && active ? "cursor-grab active:cursor-grabbing" : ""} ${!active ? "opacity-55" : ""}`}>
-      <div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{item.customer?.name ?? item.customer_name_snapshot}</span><span className="shrink-0 text-[10px] text-[var(--muted)]">{start}</span></div>
+  const customerName = item.customer?.name ?? item.customer_name_snapshot;
+  return <div ref={setNodeRef} style={{ transform: transform ? `translate3d(${transform.x}px,${transform.y}px,0)` : undefined, opacity: isDragging ? .62 : 1 }} className="relative z-20 h-full">
+    <Link href={`/app/appointments/${item.id}`} data-appointment-id={item.id} className={`block h-full overflow-hidden rounded-[10px] border bg-white px-2.5 py-2 pr-11 shadow-sm transition ${!active ? "opacity-55" : ""}`}>
+      <div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{customerName}</span><span className="shrink-0 text-[10px] text-[var(--muted)]">{start}</span></div>
       <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{item.service_name_snapshot} · {start}–{end}</p>
     </Link>
+    {canManage && active ? <button
+      ref={setActivatorNodeRef}
+      type="button"
+      data-drag-appointment-id={item.id}
+      aria-label={`Verplaats afspraak van ${customerName}`}
+      {...attributes}
+      {...listeners}
+      className="absolute right-1 top-1 z-30 flex h-9 w-9 touch-none cursor-grab items-center justify-center rounded-[8px] border border-[var(--border)] bg-white text-[var(--muted)] shadow-sm active:cursor-grabbing"
+    ><span aria-hidden className="text-[15px] leading-none">⋮⋮</span></button> : null}
   </div>;
 }
 

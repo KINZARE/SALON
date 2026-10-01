@@ -106,16 +106,16 @@ try {
   await page.getByText("Browser QA conflict").waitFor();
 
   await goto(`/app/calendar?date=${tomorrow}`);
-  const appointment = page.locator(`[data-appointment-id="${appointmentId}"]`);
-  await appointment.waitFor();
+  const dragHandle = page.locator(`[data-drag-appointment-id="${appointmentId}"]`);
+  await dragHandle.waitFor();
   const maliTarget = page.locator('[data-drop-staff="33333333-3333-4333-8333-333333333334"][data-drop-minute="900"]');
-  await pointerDrag(appointment, maliTarget);
+  await pointerDrag(dragHandle, maliTarget);
   await page.getByText("Afspraak verplaatst.").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: "Undo" }).click();
   await page.getByText("Verplaatsing teruggedraaid.").waitFor({ timeout: 10_000 });
 
   const nokBlockedTarget = page.locator('[data-drop-staff="33333333-3333-4333-8333-333333333333"][data-drop-minute="960"]');
-  await pointerDrag(page.locator(`[data-appointment-id="${appointmentId}"]`), nokBlockedTarget);
+  await pointerDrag(page.locator(`[data-drag-appointment-id="${appointmentId}"]`), nokBlockedTarget);
   await page.getByText(/niet beschikbaar|planning is intussen gewijzigd/i).waitFor({ timeout: 10_000 });
 
   await goto("/app/customers?q=QA%20Browser");
