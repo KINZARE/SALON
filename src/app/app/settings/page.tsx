@@ -1,5 +1,4 @@
 import { requireAppContext } from "@/lib/auth";
-import { signOut } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { getBookingSettings,getOpeningHours,getSalonProfile } from "@/services/app-data";
@@ -10,7 +9,7 @@ const order=[1,2,3,4,5,6,0];
 const short=(value:string|null)=>value?.slice(0,5)??"";
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
-  const {salon,user,membership}=await requireAppContext();
+  const {salon,membership}=await requireAppContext();
   const [profile,booking,opening,query]=await Promise.all([getSalonProfile(salon.id),getBookingSettings(salon.id),getOpeningHours(salon.id),searchParams]);
   const map=new Map(opening.map(row=>[row.weekday,row]));
   const canManage=["owner","manager"].includes(membership.role);
@@ -38,6 +37,5 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       <div className="mt-7"><Button size="lg">Instellingen opslaan</Button></div>
     </form>:<div className="mt-8 max-w-2xl text-sm"><p className="font-semibold">{profile.name}</p><p className="mt-1 text-[var(--muted)]">{profile.timezone} · {profile.currency}</p><p className="mt-5 text-[var(--muted)]">Alleen owner of manager kan operationele instellingen wijzigen.</p></div>}
     <section className="mt-10 max-w-3xl border-t border-[var(--border)] py-6"><p className="text-sm text-[var(--muted)]">Publieke booking</p><a href={`/book/${salon.slug}`} target="_blank" rel="noreferrer" className="mt-1 inline-block font-medium text-[var(--primary)]">/book/{salon.slug} ↗</a></section>
-    <section className="mt-2"><p className="text-sm text-[var(--muted)]">Account</p><p className="mt-1 font-medium">{user.email}</p><p className="mt-1 text-xs uppercase tracking-wide text-[var(--muted)]">{membership.role}</p><form action={signOut} className="mt-5"><Button variant="secondary">Uitloggen</Button></form></section>
   </>;
 }
