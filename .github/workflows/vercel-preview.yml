@@ -82,20 +82,36 @@ jobs:
         run: |
           set -euo pipefail
 
-          curl --fail --silent --show-error --location "$PREVIEW_URL/" > /tmp/home.html
+          npx --yes vercel@latest curl / \
+            --deployment "$PREVIEW_URL" \
+            --project salon \
+            --token="$VERCEL_TOKEN" \
+            -- --silent --show-error --location > /tmp/home.html
           grep -qi "Salon" /tmp/home.html
           if grep -qi "Preview mode" /tmp/home.html; then
             echo "Demo/preview banner is still present; expected real backend mode."
             exit 1
           fi
 
-          curl --fail --silent --show-error --location "$PREVIEW_URL/login" > /tmp/login.html
+          npx --yes vercel@latest curl /login \
+            --deployment "$PREVIEW_URL" \
+            --project salon \
+            --token="$VERCEL_TOKEN" \
+            -- --silent --show-error --location > /tmp/login.html
           grep -qi "inloggen" /tmp/login.html
 
-          TODAY_HEADERS="$(curl --silent --show-error --head "$PREVIEW_URL/app/today")"
+          TODAY_HEADERS="$(npx --yes vercel@latest curl /app/today \
+            --deployment "$PREVIEW_URL" \
+            --project salon \
+            --token="$VERCEL_TOKEN" \
+            -- --silent --show-error --head)"
           echo "$TODAY_HEADERS" | grep -Eqi '^location: .*/login'
 
-          BOOK_CODE="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$PREVIEW_URL/book/this-salon-does-not-exist")"
+          BOOK_CODE="$(npx --yes vercel@latest curl /book/this-salon-does-not-exist \
+            --deployment "$PREVIEW_URL" \
+            --project salon \
+            --token="$VERCEL_TOKEN" \
+            -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
           test "$BOOK_CODE" = "404"
 
           echo "Smoke checks passed for $PREVIEW_URL"
