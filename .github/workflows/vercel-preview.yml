@@ -1,0 +1,39 @@
+name: vercel-preview
+
+on:
+  push:
+    branches: [preview]
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SALON_PREVIEW_DEMO_MODE: "1"
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "preview-placeholder"
+      SUPABASE_SERVICE_ROLE_KEY: "preview-placeholder"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Require Vercel token
+        shell: bash
+        run: |
+          test -n "${{ secrets.VERCEL_TOKEN }}" || {
+            echo "Missing repository secret VERCEL_TOKEN"
+            exit 1
+          }
+
+      - name: Deploy preview
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(npx --yes vercel@latest deploy             --yes             --token="${{ secrets.VERCEL_TOKEN }}"             --build-env SALON_PREVIEW_DEMO_MODE=1             --build-env NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co             --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY=preview-placeholder             --build-env SUPABASE_SERVICE_ROLE_KEY=preview-placeholder             --env SALON_PREVIEW_DEMO_MODE=1             --env NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co             --env NEXT_PUBLIC_SUPABASE_ANON_KEY=preview-placeholder             --env SUPABASE_SERVICE_ROLE_KEY=preview-placeholder)"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "### SALON Vercel Preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
