@@ -5,7 +5,7 @@ import { getAvailableSlotsForDate } from "@/services/public-booking";
 
 export async function createInternalBooking(args: {
   salon: { id: string; slug: string; timezone: string };
-  userId: string;
+  userId: string | null;
   serviceId: string;
   staffId: string;
   startsAt: string;
@@ -21,7 +21,7 @@ export async function createInternalBooking(args: {
   const { data, error } = await db.rpc("create_appointment_atomic", {
     p_salon_id: args.salon.id, p_service_id: args.serviceId, p_staff_id: args.staffId, p_starts_at: startsAt.toISOString(),
     p_customer_name: args.customer.name, p_customer_phone: args.customer.phone ?? null, p_customer_email: args.customer.email ?? null,
-    p_note: args.customer.note ?? null, p_source: "internal", p_created_by: args.userId, p_customer_id: args.customer.id ?? null,
+    p_note: args.customer.note ?? null, p_source: "internal", p_created_by: args.userId ?? null, p_customer_id: args.customer.id ?? null,
   });
   if (error) {
     if (error.message.includes("SLOT_JUST_BOOKED") || error.code === "23P01") throw new Error("SLOT_JUST_BOOKED");
