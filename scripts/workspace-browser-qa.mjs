@@ -56,6 +56,16 @@ try {
   ];
   for (const path of workspacePaths) await gotoWorkspace(path);
 
+  await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Calendar" }).waitFor();
+  await page.getByText("Teamagenda", { exact: true }).waitFor();
+  await page.getByRole("link", { name: /Nieuwe afspraak/ }).waitFor();
+  const cards = page.locator("[data-appointment-id]");
+  assert.ok(await cards.count() > 0, "Calendar must render appointment cards from the real database");
+  await cards.first().click();
+  await page.locator("[data-calendar-detail]").waitFor();
+  assert.equal(await cards.first().getAttribute("aria-pressed"), "true", "Selected appointment must be reflected in the detail panel");
+
   for (const authPath of ["/login", "/signup", "/onboarding"]) {
     await page.goto(base + authPath, { waitUntil: "networkidle" });
     assert.equal(new URL(page.url()).pathname, "/app/today", `${authPath} must bypass login/setup`);
@@ -63,19 +73,19 @@ try {
 
   await page.goto(base + "/app/settings", { waitUntil: "networkidle" });
   const name = page.getByLabel("Naam");
-  assert.equal(await name.inputValue(), "SALON");
+  assert.equal(await name.inputValue(), "SALON Studio Amsterdam");
   await Promise.all([
     page.waitForURL(/\/app\/settings\?saved=1$/),
     page.getByRole("button", { name: "Instellingen opslaan" }).click(),
   ]);
   await page.reload({ waitUntil: "networkidle" });
-  assert.equal(await page.getByLabel("Naam").inputValue(), "SALON", "Real settings write must persist");
+  assert.equal(await page.getByLabel("Naam").inputValue(), "SALON Studio Amsterdam", "Real settings write must persist");
   await assertNoDemoOrLoginContent();
 
   await page.goto(base + "/book/salon", { waitUntil: "networkidle" });
   assert.equal(new URL(page.url()).pathname, "/book/salon");
   await page.getByText("Online afspraak maken").waitFor();
-  await page.getByText("Er zijn nog geen behandelingen online boekbaar.").waitFor();
+  await page.getByText("Knippen & stylen", { exact: true }).first().waitFor();
   await assertNoDemoOrLoginContent();
 
   await fs.mkdir("qa-artifacts", { recursive: true });
@@ -86,8 +96,10 @@ try {
       await gotoWorkspace(path);
       await noBodyOverflow(`${width}px ${path}`);
     }
-    if (width === 320) await page.screenshot({ path: "qa-artifacts/workspace-320.png", fullPage: true });
-    if (width === 1440) await page.screenshot({ path: "qa-artifacts/workspace-1440.png", fullPage: true });
+    await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
+    await noBodyOverflow(`${width}px calendar visual`);
+    if (width === 320) await page.screenshot({ path: "qa-artifacts/calendar-320.png", fullPage: true });
+    if (width === 1440) await page.screenshot({ path: "qa-artifacts/calendar-1440.png", fullPage: true });
   }
 
   assert.deepEqual(runtimeErrors, [], `Runtime errors detected:\n${runtimeErrors.join("\n")}`);
@@ -96,7 +108,7 @@ try {
     mode: "real-no-login",
     workspacePaths,
     widths,
-    flows: ["root-direct-workspace", "auth-routes-bypassed", "real-settings-persistence", "public-booking-real-salon", "no-demo-content", "responsive-workspace"],
+    flows: ["root-direct-workspace", "calendar-redesign", "appointment-detail-panel", "auth-routes-bypassed", "real-settings-persistence", "public-booking-real-salon", "no-legacy-demo-content", "responsive-workspace"],
     runtimeErrors,
   };
   await fs.writeFile("qa-artifacts/result.json", JSON.stringify(result, null, 2));
