@@ -3,6 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  if (process.env.SALON_PREVIEW_DEMO_MODE === "1") {
+    if (!request.cookies.get("salon-preview-session")) {
+      const value = crypto.randomUUID();
+      request.cookies.set("salon-preview-session", value);
+      response = NextResponse.next({ request });
+      response.cookies.set("salon-preview-session", value, { httpOnly: true, sameSite: "lax", secure: true, maxAge: 60 * 60 * 24 * 7, path: "/" });
+    }
+    return response;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return response;
@@ -17,7 +28,6 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-
   await supabase.auth.getUser();
   return response;
 }
