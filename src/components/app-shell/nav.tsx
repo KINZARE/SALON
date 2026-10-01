@@ -21,7 +21,7 @@ export function AppNav({ role }: { role: Role }) {
   const pathname = usePathname();
   const primary = role === "staff"
     ? [["Today", "/app/today"], ["Calendar", "/app/calendar"], ["More", "/app/more"]] as const
-    : [["Today", "/app/today"], ["Calendar", "/app/calendar"], ["Customers", "/app/customers"]] as const;
+    : [["Today", "/app/today"], ["Calendar", "/app/calendar"], ["Customers", "/app/customers"], ["More", "/app/more"]] as const;
   const secondary = role === "staff"
     ? [["Settings", "/app/settings"]] as const
     : [["Services","/app/services"],["Staff","/app/staff"],["Blocks","/app/blocks"],["Reports","/app/reports"],["Settings","/app/settings"]] as const;
@@ -65,7 +65,6 @@ export function AppNav({ role }: { role: Role }) {
             <span aria-hidden className="text-[10px] font-bold">{glyphs[label] ?? label.slice(0,1)}</span>{label}
           </Link>;
         })}
-        {primary.length === 3 ? <Link href="/app/more" className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] text-[11px] font-medium text-[var(--muted)]"><span aria-hidden className="text-xs font-bold">••</span>More</Link> : null}
       </nav>
     </>
   );
