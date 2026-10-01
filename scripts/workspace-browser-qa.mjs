@@ -140,8 +140,15 @@ try {
   await page.getByText("Verplaatsing teruggedraaid.").waitFor({ timeout: 10_000 });
 
   const nokBlockedTarget = page.locator('[data-drop-staff="33333333-3333-4333-8333-333333333333"][data-drop-minute="960"]');
+  const invalidDragErrorStart = runtimeErrors.length;
+  const invalidMove = page.waitForResponse((response) => response.url().includes("/api/internal/move") && response.request().method() === "POST");
   await pointerDrag(page.locator(`[data-drag-appointment-id="${appointmentId}"]`), nokBlockedTarget);
+  const invalidMoveResponse = await invalidMove;
+  assert.equal(invalidMoveResponse.status(), 409, `Invalid drag should return 409, got ${invalidMoveResponse.status()}`);
   await page.getByText(/niet beschikbaar|planning is intussen gewijzigd/i).waitFor({ timeout: 10_000 });
+  const invalidDragErrors = runtimeErrors.slice(invalidDragErrorStart);
+  assert.ok(invalidDragErrors.every((entry) => entry.includes("409 (Conflict)")), `Unexpected runtime error during invalid drag: ${invalidDragErrors.join(" | ")}`);
+  runtimeErrors.splice(invalidDragErrorStart);
 
   await goto("/app/customers?q=QA%20Browser");
   await page.getByRole("link", { name: /QA Browser Klant/ }).click();
