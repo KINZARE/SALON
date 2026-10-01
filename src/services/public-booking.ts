@@ -3,8 +3,6 @@ import { differenceInCalendarDays } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { computeAvailability, type Interval } from "@/domain/availability";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
-import { PREVIEW_DEMO, getDemoAvailability } from "@/demo/preview-data";
 
 export type PublicSalon = {
   id: string;
@@ -62,13 +60,6 @@ function isoInterval(row: TimedRow): Interval {
 }
 
 async function getSalonBySlug(slug: string): Promise<PublicSalon | null> {
-  if (isPreviewDemoMode()) {
-    if (slug !== PREVIEW_DEMO.salon.slug) return null;
-    return {
-      id: PREVIEW_DEMO.salon.id, slug: PREVIEW_DEMO.salon.slug, name: PREVIEW_DEMO.salon.name,
-      timezone: PREVIEW_DEMO.salon.timezone, currency: PREVIEW_DEMO.salon.currency, allowStaffChoice: PREVIEW_DEMO.salon.allowStaffChoice,
-    };
-  }
   const db = createAdminSupabaseClient();
   const { data, error } = await db
     .from("salons")
@@ -96,12 +87,6 @@ export async function getPublicSalon(slug: string) {
 }
 
 export async function getPublicServices(salonId: string): Promise<PublicService[]> {
-  if (isPreviewDemoMode()) {
-    if (salonId !== PREVIEW_DEMO.salon.id) return [];
-    return PREVIEW_DEMO.services.filter((service) => service.active && service.online_bookable).map((service) => ({
-      id: service.id, name: service.name, description: service.description, durationMinutes: service.durationMinutes, priceCents: service.priceCents, currency: service.currency,
-    }));
-  }
   const db = createAdminSupabaseClient();
   const { data, error } = await db
     .from("services")
@@ -122,10 +107,6 @@ export async function getPublicServices(salonId: string): Promise<PublicService[
 }
 
 export async function getPublicStaffForService(salonId: string, serviceId: string): Promise<PublicStaff[]> {
-  if (isPreviewDemoMode()) {
-    if (salonId !== PREVIEW_DEMO.salon.id || !PREVIEW_DEMO.services.some((service) => service.id === serviceId && service.active)) return [];
-    return PREVIEW_DEMO.staff.filter((member) => member.active).map(({ id, name }) => ({ id, name }));
-  }
   const db = createAdminSupabaseClient();
   const { data: links, error: linksError } = await db
     .from("staff_services")
@@ -154,15 +135,6 @@ export async function getAvailableSlotsForDate(args: {
   staffId?: string | null;
   source?: "public" | "internal";
 }): Promise<PublicAvailability> {
-  if (isPreviewDemoMode()) {
-    const salon = await getSalonBySlug(args.salonSlug);
-    if (!salon) throw new Error("SALON_NOT_FOUND");
-    const service = PREVIEW_DEMO.services.find((item) => item.id === args.serviceId && item.active && ((args.source ?? "public") === "internal" || item.online_bookable));
-    if (!service) throw new Error("SERVICE_NOT_FOUND");
-    const staff = await getPublicStaffForService(salon.id, service.id);
-    if (args.staffId && !staff.some((member) => member.id === args.staffId)) return { salon, staff, slots: [] };
-    return { salon, staff, slots: getDemoAvailability(args.date, args.staffId, service.durationMinutes) };
-  }
   const db = createAdminSupabaseClient();
   const salon = await getSalonBySlug(args.salonSlug);
   if (!salon) throw new Error("SALON_NOT_FOUND");
@@ -285,10 +257,6 @@ export async function createPublicBooking(args: {
 
   const candidates = args.staffId ? [args.staffId] : exact.staffIds;
   if (!candidates.length) throw new Error("SLOT_UNAVAILABLE");
-
-  if (isPreviewDemoMode()) {
-    return { appointmentId: PREVIEW_DEMO.bookedAppointmentId, staffId: candidates[0] };
-  }
 
   const db = createAdminSupabaseClient();
   let lastConflict = false;
