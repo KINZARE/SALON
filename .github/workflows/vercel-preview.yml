@@ -1,4 +1,4 @@
-name: vercel-real
+name: vercel-real-no-login
 
 on:
   push:
@@ -45,14 +45,14 @@ jobs:
           nohup npm run start -- -H 127.0.0.1 > /tmp/salon-server.log 2>&1 &
           echo $! > /tmp/salon-server.pid
           for i in {1..40}; do
-            if curl --silent --fail http://127.0.0.1:3000/login >/dev/null; then
+            if curl --silent --fail http://127.0.0.1:3000/app/today >/dev/null; then
               exit 0
             fi
             sleep 1
           done
           cat /tmp/salon-server.log
           exit 1
-      - name: Browser QA for real authenticated mode
+      - name: Browser QA for real no-login mode
         env:
           QA_BASE_URL: "http://127.0.0.1:3000"
         run: node scripts/workspace-browser-qa.mjs
@@ -60,7 +60,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: real-auth-browser-qa-${{ env.SALON_QA_SHA }}
+          name: real-no-login-browser-qa-${{ env.SALON_QA_SHA }}
           path: qa-artifacts
           if-no-files-found: ignore
           retention-days: 14
@@ -97,7 +97,7 @@ jobs:
         run: npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
       - name: Configure Vercel as Next.js
         run: npx --yes vercel@latest project update salon --framework nextjs --auto-detect output-directory --token="$VERCEL_TOKEN" --non-interactive --yes
-      - name: Deploy authenticated real-data preview
+      - name: Deploy real no-login app
         id: deploy
         shell: bash
         run: |
@@ -114,7 +114,7 @@ jobs:
             --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### SALON real authenticated app" >> "$GITHUB_STEP_SUMMARY"
+          echo "### SALON real no-login app" >> "$GITHUB_STEP_SUMMARY"
           echo "SHA: $SALON_QA_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
       - name: Verify Vercel deployment is READY
@@ -125,7 +125,7 @@ jobs:
           set -euo pipefail
           npx --yes vercel@latest inspect "$PREVIEW_URL" --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-inspect.txt
           grep -Eqi 'Ready' /tmp/vercel-inspect.txt
-      - name: Smoke test real authenticated app
+      - name: Smoke test real no-login app
         shell: bash
         env:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
@@ -133,29 +133,51 @@ jobs:
           set -euo pipefail
           ROOT_RESULT="$(npx --yes vercel@latest curl / --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/root.html --write-out '%{http_code}|%{url_effective}')"
           APP_RESULT="$(npx --yes vercel@latest curl /app/today --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/app.html --write-out '%{http_code}|%{url_effective}')"
+          SETTINGS_RESULT="$(npx --yes vercel@latest curl /app/settings --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/settings.html --write-out '%{http_code}|%{url_effective}')"
           LOGIN_RESULT="$(npx --yes vercel@latest curl /login --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/login.html --write-out '%{http_code}|%{url_effective}')"
-          SIGNUP_RESULT="$(npx --yes vercel@latest curl /signup --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/signup.html --write-out '%{http_code}|%{url_effective}')"
 
           ROOT_CODE="${ROOT_RESULT%%|*}"
           APP_CODE="${APP_RESULT%%|*}"
+          SETTINGS_CODE="${SETTINGS_RESULT%%|*}"
           LOGIN_CODE="${LOGIN_RESULT%%|*}"
-          SIGNUP_CODE="${SIGNUP_RESULT%%|*}"
           ROOT_URL="${ROOT_RESULT#*|}"
           APP_URL="${APP_RESULT#*|}"
+          LOGIN_URL="${LOGIN_RESULT#*|}"
 
-          echo "root=$ROOT_RESULT app=$APP_RESULT login=$LOGIN_RESULT signup=$SIGNUP_RESULT"
+          echo "root=$ROOT_RESULT app=$APP_RESULT settings=$SETTINGS_RESULT login=$LOGIN_RESULT"
           test "$ROOT_CODE" = "200"
           test "$APP_CODE" = "200"
+          test "$SETTINGS_CODE" = "200"
           test "$LOGIN_CODE" = "200"
-          test "$SIGNUP_CODE" = "200"
-          echo "$ROOT_URL" | grep -Eqi '/login([?#].*)?$'
-          echo "$APP_URL" | grep -Eqi '/login([?#].*)?$'
-          grep -qi "Welkom terug" /tmp/login.html
-          grep -qi "Maak je salon boekbaar" /tmp/signup.html
+          echo "$ROOT_URL" | grep -Eqi '/app/today([?#].*)?$'
+          echo "$APP_URL" | grep -Eqi '/app/today([?#].*)?$'
+          echo "$LOGIN_URL" | grep -Eqi '/app/today([?#].*)?$'
+          grep -qi "Today" /tmp/app.html
+          grep -qi "SALON" /tmp/app.html
+          grep -qi "Settings" /tmp/settings.html
 
-          if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl" /tmp/root.html /tmp/app.html /tmp/login.html /tmp/signup.html; then
-            echo "Demo content detected in real-mode deployment"
+          if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl|Welkom terug" /tmp/root.html /tmp/app.html /tmp/settings.html /tmp/login.html; then
+            echo "Demo or login content detected in no-login deployment"
             exit 1
           fi
 
-          echo "Real authenticated SALON smoke checks passed for $PREVIEW_URL"
+          echo "Real no-login SALON smoke checks passed for $PREVIEW_URL"
+
+      - name: Verify public URL needs no Vercel login
+        shell: bash
+        env:
+          PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
+        run: |
+          set -euo pipefail
+          RESULT="$(curl --silent --show-error --location --output /tmp/public.html --write-out '%{http_code}|%{url_effective}' "$PREVIEW_URL/")"
+          CODE="${RESULT%%|*}"
+          FINAL_URL="${RESULT#*|}"
+          echo "public=$RESULT"
+          test "$CODE" = "200"
+          echo "$FINAL_URL" | grep -Eqi '/app/today([?#].*)?$'
+          grep -qi "Today" /tmp/public.html
+          if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode" /tmp/public.html; then
+            echo "A login/protection screen is still present"
+            exit 1
+          fi
+          echo "Public no-login access verified for $PREVIEW_URL"
