@@ -2,6 +2,8 @@ import { AppNav } from "@/components/app-shell/nav";
 import { OperationalSearch } from "@/components/app-shell/operational-search";
 import { requireAppContext } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({children}:{children:React.ReactNode}){
   const context=await requireAppContext();
   const canSearch=context.membership.role!=="staff";
