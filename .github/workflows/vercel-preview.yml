@@ -45,7 +45,8 @@ jobs:
             --framework nextjs \
             --auto-detect output-directory \
             --token="$VERCEL_TOKEN" \
-            --non-interactive
+            --non-interactive \
+            --yes
 
       - name: Deploy preview
         id: deploy
