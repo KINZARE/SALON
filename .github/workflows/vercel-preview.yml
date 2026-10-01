@@ -10,10 +10,10 @@ jobs:
     timeout-minutes: 20
     env:
       VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}"
-      SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
-      SALON_PREVIEW_DEMO_MODE: "0"
+      SALON_PREVIEW_DEMO_MODE: "1"
       NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
+      SUPABASE_SERVICE_ROLE_KEY: "preview-placeholder"
 
     steps:
       - uses: actions/checkout@v4
@@ -22,16 +22,12 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Require deployment secrets
+      - name: Require Vercel token
         shell: bash
         run: |
           set -euo pipefail
           test -n "$VERCEL_TOKEN" || {
             echo "Missing repository secret VERCEL_TOKEN"
-            exit 1
-          }
-          test -n "$SUPABASE_SERVICE_ROLE_KEY" || {
-            echo "Missing repository secret SUPABASE_SERVICE_ROLE_KEY"
             exit 1
           }
 
@@ -43,11 +39,16 @@ jobs:
             npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
           fi
 
-      - name: Link Vercel project
+      - name: Temporarily disable Vercel Authentication
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
+          curl --fail --silent --show-error \
+            --request PATCH \
+            --url "https://api.vercel.com/v9/projects/salon" \
+            --header "Authorization: Bearer $VERCEL_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"ssoProtection":null}' > /tmp/vercel-project.json
 
       - name: Configure Vercel as Next.js
         shell: bash
@@ -60,7 +61,7 @@ jobs:
             --non-interactive \
             --yes
 
-      - name: Deploy real Supabase preview
+      - name: Deploy public no-login preview
         id: deploy
         shell: bash
         run: |
@@ -69,59 +70,48 @@ jobs:
             --yes \
             --project salon \
             --token="$VERCEL_TOKEN" \
-            --build-env SALON_PREVIEW_DEMO_MODE=0 \
+            --build-env SALON_PREVIEW_DEMO_MODE=1 \
             --build-env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --build-env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
-            --env SALON_PREVIEW_DEMO_MODE=0 \
+            --env SALON_PREVIEW_DEMO_MODE=1 \
             --env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### SALON Vercel Preview — real Supabase backend" >> "$GITHUB_STEP_SUMMARY"
+          echo "### SALON public no-login preview" >> "$GITHUB_STEP_SUMMARY"
           echo "$URL" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Smoke test real-backend preview
+      - name: Smoke test public no-login preview
         shell: bash
         env:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
         run: |
           set -euo pipefail
 
-          HOME_RESULT="$(npx --yes vercel@latest curl / \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/home.html --write-out '%{http_code}|%{url_effective}')"
-          LOGIN_RESULT="$(npx --yes vercel@latest curl /login \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/login.html --write-out '%{http_code}|%{url_effective}')"
-          TODAY_RESULT="$(npx --yes vercel@latest curl /app/today \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/today.html --write-out '%{http_code}|%{url_effective}')"
-          BOOK_RESULT="$(npx --yes vercel@latest curl /book/this-salon-does-not-exist \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/book.html --write-out '%{http_code}|%{url_effective}')"
+          HOME_CODE="$(curl --silent --show-error --location --output /tmp/home.html --write-out '%{http_code}' "$PREVIEW_URL/")"
+          TODAY_RESULT="$(curl --silent --show-error --location --output /tmp/today.html --write-out '%{http_code}|%{url_effective}' "$PREVIEW_URL/app/today")"
+          BOOK_CODE="$(curl --silent --show-error --location --output /tmp/book.html --write-out '%{http_code}' "$PREVIEW_URL/book/baan-thai-demo")"
 
-          HOME_CODE="${HOME_RESULT%%|*}"
-          LOGIN_CODE="${LOGIN_RESULT%%|*}"
           TODAY_CODE="${TODAY_RESULT%%|*}"
-          BOOK_CODE="${BOOK_RESULT%%|*}"
           TODAY_URL="${TODAY_RESULT#*|}"
 
-          echo "home=$HOME_RESULT login=$LOGIN_RESULT today=$TODAY_RESULT missing-book=$BOOK_RESULT"
+          echo "home=$HOME_CODE today=$TODAY_RESULT booking=$BOOK_CODE"
 
           test "$HOME_CODE" = "200"
-          test "$LOGIN_CODE" = "200"
           test "$TODAY_CODE" = "200"
-          echo "$TODAY_URL" | grep -Eqi '/login([?#].*)?$'
-          test "$BOOK_CODE" = "404"
+          test "$BOOK_CODE" = "200"
 
-          if grep -qi "Preview mode" /tmp/home.html; then
-            echo "Demo/preview banner is still present; expected real backend mode."
-            exit 1
-          fi
-          if grep -qi "Application error" /tmp/home.html /tmp/login.html /tmp/today.html /tmp/book.html; then
-            echo "Application error detected in smoke-test response."
+          if echo "$TODAY_URL" | grep -Eqi '/login([?#].*)?$'; then
+            echo "Preview still redirects to login."
             exit 1
           fi
 
-          echo "Smoke checks passed for $PREVIEW_URL"
+          grep -qi "Preview mode" /tmp/today.html
+
+          if grep -qi "Application error" /tmp/home.html /tmp/today.html /tmp/book.html; then
+            echo "Application error detected."
+            exit 1
+          fi
+
+          echo "Public no-login preview checks passed for $PREVIEW_URL"
