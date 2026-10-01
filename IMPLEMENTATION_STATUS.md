@@ -12,7 +12,7 @@
 - Central status transitions, audit events and atomic rescheduling.
 - Payment data boundary where browser state is never financial truth.
 - Notification outbox separated from appointment persistence.
-- Explicit demo mode remains available only when `SALON_PREVIEW_DEMO_MODE=1`.
+- Runtime is real-only: synthetic demo mode and preview-session storage have been removed.
 
 ## Verification — 2026-10-01
 
@@ -55,23 +55,21 @@ Still not claimed:
 - a true two-database-connection simultaneous race test has not yet been executed; the database overlap constraint itself is verified;
 - DST/timezone integration coverage still needs expansion.
 
-### Vercel preview
+### Vercel verification deployment
 
-The preview deployment now uses the **real Supabase backend**:
-- `SALON_PREVIEW_DEMO_MODE=0`;
+The verification deployment uses the **real Supabase backend**:
 - real Supabase project URL and publishable key;
 - server secret supplied through GitHub Actions only;
-- Vercel Deployment Protection remains enabled.
+- workspace routes require a real authenticated user;
+- synthetic demo mode and preview-session persistence are removed.
 
-Automated protected-preview smoke checks pass:
-- homepage resolves successfully;
-- login resolves successfully;
-- unauthenticated `/app/today` ends at `/login`;
-- unknown public salon returns HTTP 404;
-- no demo-mode banner is present;
-- no application-error page is detected in the smoke responses.
+Automated smoke checks verify:
+- root and protected workspace routes resolve to real login when unauthenticated;
+- login and signup are reachable;
+- no synthetic salon/customer content or demo banner is present;
+- no application-error page is returned.
 
-The deployment workflow is stored in `.github/workflows/vercel-preview.yml` and triggers only from the `preview` branch.
+The deployment workflow is stored in `.github/workflows/vercel-preview.yml`.
 
 ## Remaining before a commercial production launch
 
