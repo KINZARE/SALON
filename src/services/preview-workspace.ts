@@ -15,14 +15,22 @@ export type PreviewAppointment = {
   duration_minutes_snapshot: number; buffer_minutes_snapshot: number; customer_id: string; staff_id: string; service_id: string; note: string | null;
 };
 export type PreviewBlock = { id: string; staff_id: string | null; starts_at: string; ends_at: string; reason: string | null };
+export type PreviewSalon = {
+  id: string; name: string; slug: string; phone: string; email: string; address: string;
+  timezone: string; currency: string; allowStaffChoice: boolean;
+};
+export type PreviewBookingSettings = {
+  slot_interval_minutes: number; min_lead_minutes: number; max_days_ahead: number;
+  allow_staff_choice: boolean; cancellation_hours: number;
+};
 export type PreviewWorkspaceState = {
-  salon: typeof PREVIEW_DEMO.salon;
+  salon: PreviewSalon;
   customers: PreviewCustomer[];
   services: PreviewService[];
   staff: PreviewStaff[];
   appointments: PreviewAppointment[];
   blocks: PreviewBlock[];
-  bookingSettings: typeof PREVIEW_DEMO.bookingSettings;
+  bookingSettings: PreviewBookingSettings;
   openingHours: Array<{ weekday: number; is_open: boolean; start_time: string | null; end_time: string | null }>;
 };
 export type VersionedPreviewWorkspaceState = PreviewWorkspaceState & { version: number };
