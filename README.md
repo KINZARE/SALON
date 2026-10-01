@@ -33,10 +33,6 @@ The service-role key is server-only. Never expose it with `NEXT_PUBLIC_` or comm
 
 Do not deploy if double booking, tenant leakage, authorization bypass, invalid availability, incorrect snapshots, unsafe payment status, timezone/DST errors, failed migrations, broken mobile booking, typecheck/build failures, or leaked secrets are known.
 
-## Current environment limitation
+## Runtime
 
-The repository was scaffolded in an environment without npm registry network access and without an attached Supabase project, GitHub repository or Vercel project. Pure domain tests run locally; dependency install, full typecheck/lint/build, migration execution, RLS/concurrency integration tests, browser QA, preview deployment and production smoke tests still require those connections. See `IMPLEMENTATION_STATUS.md`.
-
-## Visual preview mode
-
-For a backend-free visual preview, set `SALON_PREVIEW_DEMO_MODE=1` only in the Vercel **Preview** environment. This mode uses explicit in-memory demo data, shows a visible Preview mode notice, and does not persist management changes or replace the production Supabase/RLS path. Keep it disabled for production.
+SALON runs only against the connected Supabase backend. Workspace access requires a real authenticated user and salon membership. Public booking reads and writes the real salon data; there is no synthetic or demo runtime mode.
