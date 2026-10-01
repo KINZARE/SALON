@@ -65,3 +65,33 @@ The current runtime has no reachable npm registry and no connected Supabase proj
 - TypeScript/TSX syntax transpile scan: 0 diagnostics.
 - Dependency installation, framework-aware typecheck, ESLint and `next build` remain unverified in the current runtime because DNS access to `registry.npmjs.org` fails (`EAI_AGAIN` / timeout).
 - Supabase migration/RLS/concurrency remain unverified and are not required for this visual preview mode.
+
+
+## Supabase Phase 0 verification — 2026-10-01
+
+Connected Supabase project:
+- project: `SALON`
+- project ref: `pqozwzakdqtueunictid`
+- region: `eu-central-1`
+- status observed during verification: `ACTIVE_HEALTHY`
+
+Applied database migrations:
+- core schema
+- privileged-function security hardening
+- security-advisor cleanup
+
+Fresh verification evidence:
+- all public application tables have RLS enabled;
+- Supabase Security Advisor: **0 findings** after hardening;
+- privileged `SECURITY DEFINER` logic moved behind the non-exposed `private` schema;
+- public RPC wrappers are `SECURITY INVOKER`;
+- `create_appointment_atomic` remains executable by `service_role` only;
+- rollback integration suite: **14/14 checks passed** covering owner/manager/staff tenant isolation, write boundaries, staff appointment scope, snapshot preservation, overlap rejection and adjacent-boundary booking;
+- overlapping active appointments for the same staff member are rejected by the PostgreSQL exclusion constraint with SQLSTATE `23P01`;
+- appointment price snapshots remain unchanged when the underlying service price changes.
+
+Still not claimed as fully verified:
+- a true two-database-connection simultaneous booking race has not yet been executed; database overlap enforcement itself is verified;
+- Vercel has not yet been switched from explicit demo mode to this real Supabase project;
+- a server-side Supabase secret/service-role key still needs to be configured in the deployment environment before the real public booking path can run;
+- end-to-end browser QA against the real Supabase-backed deployment remains pending.
