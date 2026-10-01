@@ -43,6 +43,12 @@ jobs:
             npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
           fi
 
+      - name: Link Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
+
       - name: Configure Vercel as Next.js
         shell: bash
         run: |
