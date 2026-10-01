@@ -245,9 +245,9 @@ export default function HomePage() {
       <section className="mx-auto max-w-[88rem] px-5 pb-20 sm:px-8 sm:pb-28 lg:px-10">
         <div className="overflow-hidden rounded-[var(--radius-card)] bg-[var(--ink)] px-5 py-10 text-white sm:px-9 sm:py-14 lg:px-14 lg:py-16">
           <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-end">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent-light)]">Availability engine</p>
-              <h2 className="mt-4 text-[clamp(2.6rem,6vw,5.6rem)] font-semibold leading-[0.94] tracking-[-0.065em]">
+              <h2 className="mt-4 break-words text-[clamp(2.6rem,6vw,5.6rem)] font-semibold leading-[0.94] tracking-[-0.065em]">
                 Gebouwd rond echte beschikbaarheid.
               </h2>
             </div>
