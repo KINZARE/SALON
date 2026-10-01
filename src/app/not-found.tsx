@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function NotFound(){return <main className="flex min-h-screen items-center justify-center px-5"><div className="text-center"><h1 className="text-2xl font-semibold">Niet gevonden</h1><p className="mt-2 text-sm text-[var(--muted)]">Deze pagina of salon bestaat niet.</p><Link href="/" className="mt-5 inline-block text-sm font-medium text-[var(--primary)]">Naar start</Link></div></main>}
