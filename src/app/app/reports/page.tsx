@@ -2,33 +2,20 @@ import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { requireAppContext } from "@/lib/auth";
 import { createUserSupabaseClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
 
 export default async function ReportsPage() {
   const { salon, membership } = await requireAppContext();
   if (membership.role === "staff") return <div><h1 className="text-3xl font-semibold tracking-[-0.04em]">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Rapportage is alleen beschikbaar voor owner en manager.</p></div>;
-  let rows: Array<{ status: string; price_cents_snapshot: number }>;
-  if (isPreviewDemoMode()) {
-    rows = [
-      { status: "completed", price_cents_snapshot: 6500 },
-      { status: "completed", price_cents_snapshot: 7000 },
-      { status: "completed", price_cents_snapshot: 6500 },
-      { status: "confirmed", price_cents_snapshot: 3900 },
-      { status: "cancelled", price_cents_snapshot: 6500 },
-      { status: "no_show", price_cents_snapshot: 7000 },
-    ];
-  } else {
-    const db = await createUserSupabaseClient();
-    const month = formatInTimeZone(new Date(), salon.timezone, "yyyy-MM");
-    const [year, monthNumber] = month.split("-").map(Number);
-    const nextMonthYear = monthNumber === 12 ? year + 1 : year;
-    const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
-    const from = fromZonedTime(`${month}-01T00:00:00`, salon.timezone);
-    const until = fromZonedTime(`${nextMonthYear}-${String(nextMonthNumber).padStart(2,"0")}-01T00:00:00`, salon.timezone);
-    const { data, error } = await db.from("appointments").select("status,price_cents_snapshot").eq("salon_id",salon.id).gte("starts_at",from.toISOString()).lt("starts_at",until.toISOString());
-    if (error) throw error;
-    rows = data ?? [];
-  }
+  const db = await createUserSupabaseClient();
+  const month = formatInTimeZone(new Date(), salon.timezone, "yyyy-MM");
+  const [year, monthNumber] = month.split("-").map(Number);
+  const nextMonthYear = monthNumber === 12 ? year + 1 : year;
+  const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
+  const from = fromZonedTime(`${month}-01T00:00:00`, salon.timezone);
+  const until = fromZonedTime(`${nextMonthYear}-${String(nextMonthNumber).padStart(2,"0")}-01T00:00:00`, salon.timezone);
+  const { data, error } = await db.from("appointments").select("status,price_cents_snapshot").eq("salon_id",salon.id).gte("starts_at",from.toISOString()).lt("starts_at",until.toISOString());
+  if (error) throw error;
+  const rows = data ?? [];
   const completed = rows.filter((item) => item.status === "completed");
   const revenue = completed.reduce((sum,item) => sum + item.price_cents_snapshot, 0);
   const average = completed.length ? Math.round(revenue / completed.length) : 0;
