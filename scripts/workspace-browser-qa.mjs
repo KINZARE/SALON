@@ -33,17 +33,21 @@ async function pointerDrag(source, target) {
   await target.waitFor();
   await target.scrollIntoViewIfNeeded();
   const from = await source.boundingBox();
-  const to = await target.boundingBox();
-  assert.ok(from && to, "Drag source/target must have bounding boxes");
+  assert.ok(from, "Drag source must have a bounding box");
   const sx = from.x + Math.min(from.width / 2, 48);
   const sy = from.y + Math.min(from.height / 2, 24);
-  const tx = to.x + to.width / 2;
-  const ty = to.y + to.height / 2;
   await page.mouse.move(sx, sy);
   await page.mouse.down();
-  await page.mouse.move(sx + 12, sy + 8, { steps: 3 });
-  await page.mouse.move(tx, ty, { steps: 18 });
-  await page.waitForTimeout(200);
+  await page.mouse.move(sx + 12, sy + 8, { steps: 2 });
+  await target.scrollIntoViewIfNeeded();
+  let to = await target.boundingBox();
+  assert.ok(to, "Drag target must have a bounding box");
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 4 });
+  await page.waitForTimeout(100);
+  to = await target.boundingBox();
+  assert.ok(to, "Drag target must still have a bounding box");
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2);
+  await page.waitForTimeout(100);
   await page.mouse.up();
 }
 
@@ -110,7 +114,11 @@ try {
   const dragHandle = page.locator(`[data-drag-appointment-id="${appointmentId}"]`);
   await dragHandle.waitFor();
   const maliTarget = page.locator('[data-drop-staff="33333333-3333-4333-8333-333333333334"][data-drop-minute="900"]');
+  const successfulMove = page.waitForResponse((response) => response.url().includes("/api/internal/move") && response.request().method() === "POST");
   await pointerDrag(dragHandle, maliTarget);
+  const successfulMoveResponse = await successfulMove;
+  const successfulMoveBody = await successfulMoveResponse.text();
+  assert.equal(successfulMoveResponse.status(), 200, `Drag move failed: ${successfulMoveResponse.status()} ${successfulMoveBody}`);
   await page.getByText("Afspraak verplaatst.").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: "Undo" }).click();
   await page.getByText("Verplaatsing teruggedraaid.").waitFor({ timeout: 10_000 });
