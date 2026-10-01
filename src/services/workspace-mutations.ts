@@ -1,8 +1,8 @@
 import "server-only";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function saveWorkspaceEntity(salonId: string, kind: string, payload: Record<string, unknown>) {
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const { data, error } = await db.rpc("save_workspace_entity", { p_salon_id: salonId, p_kind: kind, p_payload: payload });
   if (error) throw new Error(error.message);
   return data as string;
@@ -15,7 +15,7 @@ export async function moveWorkspaceAppointment(args: {
   expectedStartsAt?: string | null;
   expectedStaffId?: string | null;
 }) {
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const { data, error } = await db.rpc("move_workspace_appointment", {
     p_id: args.appointmentId,
     p_staff_id: args.staffId,
