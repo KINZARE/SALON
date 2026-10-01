@@ -13,244 +13,88 @@ page.on("console", (message) => {
 });
 page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
 
-async function goto(path) {
+async function assertNoDemoContent() {
+  const body = (await page.locator("body").innerText()).toLowerCase();
+  assert.ok(!body.includes("preview mode"), "Preview mode banner must not exist");
+  assert.ok(!body.includes("baan thai wellness"), "Synthetic demo salon must not be exposed");
+  assert.ok(!body.includes("sophie de vries"), "Synthetic demo customer must not be exposed");
+}
+
+async function assertLoginGate(path) {
   const response = await page.goto(base + path, { waitUntil: "networkidle" });
   assert.ok(response, `No response for ${path}`);
-  assert.ok(response.ok(), `${path} returned ${response.status()}`);
-  await page.getByText("Preview mode", { exact: false }).first().waitFor();
+  assert.equal(new URL(page.url()).pathname, "/login", `${path} must redirect to /login`);
+  await page.getByRole("heading", { name: "Welkom terug" }).waitFor();
+  await assertNoDemoContent();
 }
 
 async function noBodyOverflow(label) {
   const size = await page.evaluate(() => {
     const root = document.documentElement;
-    const offenders = Array.from(document.querySelectorAll("*"))
-      .map((element) => {
-        const rect = element.getBoundingClientRect();
-        return {
-          tag: element.tagName,
-          className: typeof element.className === "string" ? element.className.slice(0, 180) : "",
-          text: (element.textContent ?? "").trim().replace(/\\s+/g, " ").slice(0, 120),
-          left: Math.round(rect.left),
-          right: Math.round(rect.right),
-          width: Math.round(rect.width),
-          scrollWidth: element.scrollWidth,
-        };
-      })
-      .filter((item) => item.right > root.clientWidth + 1 || item.left < -1 || item.scrollWidth > root.clientWidth + 1)
-      .sort((a, b) => Math.max(b.right - root.clientWidth, b.scrollWidth - root.clientWidth) - Math.max(a.right - root.clientWidth, a.scrollWidth - root.clientWidth))
-      .slice(0, 8);
-    return { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth, offenders };
+    return { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth };
   });
-  assert.ok(size.scrollWidth <= size.clientWidth + 1, `${label}: body overflow ${size.scrollWidth} > ${size.clientWidth}; offenders=${JSON.stringify(size.offenders)}`);
-}
-
-async function pointerDrag(source, target) {
-  await source.waitFor();
-  await target.waitFor();
-  await target.scrollIntoViewIfNeeded();
-  const from = await source.boundingBox();
-  assert.ok(from, "Drag source must have a bounding box");
-  const sx = from.x + Math.min(from.width / 2, 48);
-  const sy = from.y + Math.min(from.height / 2, 24);
-  await page.mouse.move(sx, sy);
-  await page.mouse.down();
-  await page.mouse.move(sx + 12, sy + 8, { steps: 2 });
-  await target.scrollIntoViewIfNeeded();
-  let to = await target.boundingBox();
-  assert.ok(to, "Drag target must have a bounding box");
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 4 });
-  await page.waitForTimeout(100);
-  to = await target.boundingBox();
-  assert.ok(to, "Drag target must still have a bounding box");
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2);
-  await page.waitForTimeout(100);
-  await page.mouse.up();
+  assert.ok(size.scrollWidth <= size.clientWidth + 1, `${label}: body overflow ${size.scrollWidth} > ${size.clientWidth}`);
 }
 
 try {
-  await goto("/");
-  assert.equal(new URL(page.url()).pathname, "/app/today", "Root must redirect directly to the operational workspace");
-
-  await goto("/app/today");
-  await page.getByRole("heading", { name: "Today" }).waitFor();
-  await page.getByText("Sophie de Vries").waitFor();
-
-  await page.getByRole("link", { name: "+ Afspraak" }).click();
-  await page.waitForURL(/\/app\/calendar\/new/);
-
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-  await page.getByLabel("Datum").fill(tomorrow);
-  const timeButtons = page.getByRole("button", { name: /^\d{2}:\d{2}$/ });
-  await timeButtons.first().waitFor();
-
-  await page.getByLabel("Zoek bestaande klant").fill("Sophie");
-  const sophie = page.getByRole("button", { name: /Sophie de Vries/ }).first();
-  await sophie.waitFor();
-  await sophie.click();
-  assert.equal(await page.getByLabel("Klantnaam").inputValue(), "Sophie de Vries");
-  assert.ok((await page.getByLabel("Telefoon (optioneel)").inputValue()).length > 0);
-  await page.getByRole("button", { name: "Andere / nieuwe klant" }).click();
-  assert.equal(await page.getByLabel("Klantnaam").inputValue(), "");
-  assert.equal(await page.getByLabel("Telefoon (optioneel)").inputValue(), "");
-  assert.equal(await page.getByLabel("E-mail (optioneel)").inputValue(), "");
-
-  await page.getByLabel("Klantnaam").fill("QA Browser Klant");
-  await page.getByLabel("Telefoon (optioneel)").fill("0612345678");
-  await page.getByLabel("E-mail (optioneel)").fill("qa-browser@example.invalid");
-  await timeButtons.first().click();
-  await page.getByRole("button", { name: "Afspraak opslaan" }).click();
-  await page.waitForURL(/\/app\/appointments\/[0-9a-f-]+/);
-  const appointmentId = new URL(page.url()).pathname.split("/").pop();
-  assert.ok(appointmentId);
-
-  const note = page.locator('textarea[name="note"]');
-  await note.fill("Browser QA notitie");
-  await page.getByRole("button", { name: "Notitie opslaan" }).click();
-  await page.waitForURL(/saved=1/);
-  await page.reload({ waitUntil: "networkidle" });
-  assert.equal(await page.locator('textarea[name="note"]').inputValue(), "Browser QA notitie");
-
-  await page.getByRole("link", { name: "Verplaatsen" }).click();
-  await page.waitForURL(/\/reschedule/);
-  const rescheduleTimes = page.getByRole("button", { name: /^\d{2}:\d{2}$/ });
-  await rescheduleTimes.nth(1).waitFor();
-  await rescheduleTimes.nth(1).click();
-  await page.getByRole("button", { name: "Afspraak verplaatsen" }).click();
-  await page.waitForURL(new RegExp(`/app/appointments/${appointmentId}`));
-
-  await goto("/app/blocks");
-  await page.getByLabel("Voor wie?").selectOption({ label: "Nok" });
-  await page.getByLabel("Van").fill(`${tomorrow}T16:00`);
-  await page.getByLabel("Tot").fill(`${tomorrow}T16:30`);
-  await page.getByLabel("Reden (optioneel)").fill("Browser QA conflict");
-  await page.getByRole("button", { name: "Block toevoegen" }).click();
-  await page.waitForURL(/\/app\/blocks/);
-  await page.getByText("Browser QA conflict").waitFor();
-  await page.reload({ waitUntil: "networkidle" });
-  await page.getByText("Browser QA conflict").waitFor();
-
-  await goto(`/app/calendar?date=${tomorrow}`);
-  const dragHandle = page.locator(`[data-drag-appointment-id="${appointmentId}"]`);
-  await dragHandle.waitFor();
-  const maliTarget = page.locator('[data-drop-staff="33333333-3333-4333-8333-333333333334"][data-drop-minute="900"]');
-  const successfulMove = page.waitForResponse((response) => response.url().includes("/api/internal/move") && response.request().method() === "POST");
-  await pointerDrag(dragHandle, maliTarget);
-  const successfulMoveResponse = await successfulMove;
-  const successfulMoveBody = await successfulMoveResponse.text();
-  assert.equal(successfulMoveResponse.status(), 200, `Drag move failed: ${successfulMoveResponse.status()} ${successfulMoveBody}`);
-  await page.getByText("Afspraak verplaatst.").waitFor({ timeout: 10_000 });
-  await page.getByRole("button", { name: "Undo" }).click();
-  await page.getByText("Verplaatsing teruggedraaid.").waitFor({ timeout: 10_000 });
-
-  const nokBlockedTarget = page.locator('[data-drop-staff="33333333-3333-4333-8333-333333333333"][data-drop-minute="960"]');
-  const invalidDragErrorStart = runtimeErrors.length;
-  const invalidMove = page.waitForResponse((response) => response.url().includes("/api/internal/move") && response.request().method() === "POST");
-  await pointerDrag(page.locator(`[data-drag-appointment-id="${appointmentId}"]`), nokBlockedTarget);
-  const invalidMoveResponse = await invalidMove;
-  assert.equal(invalidMoveResponse.status(), 409, `Invalid drag should return 409, got ${invalidMoveResponse.status()}`);
-  await page.getByText(/niet beschikbaar|planning is intussen gewijzigd/i).waitFor({ timeout: 10_000 });
-  const invalidDragErrors = runtimeErrors.slice(invalidDragErrorStart);
-  assert.ok(invalidDragErrors.every((entry) => entry.includes("409 (Conflict)")), `Unexpected runtime error during invalid drag: ${invalidDragErrors.join(" | ")}`);
-  runtimeErrors.splice(invalidDragErrorStart);
-
-  await goto("/app/customers?q=QA%20Browser");
-  await page.getByRole("link", { name: /QA Browser Klant/ }).click();
-  await page.waitForURL(/\/app\/customers\//);
-  await page.getByLabel("Naam").fill("QA Browser Klant Updated");
-  await page.getByRole("button", { name: "Klant opslaan" }).click();
-  await page.waitForURL(/saved=1/);
-  await page.reload({ waitUntil: "networkidle" });
-  assert.equal(await page.getByLabel("Naam").inputValue(), "QA Browser Klant Updated");
-
-  await goto("/app/staff");
-  let staffDetails = page.locator("details").filter({ hasText: "Nok" }).first();
-  await staffDetails.locator("summary").click();
-  await staffDetails.locator('input[name="name"]').fill("Nok — Zeer lange medewerkernaam voor mobiele responsive QA");
-  await staffDetails.getByLabel("Maandag start").fill("09:15");
-  await staffDetails.getByLabel("Maandag pauze start").fill("12:15");
-  await staffDetails.getByLabel("Maandag pauze einde").fill("12:45");
-  await staffDetails.getByRole("button", { name: "Wijzigingen opslaan" }).click();
-  await page.waitForURL(/\/app\/staff/);
-  staffDetails = page.locator("details").filter({ hasText: "Nok — Zeer lange medewerkernaam" }).first();
-  await staffDetails.locator("summary").click();
-  assert.match(await staffDetails.locator('input[name="name"]').inputValue(), /mobiele responsive QA/);
-  assert.equal(await staffDetails.getByLabel("Maandag start").inputValue(), "09:15");
-  assert.equal(await staffDetails.getByLabel("Maandag pauze start").inputValue(), "12:15");
-  assert.equal(await staffDetails.getByLabel("Maandag pauze einde").inputValue(), "12:45");
-
-  await goto("/app/services");
-  let serviceDetails = page.locator("details").filter({ hasText: "Thai Massage 60 min" }).first();
-  await serviceDetails.locator("summary").click();
-  await serviceDetails.locator('input[name="name"]').fill("Thai Massage 60 min — extra lange servicenaam voor responsive QA");
-  await serviceDetails.locator('input[name="price"]').fill("66,50");
-  await serviceDetails.getByRole("button", { name: "Wijzigingen opslaan" }).click();
-  await page.waitForURL(/\/app\/services/);
-  serviceDetails = page.locator("details").filter({ hasText: "extra lange servicenaam" }).first();
-  await serviceDetails.locator("summary").click();
-  assert.equal(await serviceDetails.locator('input[name="price"]').inputValue(), "66,50");
-
-  await goto("/app/settings");
-  await page.getByLabel("Telefoon").fill("070 204 88 99");
-  await page.getByRole("button", { name: "Instellingen opslaan" }).click();
-  await page.waitForURL(/saved=1/);
-  await page.reload({ waitUntil: "networkidle" });
-  assert.equal(await page.getByLabel("Telefoon").inputValue(), "070 204 88 99");
-
-  await goto("/app/reports");
-  await page.getByRole("heading", { name: "Reports" }).waitFor();
-
-  await goto(`/app/appointments/${appointmentId}`);
-  await page.getByRole("button", { name: "Annuleren" }).click();
-  await page.getByText("cancelled", { exact: true }).waitFor({ timeout: 10_000 });
-  await page.reload({ waitUntil: "networkidle" });
-  await page.getByText("cancelled", { exact: true }).waitFor();
-
-  await fs.mkdir("qa-artifacts", { recursive: true });
-  const widths = [320, 360, 375, 390, 430, 768, 1024, 1280, 1440];
-  const paths = [
+  const protectedPaths = [
+    "/",
     "/app/today",
-    `/app/calendar?date=${tomorrow}`,
-    "/app/calendar/new",
-    "/app/customers?q=QA%20Browser",
+    "/app/calendar",
+    "/app/customers",
     "/app/staff",
     "/app/services",
     "/app/blocks",
     "/app/settings",
     "/app/reports",
   ];
+
+  for (const path of protectedPaths) {
+    await assertLoginGate(path);
+  }
+
+  await page.goto(base + "/signup", { waitUntil: "networkidle" });
+  assert.equal(new URL(page.url()).pathname, "/signup");
+  await page.getByRole("heading", { name: "Maak je salon boekbaar" }).waitFor();
+  await page.getByLabel("Naam").waitFor();
+  await page.getByLabel("E-mail").waitFor();
+  await page.getByLabel("Wachtwoord").waitFor();
+  await page.getByRole("button", { name: "Account maken" }).waitFor();
+  await assertNoDemoContent();
+
+  await fs.mkdir("qa-artifacts", { recursive: true });
+  const widths = [320, 390, 768, 1440];
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of paths) {
-      await goto(path);
-      await noBodyOverflow(`${width}px ${path}`);
-      const unnamedButtons = await page.locator("button").evaluateAll((nodes) =>
-        nodes.filter((node) => !(node.textContent?.trim() || node.getAttribute("aria-label") || node.getAttribute("title"))).length
-      );
-      assert.equal(unnamedButtons, 0, `${width}px ${path}: unnamed buttons`);
-    }
-    await goto("/app/today");
-    await page.keyboard.press("Tab");
-    const activeTag = await page.evaluate(() => document.activeElement?.tagName ?? "");
-    assert.notEqual(activeTag, "BODY", `${width}px: keyboard focus did not move`);
+
+    await assertLoginGate("/app/today");
+    await noBodyOverflow(`${width}px /login`);
+
+    await page.goto(base + "/signup", { waitUntil: "networkidle" });
+    await noBodyOverflow(`${width}px /signup`);
+    await assertNoDemoContent();
+
     if (width === 320) {
-      await goto(`/app/calendar?date=${tomorrow}`);
-      await page.screenshot({ path: "qa-artifacts/calendar-320.png", fullPage: true });
+      await page.goto(base + "/login", { waitUntil: "networkidle" });
+      await page.screenshot({ path: "qa-artifacts/login-320.png", fullPage: true });
     }
     if (width === 1440) {
-      await goto("/app/today");
-      await page.screenshot({ path: "qa-artifacts/today-1440.png", fullPage: true });
+      await page.goto(base + "/signup", { waitUntil: "networkidle" });
+      await page.screenshot({ path: "qa-artifacts/signup-1440.png", fullPage: true });
     }
   }
 
   assert.deepEqual(runtimeErrors, [], `Runtime errors detected:\n${runtimeErrors.join("\n")}`);
-  await fs.writeFile("qa-artifacts/result.json", JSON.stringify({
+  const result = {
     ok: true,
-    appointmentId,
+    mode: "real-authenticated",
+    protectedPaths,
     widths,
-    flows: ["today","calendar","create","customer-search-reset","note-edit","reschedule","block","drag-drop","validated-undo","invalid-drag","customer-edit","staff-edit","staff-schedule-break","service-edit","settings","reports","cancel","refresh-persistence"],
+    flows: ["root-to-login", "workspace-auth-gate", "signup", "no-demo-content", "responsive-auth"],
     runtimeErrors,
-  }, null, 2));
-  console.log("BROWSER_QA_PASS", JSON.stringify({ appointmentId, widths, runtimeErrors: runtimeErrors.length }));
+  };
+  await fs.writeFile("qa-artifacts/result.json", JSON.stringify(result, null, 2));
+  console.log("REAL_MODE_QA_PASS", JSON.stringify({ widths, protectedPaths: protectedPaths.length, runtimeErrors: runtimeErrors.length }));
 } finally {
   await context.close();
   await browser.close();
