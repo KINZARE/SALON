@@ -107,9 +107,9 @@ function AppointmentCard({ item, timezone, canManage, selected, onSelect }: { it
       type="button"
       onClick={onSelect}
       data-appointment-id={item.id}
-      aria-pressed={selected}
       {...attributes}
       {...listeners}
+      aria-pressed={selected}
       className={`block h-full w-full cursor-pointer select-none text-left transition hover:-translate-y-px hover:shadow-md ${canManage && active ? "sm:cursor-grab sm:active:cursor-grabbing" : ""}`}
     >
       <AppointmentVisual item={item} timezone={timezone} selected={selected}/>
