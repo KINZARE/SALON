@@ -1,8 +1,8 @@
 import "server-only";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function getWorkspaceServices(salonId: string) {
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const [servicesResult, linksResult] = await Promise.all([
     db.from("services").select("id,name,description,duration_minutes,buffer_minutes,price_cents,currency,active,online_bookable").eq("salon_id", salonId).order("name"),
     db.from("staff_services").select("staff_id,service_id").eq("salon_id", salonId),
@@ -16,7 +16,7 @@ export async function getWorkspaceServices(salonId: string) {
 }
 
 export async function getWorkspaceStaff(salonId: string) {
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const [staffResult, linksResult, schedulesResult, breaksResult] = await Promise.all([
     db.from("staff").select("id,name,email,operational_role,active").eq("salon_id", salonId).order("name"),
     db.from("staff_services").select("staff_id,service_id").eq("salon_id", salonId),
@@ -35,7 +35,7 @@ export async function getWorkspaceStaff(salonId: string) {
 export async function searchCustomers(salonId: string, query: string) {
   const q = query.trim();
   if (q.length < 2) return [];
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const pattern = `%${q}%`;
   const [nameResult, phoneResult, emailResult] = await Promise.all([
     db.from("customers").select("id,name,phone,email").eq("salon_id", salonId).ilike("name", pattern).limit(20),
@@ -49,14 +49,14 @@ export async function searchCustomers(salonId: string, query: string) {
 }
 
 export async function getCustomerById(salonId: string, id: string) {
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const { data, error } = await db.from("customers").select("id,name,phone,email").eq("salon_id", salonId).eq("id", id).maybeSingle();
   if (error) throw error;
   return data;
 }
 
 export async function getCalendarBreaks(salonId: string, weekday: number) {
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const { data, error } = await db.from("breaks").select("staff_id,weekday,start_time,end_time").eq("salon_id", salonId).eq("weekday", weekday).eq("active", true);
   if (error) throw error;
   return data ?? [];
@@ -65,7 +65,7 @@ export async function getCalendarBreaks(salonId: string, weekday: number) {
 export async function searchWorkspace(salonId: string, query: string) {
   const q = query.trim();
   if (q.length < 2) return { customers: [], staff: [], services: [], appointments: [] };
-  const db = await createUserSupabaseClient();
+  const db = createAdminSupabaseClient();
   const pattern = `%${q}%`;
   const [customers, staff, services, appointments] = await Promise.all([
     db.from("customers").select("id,name,phone,email").eq("salon_id", salonId).ilike("name", pattern).limit(10),
