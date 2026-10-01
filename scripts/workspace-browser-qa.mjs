@@ -68,6 +68,9 @@ async function pointerDrag(source, target) {
 }
 
 try {
+  await goto("/");
+  assert.equal(new URL(page.url()).pathname, "/app/today", "Root must redirect directly to the operational workspace");
+
   await goto("/app/today");
   await page.getByRole("heading", { name: "Today" }).waitFor();
   await page.getByText("Sophie de Vries").waitFor();
