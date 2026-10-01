@@ -1,11 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/format";
 import { getAppointmentTone, getStatusMeta, type AppointmentTone, type StatusTone } from "@/lib/calendar-ui";
+import { getDraggedTargetMinute, shiftAppointmentTimes } from "@/domain/calendar-drag";
 
 type Appointment = {
   id: string;
@@ -29,6 +43,7 @@ type Block = { id: string; staff_id: string | null; starts_at: string; ends_at: 
 type Break = { staff_id: string; weekday: number; start_time: string; end_time: string };
 
 const pxPerMinute = 1.08;
+const slotMinutes = 15;
 const pad = (value: number) => String(value).padStart(2, "0");
 const minuteLabel = (minute: number) => `${pad(Math.floor(minute / 60))}:${pad(minute % 60)}`;
 
@@ -52,43 +67,74 @@ const statusClasses: Record<StatusTone, string> = {
   muted: "bg-[#f1f3f6] text-[#677489]",
 };
 
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
 function localParts(iso: string, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
+  let formatter=formatterCache.get(timezone);
+  if(!formatter){
+    formatter=new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    formatterCache.set(timezone,formatter);
+  }
+  const parts = formatter.formatToParts(new Date(iso));
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
   return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
 }
 function toMinute(time: string) { const [hour, minute] = time.slice(0,5).split(":").map(Number); return hour * 60 + minute; }
 
-function DropCell({ staffId, minute, startMinute, disabled }: { staffId: string; minute: number; startMinute: number; disabled: boolean }) {
-  const id = `${staffId}|${minute}`;
-  const { setNodeRef, isOver } = useDroppable({ id, disabled, data: { staffId, minute } });
-  return <div ref={setNodeRef} aria-hidden data-drop-staff={staffId} data-drop-minute={minute} className={`absolute inset-x-0 border-t border-[#edf0f5] ${isOver ? "bg-[#eaf2ff]" : ""}`} style={{ top: (minute-startMinute)*pxPerMinute, height: 15*pxPerMinute }} />;
-}
-
-function AppointmentCard({ item, timezone, canManage, selected, onSelect }: { item: Appointment; timezone: string; canManage: boolean; selected: boolean; onSelect: () => void }) {
-  const active = !["completed","cancelled","no_show"].includes(item.status);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({ id: item.id, disabled: !canManage || !active, data: { appointment: item } });
+function AppointmentVisual({ item, timezone, selected=false, overlay=false }: { item: Appointment; timezone: string; selected?: boolean; overlay?: boolean }) {
   const start = localParts(item.starts_at, timezone).time;
   const end = localParts(item.service_ends_at, timezone).time;
   const customerName = item.customer?.name ?? item.customer_name_snapshot;
   const tone=getAppointmentTone(item.service_name_snapshot,item.status);
 
-  return <div ref={setNodeRef} style={{ transform: transform ? `translate3d(${transform.x}px,${transform.y}px,0)` : undefined, opacity: isDragging ? .68 : 1 }} className="relative z-20 h-full">
-    <button type="button" onClick={onSelect} data-appointment-id={item.id} aria-pressed={selected} className={`block h-full w-full overflow-hidden rounded-[9px] border-l-[3px] px-2.5 py-2 pr-9 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)] transition hover:-translate-y-px hover:shadow-md ${toneClasses[tone]} ${selected ? "ring-2 ring-[#2563eb]/25" : ""}`}>
-      <span className="block text-[10px] font-medium opacity-75">{start}–{end}</span>
-      <span className="mt-0.5 block truncate text-xs font-semibold text-[#16233b]">{customerName}</span>
-      <span className="mt-0.5 block truncate text-[10px] font-medium opacity-80">{item.service_name_snapshot}</span>
-    </button>
-    {canManage && active ? <button
+  return <div className={`h-full w-full overflow-hidden rounded-[9px] border-l-[3px] px-2.5 py-2 pr-8 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)] ${toneClasses[tone]} ${selected ? "ring-2 ring-[#2563eb]/25" : ""} ${overlay ? "min-h-[56px] w-[190px] rotate-[1deg] shadow-xl ring-1 ring-black/5" : ""}`}>
+    <span className="block text-[10px] font-medium opacity-75">{start}–{end}</span>
+    <span className="mt-0.5 block truncate text-xs font-semibold text-[#16233b]">{customerName}</span>
+    <span className="mt-0.5 block truncate text-[10px] font-medium opacity-80">{item.service_name_snapshot}</span>
+  </div>;
+}
+
+function AppointmentCard({ item, timezone, canManage, selected, onSelect }: { item: Appointment; timezone: string; canManage: boolean; selected: boolean; onSelect: () => void }) {
+  const active = !["completed","cancelled","no_show"].includes(item.status);
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
+    id: item.id,
+    disabled: !canManage || !active,
+    data: { appointment: item },
+  });
+
+  return <div ref={setNodeRef} className={`relative z-20 h-full transition-opacity ${isDragging ? "opacity-25" : ""}`}>
+    <button
       ref={setActivatorNodeRef}
       type="button"
-      data-drag-appointment-id={item.id}
-      aria-label={`Verplaats afspraak van ${customerName}`}
+      onClick={onSelect}
+      data-appointment-id={item.id}
+      aria-pressed={selected}
       {...attributes}
       {...listeners}
-      className="absolute right-1.5 top-1.5 z-30 flex h-7 w-7 touch-none cursor-grab items-center justify-center rounded-[7px] bg-white/80 text-[#6f7d92] shadow-sm ring-1 ring-black/5 backdrop-blur active:cursor-grabbing"
-    ><span aria-hidden className="text-[12px] leading-none">⋮⋮</span></button> : null}
+      className={`block h-full w-full cursor-pointer select-none text-left transition hover:-translate-y-px hover:shadow-md ${canManage && active ? "sm:cursor-grab sm:active:cursor-grabbing" : ""}`}
+    >
+      <AppointmentVisual item={item} timezone={timezone} selected={selected}/>
+    </button>
+    {canManage && active ? <span aria-hidden className="pointer-events-none absolute right-2 top-2 text-[11px] font-bold text-[#7c899b]">⋮⋮</span> : null}
   </div>;
+}
+
+function StaffDropColumn({ member, disabled, children, height }: { member: Staff; disabled: boolean; children: React.ReactNode; height: number }) {
+  const { setNodeRef, isOver }=useDroppable({
+    id: `staff:${member.id}`,
+    disabled,
+    data: { staffId: member.id },
+  });
+
+  return <div
+    ref={setNodeRef}
+    data-drop-staff={member.id}
+    className={`relative border-l border-[var(--border)] transition-colors ${isOver ? "bg-[#f5f9ff]" : "bg-white"}`}
+    style={{
+      height,
+      backgroundImage: "linear-gradient(to bottom, transparent calc(100% - 1px), #edf0f5 calc(100% - 1px))",
+      backgroundSize: `100% ${slotMinutes*pxPerMinute}px`,
+    }}
+  >{children}</div>;
 }
 
 function AppointmentPanel({ item, timezone }: { item: Appointment | null; timezone: string }) {
@@ -124,14 +170,51 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
   date: string; timezone: string; appointments: Appointment[]; staff: Staff[]; blocks: Block[]; breaks: Break[]; canManage: boolean; startMinute: number; endMinute: number;
 }) {
   const router = useRouter();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 160, tolerance: 7 } }),
+    useSensor(KeyboardSensor),
+  );
+  const [localAppointments,setLocalAppointments]=useState(appointments);
   const [message,setMessage] = useState<string | null>(null);
   const [busy,setBusy] = useState(false);
+  const [activeId,setActiveId]=useState<string | null>(null);
   const [selectedId,setSelectedId]=useState<string | null>(appointments[0]?.id ?? null);
   const [undo,setUndo] = useState<null | { appointmentId:string; fromStaffId:string; fromStartsAt:string; toStaffId:string; toStartsAt:string }>(null);
-  const rows = useMemo(() => Array.from({length:Math.ceil((endMinute-startMinute)/15)},(_,index)=>startMinute+index*15),[startMinute,endMinute]);
   const height=(endMinute-startMinute)*pxPerMinute;
-  const selected=appointments.find(item=>item.id===selectedId) ?? null;
+  const hourRows=useMemo(()=>Array.from({length:Math.ceil((endMinute-startMinute)/60)+1},(_,index)=>startMinute+index*60).filter(value=>value<=endMinute),[startMinute,endMinute]);
+
+  useEffect(()=>{
+    setLocalAppointments(appointments);
+    setSelectedId(current=>current && appointments.some(item=>item.id===current) ? current : appointments[0]?.id ?? null);
+  },[appointments]);
+
+  const selected=localAppointments.find(item=>item.id===selectedId) ?? null;
+  const activeAppointment=localAppointments.find(item=>item.id===activeId) ?? null;
+
+  const appointmentsByStaff=useMemo(()=>{
+    const grouped=new Map<string,Appointment[]>();
+    for(const member of staff) grouped.set(member.id,[]);
+    for(const item of localAppointments) grouped.get(item.staff_id)?.push(item);
+    return grouped;
+  },[localAppointments,staff]);
+
+  const breaksByStaff=useMemo(()=>{
+    const grouped=new Map<string,Break[]>();
+    for(const member of staff) grouped.set(member.id,[]);
+    for(const item of breaks) grouped.get(item.staff_id)?.push(item);
+    return grouped;
+  },[breaks,staff]);
+
+  const blocksByStaff=useMemo(()=>{
+    const grouped=new Map<string,Block[]>();
+    for(const member of staff) grouped.set(member.id,[]);
+    for(const block of blocks){
+      if(block.staff_id) grouped.get(block.staff_id)?.push(block);
+      else for(const member of staff) grouped.get(member.id)?.push(block);
+    }
+    return grouped;
+  },[blocks,staff]);
 
   async function move(payload: { appointmentId:string; staffId:string; localStart:string; expectedStartsAt:string; expectedStaffId:string }) {
     const response=await fetch("/api/internal/move",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
@@ -140,32 +223,132 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
     return body;
   }
 
+  function onDragStart(event:DragStartEvent){
+    const appointment=event.active.data.current?.appointment as Appointment|undefined;
+    if(!appointment)return;
+    setActiveId(appointment.id);
+    setSelectedId(appointment.id);
+    setMessage(null);
+  }
+
+  function onDragCancel(){setActiveId(null);}
+
   async function onDragEnd(event: DragEndEvent) {
+    setActiveId(null);
     const appointment=event.active.data.current?.appointment as Appointment | undefined;
-    const target=event.over?.data.current as {staffId?:string;minute?:number} | undefined;
-    if(!appointment || !target?.staffId || typeof target.minute!=="number") return;
-    const localStart=`${date}T${minuteLabel(target.minute)}`;
-    if(target.staffId===appointment.staff_id && localParts(appointment.starts_at,timezone).date===date && localParts(appointment.starts_at,timezone).time===minuteLabel(target.minute)) return;
-    setBusy(true);setMessage(null);setUndo(null);
+    const target=event.over?.data.current as {staffId?:string} | undefined;
+    if(!appointment || !target?.staffId) return;
+
+    const originalTime=localParts(appointment.starts_at,timezone).time;
+    const originalMinute=toMinute(originalTime);
+    const occupiedMinutes=Math.max(slotMinutes,Math.round((new Date(appointment.occupied_until).getTime()-new Date(appointment.starts_at).getTime())/60_000));
+    const targetMinute=getDraggedTargetMinute({
+      originalMinute,
+      deltaY:event.delta.y,
+      pxPerMinute,
+      stepMinutes:slotMinutes,
+      startMinute,
+      endMinute,
+      occupiedMinutes,
+    });
+    const deltaMinutes=targetMinute-originalMinute;
+    if(target.staffId===appointment.staff_id && deltaMinutes===0)return;
+
+    const targetStaff=staff.find(member=>member.id===target.staffId);
+    if(!targetStaff)return;
+
+    const before=localAppointments.find(item=>item.id===appointment.id) ?? appointment;
+    const shifted=shiftAppointmentTimes({
+      startsAt:before.starts_at,
+      serviceEndsAt:before.service_ends_at,
+      occupiedUntil:before.occupied_until,
+      deltaMinutes,
+    });
+    const optimistic:Appointment={
+      ...before,
+      starts_at:shifted.startsAt,
+      service_ends_at:shifted.serviceEndsAt,
+      occupied_until:shifted.occupiedUntil,
+      staff_id:target.staffId,
+      staff:{name:targetStaff.name},
+    };
+
+    setLocalAppointments(current=>current.map(item=>item.id===appointment.id?optimistic:item));
+    setBusy(true);
+    setMessage("Afspraak opslaan…");
+    setUndo(null);
+
     try{
-      const result=await move({appointmentId:appointment.id,staffId:target.staffId,localStart,expectedStartsAt:appointment.starts_at,expectedStaffId:appointment.staff_id});
-      if(!result.startsAt||!result.staffId) throw new Error("Geen actuele planning ontvangen.");
-      setUndo({appointmentId:appointment.id,fromStaffId:appointment.staff_id,fromStartsAt:appointment.starts_at,toStaffId:result.staffId,toStartsAt:result.startsAt});
+      const result=await move({
+        appointmentId:appointment.id,
+        staffId:target.staffId,
+        localStart:`${date}T${minuteLabel(targetMinute)}`,
+        expectedStartsAt:before.starts_at,
+        expectedStaffId:before.staff_id,
+      });
+      if(!result.startsAt||!result.staffId)throw new Error("Geen actuele planning ontvangen.");
+
+      const confirmedDelta=Math.round((new Date(result.startsAt).getTime()-new Date(before.starts_at).getTime())/60_000);
+      const confirmedTimes=shiftAppointmentTimes({
+        startsAt:before.starts_at,
+        serviceEndsAt:before.service_ends_at,
+        occupiedUntil:before.occupied_until,
+        deltaMinutes:confirmedDelta,
+      });
+      setLocalAppointments(current=>current.map(item=>item.id===appointment.id?{
+        ...item,
+        starts_at:result.startsAt!,
+        service_ends_at:confirmedTimes.serviceEndsAt,
+        occupied_until:confirmedTimes.occupiedUntil,
+        staff_id:result.staffId!,
+        staff:{name:targetStaff.name},
+      }:item));
+      setUndo({appointmentId:appointment.id,fromStaffId:before.staff_id,fromStartsAt:before.starts_at,toStaffId:result.staffId,toStartsAt:result.startsAt});
       setMessage("Afspraak verplaatst.");
+    }catch(error){
+      setLocalAppointments(current=>current.map(item=>item.id===appointment.id?before:item));
+      setMessage(error instanceof Error?error.message:"Verplaatsen is niet gelukt.");
       router.refresh();
-    }catch(error){setMessage(error instanceof Error?error.message:"Verplaatsen is niet gelukt.");router.refresh();}
-    finally{setBusy(false);}
+    }finally{
+      setBusy(false);
+    }
   }
 
   async function undoMove(){
     if(!undo)return;
-    setBusy(true);setMessage(null);
+    const current=localAppointments.find(item=>item.id===undo.appointmentId);
+    if(!current)return;
+    const targetStaff=staff.find(member=>member.id===undo.fromStaffId);
+    if(!targetStaff)return;
+
+    const deltaMinutes=Math.round((new Date(undo.fromStartsAt).getTime()-new Date(current.starts_at).getTime())/60_000);
+    const shifted=shiftAppointmentTimes({
+      startsAt:current.starts_at,
+      serviceEndsAt:current.service_ends_at,
+      occupiedUntil:current.occupied_until,
+      deltaMinutes,
+    });
+    setLocalAppointments(items=>items.map(item=>item.id===undo.appointmentId?{
+      ...item,
+      starts_at:shifted.startsAt,
+      service_ends_at:shifted.serviceEndsAt,
+      occupied_until:shifted.occupiedUntil,
+      staff_id:undo.fromStaffId,
+      staff:{name:targetStaff.name},
+    }:item));
+    setBusy(true);setMessage("Undo opslaan…");
+
     try{
       const from=localParts(undo.fromStartsAt,timezone);
       await move({appointmentId:undo.appointmentId,staffId:undo.fromStaffId,localStart:`${from.date}T${from.time}`,expectedStartsAt:undo.toStartsAt,expectedStaffId:undo.toStaffId});
-      setUndo(null);setMessage("Verplaatsing teruggedraaid.");router.refresh();
-    }catch(error){setUndo(null);setMessage(error instanceof Error?error.message:"Undo kon niet veilig worden uitgevoerd.");router.refresh();}
-    finally{setBusy(false);}
+      setUndo(null);
+      setMessage("Verplaatsing teruggedraaid.");
+    }catch(error){
+      setLocalAppointments(items=>items.map(item=>item.id===current.id?current:item));
+      setUndo(null);
+      setMessage(error instanceof Error?error.message:"Undo kon niet veilig worden uitgevoerd.");
+      router.refresh();
+    }finally{setBusy(false);}
   }
 
   if(!staff.length) return <p className="mt-6 rounded-xl border border-[var(--border)] bg-white p-5 text-sm text-[var(--muted)]">Voeg eerst een actieve medewerker toe.</p>;
@@ -173,7 +356,7 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
   return <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_318px] xl:items-start">
     <div className="min-w-0">
       <div className="mb-2.5 flex min-h-9 items-center justify-between gap-3">
-        <p role="status" className="text-xs text-[var(--muted)]">{busy?"Planning controleren…":message??(canManage?"Sleep een actieve afspraak naar een vrije tijd of medewerker.":"Dagplanning")}</p>
+        <p role="status" className="text-xs text-[var(--muted)]">{message??(canManage?"Sleep een afspraak direct naar de gewenste tijd of medewerker.":"Dagplanning")}</p>
         {undo?<button type="button" onClick={undoMove} disabled={busy} className="h-9 rounded-[9px] border border-[var(--border)] bg-white px-3 text-xs font-semibold disabled:opacity-50">Undo</button>:null}
       </div>
       <div className="calendar-scroll overflow-x-auto rounded-2xl border border-[var(--border)] bg-white shadow-[0_8px_30px_rgba(15,23,42,.035)]">
@@ -188,21 +371,23 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
               </div>;
             })}
           </div>
-          <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragCancel={onDragCancel} onDragEnd={onDragEnd}>
             <div className="grid" style={{gridTemplateColumns:`70px repeat(${staff.length},minmax(170px,1fr))`}}>
-              <div className="relative bg-[#fbfcfe]" style={{height}}>{rows.filter(minute=>minute%60===0).map(minute=><span key={minute} className="absolute right-3 -translate-y-2 text-[10px] font-medium text-[#8d99aa]" style={{top:(minute-startMinute)*pxPerMinute}}>{minuteLabel(minute)}</span>)}</div>
+              <div className="relative bg-[#fbfcfe]" style={{height}}>{hourRows.map(minute=><span key={minute} className="absolute right-3 -translate-y-2 text-[10px] font-medium text-[#8d99aa]" style={{top:(minute-startMinute)*pxPerMinute}}>{minuteLabel(minute)}</span>)}</div>
               {staff.map(member=>{
-                const memberAppointments=appointments.filter(item=>item.staff_id===member.id);
-                const memberBlocks=blocks.filter(block=>!block.staff_id||block.staff_id===member.id);
-                const memberBreaks=breaks.filter(item=>item.staff_id===member.id);
-                return <div key={member.id} className="relative border-l border-[var(--border)] bg-white" style={{height}}>
-                  {rows.map(minute=><DropCell key={minute} staffId={member.id} minute={minute} startMinute={startMinute} disabled={!canManage||busy}/>)}
+                const memberAppointments=appointmentsByStaff.get(member.id)??[];
+                const memberBlocks=blocksByStaff.get(member.id)??[];
+                const memberBreaks=breaksByStaff.get(member.id)??[];
+                return <StaffDropColumn key={member.id} member={member} disabled={!canManage||busy} height={height}>
                   {memberBreaks.map((item,index)=>{const from=toMinute(item.start_time),to=toMinute(item.end_time);return <div key={index} className="pointer-events-none absolute inset-x-1.5 z-10 overflow-hidden rounded-[7px] border border-dashed border-[#d3d9e3] bg-[repeating-linear-gradient(135deg,#f8f9fb,#f8f9fb_6px,#eef1f5_6px,#eef1f5_12px)] px-2 py-1 text-[10px] font-medium text-[#7b8799]" style={{top:(from-startMinute)*pxPerMinute,height:Math.max(18,(to-from)*pxPerMinute)}}>Pauze</div>})}
                   {memberBlocks.map(block=>{const start=localParts(block.starts_at,timezone),end=localParts(block.ends_at,timezone);if(start.date!==date)return null;const from=toMinute(start.time),to=end.date===date?toMinute(end.time):endMinute;return <div key={block.id} className="pointer-events-none absolute inset-x-1.5 z-10 overflow-hidden rounded-[7px] border border-[#e6d9ca] bg-[#faf5ee] px-2 py-1 text-[10px] font-medium text-[#82664c]" style={{top:(from-startMinute)*pxPerMinute,height:Math.max(18,(to-from)*pxPerMinute)}}>{block.reason||"Geblokkeerd"}</div>})}
                   {memberAppointments.map(item=>{const start=localParts(item.starts_at,timezone);if(start.date!==date)return null;const top=(toMinute(start.time)-startMinute)*pxPerMinute;const duration=Math.max(30,(new Date(item.service_ends_at).getTime()-new Date(item.starts_at).getTime())/60_000);return <div key={item.id} className="absolute inset-x-1.5" style={{top,height:Math.max(44,duration*pxPerMinute)}}><AppointmentCard item={item} timezone={timezone} canManage={canManage} selected={selectedId===item.id} onSelect={()=>setSelectedId(item.id)}/></div>})}
-                </div>;
+                </StaffDropColumn>;
               })}
             </div>
+            <DragOverlay dropAnimation={{duration:120,easing:"ease-out"}}>
+              {activeAppointment?<AppointmentVisual item={activeAppointment} timezone={timezone} overlay/>:null}
+            </DragOverlay>
           </DndContext>
         </div>
       </div>
