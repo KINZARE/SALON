@@ -6,8 +6,6 @@ import { createUserSupabaseClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import { transitionAppointmentStatus,updateAppointmentNote } from "./actions";
 import { Button } from "@/components/ui/button";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
-import { readPreviewWorkspace } from "@/services/preview-workspace";
 
 const actions:Record<string,Array<{label:string;status:string;variant?:"primary"|"secondary"|"danger"}>>={
   pending:[{label:"Bevestigen",status:"confirmed"},{label:"Annuleren",status:"cancelled",variant:"danger"}],
@@ -19,22 +17,15 @@ const actions:Record<string,Array<{label:string;status:string;variant?:"primary"
 export default async function AppointmentPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const {id}=await params;const query=await searchParams;const errorMessage=typeof query.error==="string"?query.error:null;
   const {salon,membership}=await requireAppContext();
-  let appointment:{id:string;customer_id:string;staff_id:string;service_id:string;customer_name_snapshot:string;starts_at:string;service_ends_at:string;status:string;payment_status:string;service_name_snapshot:string;duration_minutes_snapshot:number;price_cents_snapshot:number;currency_snapshot:string;note:string|null}|null=null;
+  const db=await createUserSupabaseClient();
+  const result=await db.from("appointments").select("id,customer_id,staff_id,service_id,customer_name_snapshot,starts_at,service_ends_at,status,payment_status,service_name_snapshot,duration_minutes_snapshot,price_cents_snapshot,currency_snapshot,note").eq("id",id).eq("salon_id",salon.id).maybeSingle();
+  if(result.error)throw result.error;
+  const appointment=result.data;
   let customer:{name:string;phone:string|null;email:string|null}|null=null;
   let staff:{name:string}|null=null;
-  if(isPreviewDemoMode()){
-    const state=await readPreviewWorkspace();
-    appointment=state.appointments.find(item=>item.id===id)??null;
-    if(appointment){const foundCustomer=state.customers.find(item=>item.id===appointment!.customer_id);const foundStaff=state.staff.find(item=>item.id===appointment!.staff_id);customer=foundCustomer?{name:foundCustomer.name,phone:foundCustomer.phone,email:foundCustomer.email}:null;staff=foundStaff?{name:foundStaff.name}:null}
-  }else{
-    const db=await createUserSupabaseClient();
-    const result=await db.from("appointments").select("id,customer_id,staff_id,service_id,customer_name_snapshot,starts_at,service_ends_at,status,payment_status,service_name_snapshot,duration_minutes_snapshot,price_cents_snapshot,currency_snapshot,note").eq("id",id).eq("salon_id",salon.id).maybeSingle();
-    if(result.error)throw result.error;
-    appointment=result.data;
-    if(appointment){
-      const [customerResult,staffResult]=await Promise.all([db.from("customers").select("name,phone,email").eq("id",appointment.customer_id).maybeSingle(),db.from("staff").select("name").eq("id",appointment.staff_id).maybeSingle()]);
-      if(customerResult.error)throw customerResult.error;if(staffResult.error)throw staffResult.error;customer=customerResult.data;staff=staffResult.data;
-    }
+  if(appointment){
+    const [customerResult,staffResult]=await Promise.all([db.from("customers").select("name,phone,email").eq("id",appointment.customer_id).maybeSingle(),db.from("staff").select("name").eq("id",appointment.staff_id).maybeSingle()]);
+    if(customerResult.error)throw customerResult.error;if(staffResult.error)throw staffResult.error;customer=customerResult.data;staff=staffResult.data;
   }
   if(!appointment)notFound();
   const canManage=["owner","manager"].includes(membership.role);
