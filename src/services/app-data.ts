@@ -1,20 +1,9 @@
 import "server-only";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { createUserSupabaseClient } from "@/lib/supabase/server";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
-import { readPreviewWorkspace } from "@/services/preview-workspace";
 
 export async function getAppointmentsForDate(salonId: string, timezone: string, date?: string) {
   const localDate = date ?? formatInTimeZone(new Date(), timezone, "yyyy-MM-dd");
-  if (isPreviewDemoMode()) {
-    const state = await readPreviewWorkspace();
-    const customers = new Map(state.customers.map((row) => [row.id, row]));
-    const staff = new Map(state.staff.map((row) => [row.id, row]));
-    return state.appointments
-      .filter((row) => formatInTimeZone(new Date(row.starts_at), timezone, "yyyy-MM-dd") === localDate)
-      .sort((a,b) => a.starts_at.localeCompare(b.starts_at))
-      .map((row) => ({ ...row, customer: customers.has(row.customer_id) ? { id: row.customer_id, name: customers.get(row.customer_id)!.name } : null, staff: staff.has(row.staff_id) ? { id: row.staff_id, name: staff.get(row.staff_id)!.name } : null }));
-  }
   const supabase = await createUserSupabaseClient();
   const calendar = new Date(`${localDate}T12:00:00Z`);
   const nextDate = new Date(calendar.getTime() + 86_400_000).toISOString().slice(0, 10);
@@ -40,7 +29,6 @@ export async function getAppointmentsForDate(salonId: string, timezone: string, 
 }
 
 export async function getCustomers(salonId: string) {
-  if (isPreviewDemoMode()) return (await readPreviewWorkspace()).customers.map((item) => ({ ...item }));
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.from("customers").select("id,name,phone,email,created_at").eq("salon_id", salonId).order("name").limit(200);
   if (error) throw error;
@@ -48,7 +36,6 @@ export async function getCustomers(salonId: string) {
 }
 
 export async function getServices(salonId: string) {
-  if (isPreviewDemoMode()) return (await readPreviewWorkspace()).services.map(({ staff_ids, buffer_minutes, description, ...item }) => ({ ...item }));
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.from("services").select("id,name,duration_minutes,price_cents,currency,active,online_bookable").eq("salon_id", salonId).order("name");
   if (error) throw error;
@@ -56,7 +43,6 @@ export async function getServices(salonId: string) {
 }
 
 export async function getStaff(salonId: string) {
-  if (isPreviewDemoMode()) return (await readPreviewWorkspace()).staff.map(({ service_ids, schedules, breaks, email, operational_role, ...item }) => ({ ...item }));
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.from("staff").select("id,name,active").eq("salon_id", salonId).order("name");
   if (error) throw error;
@@ -64,7 +50,6 @@ export async function getStaff(salonId: string) {
 }
 
 export async function getBlocks(salonId: string, fromIso: string) {
-  if (isPreviewDemoMode()) return (await readPreviewWorkspace()).blocks.filter((item) => item.ends_at >= fromIso).sort((a,b) => a.starts_at.localeCompare(b.starts_at));
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.from("blocks").select("id,staff_id,starts_at,ends_at,reason").eq("salon_id", salonId).gte("ends_at", fromIso).order("starts_at").limit(100);
   if (error) throw error;
@@ -72,7 +57,6 @@ export async function getBlocks(salonId: string, fromIso: string) {
 }
 
 export async function getBookingSettings(salonId: string) {
-  if (isPreviewDemoMode()) return { ...(await readPreviewWorkspace()).bookingSettings };
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.from("booking_settings").select("slot_interval_minutes,min_lead_minutes,max_days_ahead,allow_staff_choice,cancellation_hours").eq("salon_id", salonId).single();
   if (error) throw error;
@@ -80,7 +64,6 @@ export async function getBookingSettings(salonId: string) {
 }
 
 export async function getOpeningHours(salonId: string) {
-  if (isPreviewDemoMode()) return (await readPreviewWorkspace()).openingHours.map((item) => ({ ...item }));
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.from("opening_hours").select("weekday,is_open,start_time,end_time").eq("salon_id", salonId).order("weekday");
   if (error) throw error;
@@ -88,10 +71,6 @@ export async function getOpeningHours(salonId: string) {
 }
 
 export async function getSalonProfile(salonId: string) {
-  if (isPreviewDemoMode()) {
-    const { allowStaffChoice, ...profile } = (await readPreviewWorkspace()).salon;
-    return { ...profile };
-  }
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.from("salons").select("id,name,slug,phone,email,address,timezone,currency").eq("id", salonId).single();
   if (error) throw error;
