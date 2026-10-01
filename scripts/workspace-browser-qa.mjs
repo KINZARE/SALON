@@ -156,11 +156,17 @@ try {
   let staffDetails = page.locator("details").filter({ hasText: "Nok" }).first();
   await staffDetails.locator("summary").click();
   await staffDetails.locator('input[name="name"]').fill("Nok — Zeer lange medewerkernaam voor mobiele responsive QA");
+  await staffDetails.getByLabel("Maandag start").fill("09:15");
+  await staffDetails.getByLabel("Maandag pauze start").fill("12:15");
+  await staffDetails.getByLabel("Maandag pauze einde").fill("12:45");
   await staffDetails.getByRole("button", { name: "Wijzigingen opslaan" }).click();
   await page.waitForURL(/\/app\/staff/);
   staffDetails = page.locator("details").filter({ hasText: "Nok — Zeer lange medewerkernaam" }).first();
   await staffDetails.locator("summary").click();
   assert.match(await staffDetails.locator('input[name="name"]').inputValue(), /mobiele responsive QA/);
+  assert.equal(await staffDetails.getByLabel("Maandag start").inputValue(), "09:15");
+  assert.equal(await staffDetails.getByLabel("Maandag pauze start").inputValue(), "12:15");
+  assert.equal(await staffDetails.getByLabel("Maandag pauze einde").inputValue(), "12:45");
 
   await goto("/app/services");
   let serviceDetails = page.locator("details").filter({ hasText: "Thai Massage 60 min" }).first();
@@ -231,7 +237,7 @@ try {
     ok: true,
     appointmentId,
     widths,
-    flows: ["today","calendar","create","customer-search-reset","note-edit","reschedule","block","drag-drop","validated-undo","invalid-drag","customer-edit","staff-edit","service-edit","settings","reports","cancel","refresh-persistence"],
+    flows: ["today","calendar","create","customer-search-reset","note-edit","reschedule","block","drag-drop","validated-undo","invalid-drag","customer-edit","staff-edit","staff-schedule-break","service-edit","settings","reports","cancel","refresh-persistence"],
     runtimeErrors,
   }, null, 2));
   console.log("BROWSER_QA_PASS", JSON.stringify({ appointmentId, widths, runtimeErrors: runtimeErrors.length }));
