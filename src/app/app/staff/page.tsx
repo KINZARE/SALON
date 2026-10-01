@@ -1,38 +1,22 @@
 import { requireAppContext } from "@/lib/auth";
-import { getServices, getStaff } from "@/services/app-data";
+import { getWorkspaceStaff } from "@/services/workspace-data";
+import { getServices } from "@/services/app-data";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { createStaff, toggleStaff } from "./actions";
-
-const days = [[1,"Ma"],[2,"Di"],[3,"Wo"],[4,"Do"],[5,"Vr"],[6,"Za"],[0,"Zo"]] as const;
-
-export default async function StaffPage() {
-  const { salon, membership } = await requireAppContext();
-  if (membership.role === "staff") return <AccessDenied />;
-  const [items, services] = await Promise.all([getStaff(salon.id), getServices(salon.id)]);
-  const activeServices = services.filter((service) => service.active);
-
-  return <>
-    <header><h1 className="text-3xl font-semibold tracking-[-0.04em]">Staff</h1><p className="mt-1 text-sm text-[var(--muted)]">Medewerkers, behandelingen en standaard rooster.</p></header>
-    <div className="mt-7 divide-y divide-[var(--border)] border-y border-[var(--border)]">
-      {items.map((item) => <div key={item.id} className="flex items-center justify-between gap-4 py-4"><div><p className="font-semibold">{item.name}</p><p className="mt-1 text-sm text-[var(--muted)]">{item.active ? "Actief" : "Inactief"}</p></div>{membership.role === "owner" ? <form action={toggleStaff}><input type="hidden" name="id" value={item.id}/><input type="hidden" name="active" value={String(item.active)}/><button className="text-xs font-medium text-[var(--muted)] hover:text-black">{item.active ? "Pauzeren" : "Activeren"}</button></form> : null}</div>)}
-      {!items.length ? <p className="py-8 text-sm text-[var(--muted)]">Nog geen medewerkers.</p> : null}
-    </div>
-
-    {membership.role === "owner" ? <section className="mt-10 max-w-xl">
-      <h2 className="text-lg font-semibold">Medewerker toevoegen</h2>
-      <p className="mt-1 text-sm text-[var(--muted)]">Gebruik een normaal weekrooster. Afwijkingen en vrije tijd regel je met blocks.</p>
-      <form action={createStaff} className="mt-5 grid gap-5">
-        <Field label="Naam" name="name" required maxLength={120}/>
-        <div><p className="mb-2 text-sm font-medium">Behandelingen</p><div className="grid gap-2 sm:grid-cols-2">{activeServices.map((service) => <label key={service.id} className="flex min-h-11 items-center gap-3 rounded-[10px] border border-[var(--border)] px-3 text-sm"><input type="checkbox" name="serviceIds" value={service.id} className="h-4 w-4"/> {service.name}</label>)}</div>{!activeServices.length ? <p className="text-sm text-[var(--muted)]">Maak eerst een actieve behandeling aan.</p> : null}</div>
-        <div><p className="mb-2 text-sm font-medium">Werkdagen</p><div className="flex flex-wrap gap-2">{days.map(([value,label]) => <label key={value} className="cursor-pointer"><input className="peer sr-only" type="checkbox" name="weekdays" value={value} defaultChecked={value !== 0}/><span className="flex h-10 min-w-11 items-center justify-center rounded-[10px] border border-[var(--border)] px-3 text-sm peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary-soft)]">{label}</span></label>)}</div></div>
-        <div className="grid grid-cols-2 gap-3"><Field label="Start" name="startTime" type="time" defaultValue="09:00" required/><Field label="Einde" name="endTime" type="time" defaultValue="18:00" required/></div>
-        <div><Button disabled={!activeServices.length}>Medewerker toevoegen</Button></div>
-      </form>
-    </section> : null}
-  </>;
+import { saveStaff } from "./actions";
+const days=[[1,"Maandag"],[2,"Dinsdag"],[3,"Woensdag"],[4,"Donderdag"],[5,"Vrijdag"],[6,"Zaterdag"],[0,"Zondag"]] as const;
+export default async function StaffPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  const {salon,membership}=await requireAppContext();if(membership.role==="staff")return <AccessDenied/>;const [items,services,query]=await Promise.all([getWorkspaceStaff(salon.id),getServices(salon.id),searchParams]);const error=typeof query.error==="string"?query.error:null;
+  return <><header><h1 className="text-3xl font-semibold tracking-[-0.04em]">Team</h1><p className="mt-1 text-sm text-[var(--muted)]">Medewerkers, rollen, services, weekroosters en vaste pauzes.</p></header>{error?<p role="alert" className="mt-5 rounded-[10px] border border-[#efc7c2] bg-[#fff5f4] p-3 text-sm text-[var(--danger)]">{error}</p>:null}
+    <div className="mt-7 divide-y divide-[var(--border)] border-y border-[var(--border)]">{items.map(item=><details key={item.id} className="py-4"><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-semibold">{item.name}</p><p className="mt-1 text-sm text-[var(--muted)]">{item.operational_role} · {item.active?"Actief":"Inactief"}</p></div><span className="text-xs text-[var(--muted)]">Bewerken</span></summary><StaffForm item={item} services={services}/></details>)}{!items.length?<p className="py-8 text-sm text-[var(--muted)]">Nog geen medewerkers.</p>:null}</div>
+    <section className="mt-10 max-w-3xl"><h2 className="text-lg font-semibold">Medewerker toevoegen</h2><StaffForm services={services}/></section>
+  </>
 }
-
-function AccessDenied() {
-  return <div><h1 className="text-3xl font-semibold tracking-[-0.04em]">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Deze pagina is alleen beschikbaar voor owner en manager.</p></div>;
+function StaffForm({item,services}:{item?:Awaited<ReturnType<typeof getWorkspaceStaff>>[number];services:Awaited<ReturnType<typeof getServices>>}){
+  const schedule=new Map(item?.schedules.map(row=>[row.weekday,row])??[]);const breaks=new Map(item?.breaks.map(row=>[row.weekday,row])??[]);
+  return <form action={saveStaff} className="mt-5 grid gap-5 border-t border-[var(--border)] pt-5">{item?<input type="hidden" name="id" value={item.id}/>:null}<div className="grid gap-4 sm:grid-cols-3"><Field label="Naam" name="name" required maxLength={120} defaultValue={item?.name??""}/><Field label="E-mail (optioneel)" name="email" type="email" defaultValue={item?.email??""}/><label className="grid gap-1.5 text-sm font-medium"><span>Operationele rol</span><select name="role" defaultValue={item?.operational_role??"staff"} className="h-11 rounded-[11px] border border-[var(--border)] bg-white px-3.5"><option value="staff">Staff</option><option value="manager">Manager</option><option value="owner">Owner</option></select></label></div><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" name="active" defaultChecked={item?.active??true}/> Actief inzetbaar</label>
+    <fieldset><legend className="text-sm font-medium">Behandelingen</legend><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{services.filter(service=>service.active||item?.service_ids.includes(service.id)).map(service=><label key={service.id} className="flex min-h-11 items-center gap-3 rounded-[10px] border border-[var(--border)] px-3 text-sm"><input type="checkbox" name="serviceIds" value={service.id} defaultChecked={item?.service_ids.includes(service.id)??false}/>{service.name}</label>)}</div></fieldset>
+    <fieldset><legend className="text-sm font-medium">Weekrooster & vaste pauze</legend><div className="mt-2 overflow-x-auto"><div className="min-w-[680px] divide-y divide-[var(--border)] border-y border-[var(--border)]">{days.map(([weekday,label])=>{const row=schedule.get(weekday);const pause=breaks.get(weekday);const working=row?.is_working??(weekday!==0);return <div key={weekday} className="grid grid-cols-[140px_90px_90px_90px_90px] items-center gap-3 py-3"><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" name={`working-${weekday}`} defaultChecked={working}/>{label}</label><input aria-label={`${label} start`} type="time" name={`start-${weekday}`} defaultValue={row?.start_time?.slice(0,5)??"09:00"} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/><input aria-label={`${label} einde`} type="time" name={`end-${weekday}`} defaultValue={row?.end_time?.slice(0,5)??"18:00"} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/><input aria-label={`${label} pauze start`} type="time" name={`break-start-${weekday}`} defaultValue={pause?.start_time?.slice(0,5)??""} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/><input aria-label={`${label} pauze einde`} type="time" name={`break-end-${weekday}`} defaultValue={pause?.end_time?.slice(0,5)??""} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/></div>})}</div></div><p className="mt-2 text-xs text-[var(--muted)]">Laat pauzevelden leeg als er geen vaste pauze is. Conflicterende roosterwijzigingen worden server-side geweigerd.</p></fieldset><div><Button variant={item?"secondary":"primary"}>{item?"Wijzigingen opslaan":"Medewerker toevoegen"}</Button></div>
+  </form>
 }
+function AccessDenied(){return <div><h1 className="text-3xl font-semibold">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Teambeheer is alleen beschikbaar voor owner en manager.</p></div>}
