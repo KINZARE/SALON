@@ -74,3 +74,28 @@ jobs:
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "### SALON Vercel Preview — real Supabase backend" >> "$GITHUB_STEP_SUMMARY"
           echo "$URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test real-backend preview
+        shell: bash
+        env:
+          PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
+        run: |
+          set -euo pipefail
+
+          curl --fail --silent --show-error --location "$PREVIEW_URL/" > /tmp/home.html
+          grep -qi "Salon" /tmp/home.html
+          if grep -qi "Preview mode" /tmp/home.html; then
+            echo "Demo/preview banner is still present; expected real backend mode."
+            exit 1
+          fi
+
+          curl --fail --silent --show-error --location "$PREVIEW_URL/login" > /tmp/login.html
+          grep -qi "inloggen" /tmp/login.html
+
+          TODAY_HEADERS="$(curl --silent --show-error --head "$PREVIEW_URL/app/today")"
+          echo "$TODAY_HEADERS" | grep -Eqi '^location: .*/login'
+
+          BOOK_CODE="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$PREVIEW_URL/book/this-salon-does-not-exist")"
+          test "$BOOK_CODE" = "404"
+
+          echo "Smoke checks passed for $PREVIEW_URL"
