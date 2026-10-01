@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getAvailableSlotsForDate } from "@/services/public-booking";
 import { isIsoDate, isUuid } from "@/lib/validation";
 
@@ -10,12 +10,8 @@ export async function GET(request: Request) {
   const date = url.searchParams.get("date");
   if (!isUuid(serviceId) || !isUuid(staffId) || !isIsoDate(date)) return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
 
-  const db = await createUserSupabaseClient();
-  const userResult = await db.auth.getUser();
-  if (!userResult.data.user) return NextResponse.json({ error: "Niet ingelogd." }, { status: 401 });
-  const membership = await db.from("memberships").select("salon_id,role").eq("user_id", userResult.data.user.id).limit(1).maybeSingle();
-  if (!membership.data || !["owner","manager"].includes(membership.data.role)) return NextResponse.json({ error: "Geen toegang." }, { status: 403 });
-  const salon = await db.from("salons").select("slug").eq("id", membership.data.salon_id).single();
+  const db = createAdminSupabaseClient();
+  const salon = await db.from("salons").select("id,slug").eq("slug","salon").single();
   if (!salon.data) return NextResponse.json({ error: "Salon niet gevonden." }, { status: 404 });
 
   try {
