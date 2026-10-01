@@ -1,4 +1,4 @@
-name: vercel-preview
+name: vercel-real
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
 
 env:
   SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
-  SALON_PREVIEW_DEMO_MODE: "1"
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
   SALON_QA_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
@@ -24,8 +23,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Require preview database secret
-        run: test -n "$SUPABASE_SERVICE_ROLE_KEY"
+      - name: Require real Supabase configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
       - name: Install application dependencies
         run: npm install
       - name: Build production app
@@ -41,14 +45,14 @@ jobs:
           nohup npm run start -- -H 127.0.0.1 > /tmp/salon-server.log 2>&1 &
           echo $! > /tmp/salon-server.pid
           for i in {1..40}; do
-            if curl --silent --fail http://127.0.0.1:3000/app/today >/dev/null; then
+            if curl --silent --fail http://127.0.0.1:3000/login >/dev/null; then
               exit 0
             fi
             sleep 1
           done
           cat /tmp/salon-server.log
           exit 1
-      - name: Browser and responsive QA
+      - name: Browser QA for real authenticated mode
         env:
           QA_BASE_URL: "http://127.0.0.1:3000"
         run: node scripts/workspace-browser-qa.mjs
@@ -56,7 +60,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: workspace-browser-qa-${{ env.SALON_QA_SHA }}
+          name: real-auth-browser-qa-${{ env.SALON_QA_SHA }}
           path: qa-artifacts
           if-no-files-found: ignore
           retention-days: 14
@@ -93,7 +97,7 @@ jobs:
         run: npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
       - name: Configure Vercel as Next.js
         run: npx --yes vercel@latest project update salon --framework nextjs --auto-detect output-directory --token="$VERCEL_TOKEN" --non-interactive --yes
-      - name: Deploy synthetic no-login preview
+      - name: Deploy authenticated real-data preview
         id: deploy
         shell: bash
         run: |
@@ -103,19 +107,17 @@ jobs:
             --project salon \
             --token="$VERCEL_TOKEN" \
             --meta salonQaSha="$SALON_QA_SHA" \
-            --build-env SALON_PREVIEW_DEMO_MODE=1 \
             --build-env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --build-env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
-            --env SALON_PREVIEW_DEMO_MODE=1 \
             --env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### SALON operational preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "### SALON real authenticated app" >> "$GITHUB_STEP_SUMMARY"
           echo "SHA: $SALON_QA_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
-      - name: Verify Vercel preview is READY
+      - name: Verify Vercel deployment is READY
         shell: bash
         env:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
@@ -123,50 +125,37 @@ jobs:
           set -euo pipefail
           npx --yes vercel@latest inspect "$PREVIEW_URL" --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-inspect.txt
           grep -Eqi 'Ready' /tmp/vercel-inspect.txt
-
-      - name: Smoke test no-login synthetic preview
+      - name: Smoke test real authenticated app
         shell: bash
         env:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
         run: |
           set -euo pipefail
-          TODAY_RESULT="$(npx --yes vercel@latest curl /app/today --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/today.html --write-out '%{http_code}|%{url_effective}')"
-          CALENDAR_RESULT="$(npx --yes vercel@latest curl /app/calendar --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/calendar.html --write-out '%{http_code}|%{url_effective}')"
-          CUSTOMERS_RESULT="$(npx --yes vercel@latest curl /app/customers --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/customers.html --write-out '%{http_code}|%{url_effective}')"
-          STAFF_RESULT="$(npx --yes vercel@latest curl /app/staff --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/staff.html --write-out '%{http_code}|%{url_effective}')"
-          SERVICES_RESULT="$(npx --yes vercel@latest curl /app/services --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/services.html --write-out '%{http_code}|%{url_effective}')"
-          BLOCKS_RESULT="$(npx --yes vercel@latest curl /app/blocks --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/blocks.html --write-out '%{http_code}|%{url_effective}')"
-          SETTINGS_RESULT="$(npx --yes vercel@latest curl /app/settings --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/settings.html --write-out '%{http_code}|%{url_effective}')"
-          REPORTS_RESULT="$(npx --yes vercel@latest curl /app/reports --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/reports.html --write-out '%{http_code}|%{url_effective}')"
-          TODAY_CODE="${TODAY_RESULT%%|*}"
-          CALENDAR_CODE="${CALENDAR_RESULT%%|*}"
-          CUSTOMERS_CODE="${CUSTOMERS_RESULT%%|*}"
-          STAFF_CODE="${STAFF_RESULT%%|*}"
-          SERVICES_CODE="${SERVICES_RESULT%%|*}"
-          BLOCKS_CODE="${BLOCKS_RESULT%%|*}"
-          SETTINGS_CODE="${SETTINGS_RESULT%%|*}"
-          REPORTS_CODE="${REPORTS_RESULT%%|*}"
-          TODAY_URL="${TODAY_RESULT#*|}"
-          echo "today=$TODAY_RESULT calendar=$CALENDAR_RESULT customers=$CUSTOMERS_RESULT staff=$STAFF_RESULT services=$SERVICES_RESULT blocks=$BLOCKS_RESULT settings=$SETTINGS_RESULT reports=$REPORTS_RESULT"
-          test "$TODAY_CODE" = "200"
-          test "$CALENDAR_CODE" = "200"
-          test "$CUSTOMERS_CODE" = "200"
-          test "$STAFF_CODE" = "200"
-          test "$SERVICES_CODE" = "200"
-          test "$BLOCKS_CODE" = "200"
-          test "$SETTINGS_CODE" = "200"
-          test "$REPORTS_CODE" = "200"
-          echo "$TODAY_URL" | grep -Eqi '/app/today([?#].*)?$'
-          grep -qi "Preview mode" /tmp/today.html
-          grep -qi "Today" /tmp/today.html
-          grep -qi "Calendar" /tmp/calendar.html
-          grep -qi "Sophie de Vries" /tmp/customers.html
-          grep -qi "Team" /tmp/staff.html
-          grep -qi "Services" /tmp/services.html
-          grep -qi "Blocks" /tmp/blocks.html
-          grep -qi "Settings" /tmp/settings.html
-          grep -qi "Reports" /tmp/reports.html
-          if grep -qi "Application error" /tmp/today.html /tmp/calendar.html /tmp/customers.html /tmp/staff.html /tmp/services.html /tmp/blocks.html /tmp/settings.html /tmp/reports.html; then
+          ROOT_RESULT="$(npx --yes vercel@latest curl / --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/root.html --write-out '%{http_code}|%{url_effective}')"
+          APP_RESULT="$(npx --yes vercel@latest curl /app/today --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/app.html --write-out '%{http_code}|%{url_effective}')"
+          LOGIN_RESULT="$(npx --yes vercel@latest curl /login --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/login.html --write-out '%{http_code}|%{url_effective}')"
+          SIGNUP_RESULT="$(npx --yes vercel@latest curl /signup --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/signup.html --write-out '%{http_code}|%{url_effective}')"
+
+          ROOT_CODE="${ROOT_RESULT%%|*}"
+          APP_CODE="${APP_RESULT%%|*}"
+          LOGIN_CODE="${LOGIN_RESULT%%|*}"
+          SIGNUP_CODE="${SIGNUP_RESULT%%|*}"
+          ROOT_URL="${ROOT_RESULT#*|}"
+          APP_URL="${APP_RESULT#*|}"
+
+          echo "root=$ROOT_RESULT app=$APP_RESULT login=$LOGIN_RESULT signup=$SIGNUP_RESULT"
+          test "$ROOT_CODE" = "200"
+          test "$APP_CODE" = "200"
+          test "$LOGIN_CODE" = "200"
+          test "$SIGNUP_CODE" = "200"
+          echo "$ROOT_URL" | grep -Eqi '/login([?#].*)?$'
+          echo "$APP_URL" | grep -Eqi '/login([?#].*)?$'
+          grep -qi "Welkom terug" /tmp/login.html
+          grep -qi "Maak je salon boekbaar" /tmp/signup.html
+
+          if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl" /tmp/root.html /tmp/app.html /tmp/login.html /tmp/signup.html; then
+            echo "Demo content detected in real-mode deployment"
             exit 1
           fi
-          echo "No-login synthetic preview smoke checks passed for $PREVIEW_URL"
+
+          echo "Real authenticated SALON smoke checks passed for $PREVIEW_URL"
