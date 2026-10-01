@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      SALON_PREVIEW_DEMO_MODE: "1"
       NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "preview-placeholder"
-      SUPABASE_SERVICE_ROLE_KEY: "preview-placeholder"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "build-placeholder"
+      SUPABASE_SERVICE_ROLE_KEY: "build-placeholder"
       NEXT_PUBLIC_APP_URL: "http://localhost:3000"
     steps:
       - uses: actions/checkout@v4
