@@ -230,7 +230,7 @@ export default function HomePage() {
             ["Booking", "Klanten boeken de juiste tijd zelf.", "Geen account, geen ongeldige slots, geen uitleg nodig.", "booking"],
             ["Customers", "Context zonder CRM-complexiteit.", "Contact en afspraakgeschiedenis op één rustige plek.", "customers"],
           ].map(([title, headline, copy, type]) => (
-            <article key={title}>
+            <article key={title} className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">{title}</p>
               <h3 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">{headline}</h3>
               <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">{copy}</p>
