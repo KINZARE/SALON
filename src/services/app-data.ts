@@ -17,7 +17,11 @@ export async function getAppointmentsForDate(salonId: string, timezone: string, 
     .lt("starts_at", end.toISOString())
     .order("starts_at");
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    ...row,
+    customer: row.customer?.[0] ?? null,
+    staff: row.staff?.[0] ?? null,
+  }));
 }
 
 export async function getCustomers(salonId: string) {
