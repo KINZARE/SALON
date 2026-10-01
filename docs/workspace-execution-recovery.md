@@ -21,3 +21,8 @@ Read-only independent review found block/config versus booking serialization, se
 The last QA runner was `qa/local-run.mjs`, with output `/tmp/salon-browser-qa10.log`. It was starting when the environment disconnected. Recover its output and inspect the latest git status before proceeding.
 
 Required next steps: finish review-fix regressions, typecheck/lint/build, actual concurrent block-versus-book/move database test, all browser flows, widths 320/360/375/390/430/768/1024/1280/1440, publish the full source branch, open PR, run branch-specific workspace-preview workflow, verify Vercel READY and exact GitHub SHA, inspect live screenshots/results. Do not merge or deploy production. Never expose real customer data in the no-login preview.
+
+
+## Recovery continuation — 2026-10-01
+
+Source reconstruction resumed in PR #4 after confirming the original local implementation commit was not recoverable from GitHub. The operational branch now contains the reconstructed workspace source and is being re-verified from its current HEAD. Marketing remains out of scope.
