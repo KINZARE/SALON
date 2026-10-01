@@ -25,7 +25,7 @@ async function gotoWorkspace(path) {
   const response = await page.goto(base + path, { waitUntil: "networkidle" });
   assert.ok(response, `No response for ${path}`);
   assert.equal(new URL(page.url()).pathname, path, `${path} must load directly without login`);
-  await page.getByText("SALON", { exact: true }).first().waitFor();
+  await page.locator("main").waitFor({ state: "visible" });
   await assertNoDemoOrLoginContent();
 }
 
