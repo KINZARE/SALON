@@ -37,9 +37,6 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN";
     const conflict = ["STALE_APPOINTMENT","SLOT_UNAVAILABLE","SLOT_JUST_BOOKED"].some((code) => message.includes(code)) || message.includes("23P01");
-    return NextResponse.json({
-      error: conflict ? "De planning is intussen gewijzigd of dit tijdstip is niet beschikbaar. De actuele planning is opnieuw geladen." : "Verplaatsen is niet gelukt.",
-      ...(isPreviewDemoMode() ? { diagnosticCode: message } : {}),
-    }, { status: conflict ? 409 : 400 });
+    return NextResponse.json({ error: conflict ? "De planning is intussen gewijzigd of dit tijdstip is niet beschikbaar. De actuele planning is opnieuw geladen." : "Verplaatsen is niet gelukt." }, { status: conflict ? 409 : 400 });
   }
 }
