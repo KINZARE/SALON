@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { requireAppContext } from "@/lib/auth";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/format";
 import { transitionAppointmentStatus,updateAppointmentNote } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ const actions:Record<string,Array<{label:string;status:string;variant?:"primary"
 export default async function AppointmentPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const {id}=await params;const query=await searchParams;const errorMessage=typeof query.error==="string"?query.error:null;
   const {salon,membership}=await requireAppContext();
-  const db=await createUserSupabaseClient();
+  const db=createAdminSupabaseClient();
   const result=await db.from("appointments").select("id,customer_id,staff_id,service_id,customer_name_snapshot,starts_at,service_ends_at,status,payment_status,service_name_snapshot,duration_minutes_snapshot,price_cents_snapshot,currency_snapshot,note").eq("id",id).eq("salon_id",salon.id).maybeSingle();
   if(result.error)throw result.error;
   const appointment=result.data;
