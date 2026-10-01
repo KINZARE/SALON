@@ -212,22 +212,22 @@ export async function movePreviewAppointment(args: { id: string; staffId: string
     if (args.expectedStartsAt && appointment.starts_at !== args.expectedStartsAt) throw new Error("STALE_APPOINTMENT");
     if (args.expectedStaffId && appointment.staff_id !== args.expectedStaffId) throw new Error("STALE_APPOINTMENT");
     const member = state.staff.find((item) => item.id === args.staffId && item.active && item.service_ids.includes(appointment.service_id));
-    if (!member) throw new Error("SLOT_UNAVAILABLE");
+    if (!member) throw new Error("SLOT_UNAVAILABLE_STAFF");
 
     const start = new Date(args.startsAt);
     const serviceEnd = new Date(start.getTime() + appointment.duration_minutes_snapshot * 60_000);
     const occupiedUntil = new Date(serviceEnd.getTime() + appointment.buffer_minutes_snapshot * 60_000);
     const localDate = formatInTimeZone(start, state.salon.timezone, "yyyy-MM-dd");
     const endDate = formatInTimeZone(occupiedUntil, state.salon.timezone, "yyyy-MM-dd");
-    if (localDate !== endDate) throw new Error("SLOT_UNAVAILABLE");
+    if (localDate !== endDate) throw new Error("SLOT_UNAVAILABLE_CROSS_DAY");
     const weekday = new Date(localDate + "T12:00:00Z").getUTCDay();
     const startTime = formatInTimeZone(start, state.salon.timezone, "HH:mm");
     const endTime = formatInTimeZone(occupiedUntil, state.salon.timezone, "HH:mm");
     const open = state.openingHours.find((row) => row.weekday === weekday && row.is_open);
     const work = member.schedules.find((row) => row.weekday === weekday && row.is_working);
-    if (!open?.start_time || !open.end_time || !work?.start_time || !work.end_time || startTime < open.start_time.slice(0,5) || endTime > open.end_time.slice(0,5) || startTime < work.start_time.slice(0,5) || endTime > work.end_time.slice(0,5)) throw new Error("SLOT_UNAVAILABLE");
-    if (member.breaks.some((row) => row.weekday === weekday && startTime < row.end_time.slice(0,5) && row.start_time.slice(0,5) < endTime)) throw new Error("SLOT_UNAVAILABLE");
-    if (state.blocks.some((block) => (!block.staff_id || block.staff_id === member.id) && overlaps(start, occupiedUntil, new Date(block.starts_at), new Date(block.ends_at)))) throw new Error("SLOT_UNAVAILABLE");
+    if (!open?.start_time || !open.end_time || !work?.start_time || !work.end_time || startTime < open.start_time.slice(0,5) || endTime > open.end_time.slice(0,5) || startTime < work.start_time.slice(0,5) || endTime > work.end_time.slice(0,5)) throw new Error(`SLOT_UNAVAILABLE_HOURS:${weekday}:${startTime}-${endTime}:${open?.start_time ?? "none"}-${open?.end_time ?? "none"}:${work?.start_time ?? "none"}-${work?.end_time ?? "none"}`);
+    if (member.breaks.some((row) => row.weekday === weekday && startTime < row.end_time.slice(0,5) && row.start_time.slice(0,5) < endTime)) throw new Error("SLOT_UNAVAILABLE_BREAK");
+    if (state.blocks.some((block) => (!block.staff_id || block.staff_id === member.id) && overlaps(start, occupiedUntil, new Date(block.starts_at), new Date(block.ends_at)))) throw new Error("SLOT_UNAVAILABLE_BLOCK");
     if (state.appointments.some((other) => other.id !== appointment.id && other.staff_id === member.id && ["pending","confirmed","checked_in"].includes(other.status) && overlaps(start, occupiedUntil, new Date(other.starts_at), new Date(other.occupied_until)))) throw new Error("SLOT_JUST_BOOKED");
 
     appointment.staff_id = member.id;
