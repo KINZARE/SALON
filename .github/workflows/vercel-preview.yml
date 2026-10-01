@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! npx --yes vercel@latest project inspect salon --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
-            npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --yes
+            npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
           fi
 
       - name: Deploy preview
