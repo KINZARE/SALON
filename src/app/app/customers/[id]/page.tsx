@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { requireAppContext } from "@/lib/auth";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { saveCustomer } from "./actions";
@@ -15,7 +15,7 @@ export default async function CustomerPage({params,searchParams}:{params:Promise
   const {salon,membership}=await requireAppContext();
   if(membership.role==="staff")return <div><h1 className="text-3xl font-semibold tracking-[-0.04em]">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Klantprofielen zijn alleen beschikbaar voor owner en manager.</p></div>;
 
-  const db=await createUserSupabaseClient();
+  const db=createAdminSupabaseClient();
   const [customerResult,appointmentsResult]=await Promise.all([
     db.from("customers").select("id,name,phone,email,internal_notes,created_at").eq("salon_id",salon.id).eq("id",id).maybeSingle(),
     db.from("appointments").select("id,starts_at,status,service_name_snapshot,price_cents_snapshot,currency_snapshot").eq("salon_id",salon.id).eq("customer_id",id).order("starts_at",{ascending:false}).limit(100),
