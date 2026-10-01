@@ -84,8 +84,6 @@ jobs:
 
           npx --yes vercel@latest curl / \
             --deployment "$PREVIEW_URL" \
-            --project salon \
-            --token="$VERCEL_TOKEN" \
             -- --silent --show-error --location > /tmp/home.html
           grep -qi "Salon" /tmp/home.html
           if grep -qi "Preview mode" /tmp/home.html; then
@@ -95,22 +93,16 @@ jobs:
 
           npx --yes vercel@latest curl /login \
             --deployment "$PREVIEW_URL" \
-            --project salon \
-            --token="$VERCEL_TOKEN" \
             -- --silent --show-error --location > /tmp/login.html
           grep -qi "inloggen" /tmp/login.html
 
           TODAY_HEADERS="$(npx --yes vercel@latest curl /app/today \
             --deployment "$PREVIEW_URL" \
-            --project salon \
-            --token="$VERCEL_TOKEN" \
             -- --silent --show-error --head)"
           echo "$TODAY_HEADERS" | grep -Eqi '^location: .*/login'
 
           BOOK_CODE="$(npx --yes vercel@latest curl /book/this-salon-does-not-exist \
             --deployment "$PREVIEW_URL" \
-            --project salon \
-            --token="$VERCEL_TOKEN" \
             -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
           test "$BOOK_CODE" = "404"
 
