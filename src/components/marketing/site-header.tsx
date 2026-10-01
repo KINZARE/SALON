@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef } from "react";
 
 type Props = {
   primaryHref: string;
@@ -15,7 +15,11 @@ const links = [
 ] as const;
 
 export function MarketingHeader({ primaryHref, primaryLabel }: Props) {
-  const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  function closeMenu() {
+    dialogRef.current?.close();
+  }
 
   return (
     <>
@@ -44,9 +48,8 @@ export function MarketingHeader({ primaryHref, primaryLabel }: Props) {
             <button
               type="button"
               className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--surface)] px-3 text-xs font-medium md:hidden"
-              aria-expanded={open}
-              aria-controls="mobile-site-menu"
-              onClick={() => setOpen(true)}
+              aria-haspopup="dialog"
+              onClick={() => dialogRef.current?.showModal()}
             >
               Menu
             </button>
@@ -54,14 +57,18 @@ export function MarketingHeader({ primaryHref, primaryLabel }: Props) {
         </div>
       </header>
 
-      {open ? (
-        <div id="mobile-site-menu" className="fixed inset-0 z-50 flex flex-col bg-[var(--ink)] p-5 text-white md:hidden">
+      <dialog
+        ref={dialogRef}
+        aria-label="Website menu"
+        className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-[var(--ink)] p-0 text-white backdrop:bg-black/35 md:hidden"
+      >
+        <div className="flex min-h-dvh flex-col p-5">
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold tracking-[-0.03em]">SALON</span>
             <button
               type="button"
               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/10 text-sm"
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
               aria-label="Menu sluiten"
             >
               ×
@@ -73,7 +80,7 @@ export function MarketingHeader({ primaryHref, primaryLabel }: Props) {
               <a
                 key={href}
                 href={href}
-                onClick={() => setOpen(false)}
+                onClick={closeMenu}
                 className="flex items-end justify-between border-b border-white/15 py-4 text-4xl font-medium tracking-[-0.055em]"
               >
                 <span>{label}</span>
@@ -85,7 +92,7 @@ export function MarketingHeader({ primaryHref, primaryLabel }: Props) {
           <div className="mt-auto">
             <Link
               href={primaryHref}
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
               className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-pill)] bg-white px-5 text-sm font-medium text-[var(--ink)]"
             >
               {primaryLabel}
@@ -93,7 +100,7 @@ export function MarketingHeader({ primaryHref, primaryLabel }: Props) {
             <p className="mt-5 text-xs leading-5 text-white/45">Rust in je planning. Meer aandacht voor je salon.</p>
           </div>
         </div>
-      ) : null}
+      </dialog>
     </>
   );
 }
