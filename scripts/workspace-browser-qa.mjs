@@ -21,11 +21,27 @@ async function goto(path) {
 }
 
 async function noBodyOverflow(label) {
-  const size = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-  }));
-  assert.ok(size.scrollWidth <= size.clientWidth + 1, `${label}: body overflow ${size.scrollWidth} > ${size.clientWidth}`);
+  const size = await page.evaluate(() => {
+    const root = document.documentElement;
+    const offenders = Array.from(document.querySelectorAll("*"))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName,
+          className: typeof element.className === "string" ? element.className.slice(0, 180) : "",
+          text: (element.textContent ?? "").trim().replace(/\\s+/g, " ").slice(0, 120),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+        };
+      })
+      .filter((item) => item.right > root.clientWidth + 1 || item.left < -1 || item.scrollWidth > root.clientWidth + 1)
+      .sort((a, b) => Math.max(b.right - root.clientWidth, b.scrollWidth - root.clientWidth) - Math.max(a.right - root.clientWidth, a.scrollWidth - root.clientWidth))
+      .slice(0, 8);
+    return { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth, offenders };
+  });
+  assert.ok(size.scrollWidth <= size.clientWidth + 1, `${label}: body overflow ${size.scrollWidth} > ${size.clientWidth}; offenders=${JSON.stringify(size.offenders)}`);
 }
 
 async function pointerDrag(source, target) {
