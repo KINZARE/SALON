@@ -115,3 +115,29 @@ jobs:
           fi
 
           echo "Public no-login preview checks passed for $PREVIEW_URL"
+
+      - name: Install browser QA dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Browser QA
+        shell: bash
+        env:
+          PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
+        run: |
+          set -euo pipefail
+          node qa/browser-qa.mjs
+
+      - name: Upload browser QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salon-browser-qa
+          path: |
+            qa-screenshots
+            qa-results.json
+          if-no-files-found: warn
+          retention-days: 7
