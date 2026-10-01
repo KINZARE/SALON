@@ -940,3 +940,10 @@ $$;
 
 revoke all on function public.reschedule_appointment_atomic(uuid,uuid,timestamptz) from public, anon;
 grant execute on function public.reschedule_appointment_atomic(uuid,uuid,timestamptz) to authenticated;
+
+
+-- Security hardening: trigger/helper functions are not public API.
+revoke all on function public.set_updated_at() from public, anon, authenticated;
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+revoke all on function public.normalize_phone(text) from public, anon, authenticated;
+revoke all on function public.normalize_email(text) from public, anon, authenticated;
