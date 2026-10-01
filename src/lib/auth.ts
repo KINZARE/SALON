@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type AppContext = {
   user: { id: string; email?: string };
@@ -11,31 +12,22 @@ export type AppContext = {
 export async function requireUser() {
   const supabase = await createUserSupabaseClient();
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) redirect("/login");
+  if (error || !data.user) redirect("/app/today");
   return { supabase, user: data.user };
 }
 
 export async function requireAppContext(): Promise<AppContext> {
-  const { supabase, user } = await requireUser();
-  const membershipResult = await supabase
-    .from("memberships")
-    .select("salon_id,role")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-  if (membershipResult.error) throw membershipResult.error;
-  if (!membershipResult.data) redirect("/onboarding");
-
-  const salonResult = await supabase
+  const db = createAdminSupabaseClient();
+  const salonResult = await db
     .from("salons")
     .select("id,name,slug,timezone,currency")
-    .eq("id", membershipResult.data.salon_id)
+    .eq("slug", "salon")
     .single();
   if (salonResult.error) throw salonResult.error;
 
   return {
-    user: { id: user.id, email: user.email },
-    membership: { salonId: membershipResult.data.salon_id, role: membershipResult.data.role },
+    user: { id: "00000000-0000-0000-0000-000000000000" },
+    membership: { salonId: salonResult.data.id, role: "owner" },
     salon: salonResult.data,
   } as AppContext;
 }
