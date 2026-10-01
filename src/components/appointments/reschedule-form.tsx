@@ -8,11 +8,140 @@ import { Button } from "@/components/ui/button";
 type Staff = { id: string; name: string };
 type Slot = { start: string };
 
-export function RescheduleForm({ appointmentId, serviceId, staff, initialStaffId, timezone }: { appointmentId: string; serviceId: string; staff: Staff[]; initialStaffId: string; timezone: string }) {
+const selectClassName =
+  "min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--line)] bg-white px-3.5 text-[15px] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(177,95,44,0.10)]";
+
+export function RescheduleForm({
+  appointmentId,
+  serviceId,
+  staff,
+  initialStaffId,
+  timezone,
+}: {
+  appointmentId: string;
+  serviceId: string;
+  staff: Staff[];
+  initialStaffId: string;
+  timezone: string;
+}) {
   const router = useRouter();
-  const today = useMemo(()=>new Intl.DateTimeFormat("en-CA",{timeZone:timezone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()),[timezone]);
-  const [date,setDate]=useState(today); const [staffId,setStaffId]=useState(initialStaffId); const [slots,setSlots]=useState<Slot[]>([]); const [startsAt,setStartsAt]=useState(""); const [loading,setLoading]=useState(false); const [saving,setSaving]=useState(false); const [error,setError]=useState<string|null>(null);
-  useEffect(()=>{const c=new AbortController();setLoading(true);setError(null);setStartsAt("");fetch(`/api/internal/availability?serviceId=${serviceId}&staffId=${staffId}&date=${date}`,{signal:c.signal}).then(async r=>{const p=await r.json();if(!r.ok)throw new Error(p.error);setSlots(p.slots??[])}).catch(e=>{if(e instanceof DOMException&&e.name==="AbortError")return;setError(e instanceof Error?e.message:"Beschikbaarheid kon niet worden geladen.")}).finally(()=>setLoading(false));return()=>c.abort()},[date,serviceId,staffId]);
-  async function save(){if(!startsAt)return;setSaving(true);setError(null);try{const r=await fetch("/api/internal/reschedule",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({appointmentId,staffId,startsAt})});const p=await r.json();if(!r.ok)throw new Error(p.error);router.push(`/app/appointments/${appointmentId}`);router.refresh()}catch(e){setError(e instanceof Error?e.message:"Verplaatsen is niet gelukt.")}finally{setSaving(false)}}
-  return <div className="mt-7 grid max-w-xl gap-5"><label className="grid gap-1.5 text-sm font-medium"><span>Medewerker</span><select className="h-11 rounded-[11px] border border-[var(--border)] bg-white px-3.5" value={staffId} onChange={e=>setStaffId(e.target.value)}>{staff.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><Field label="Datum" type="date" min={today} value={date} onChange={e=>setDate(e.target.value)}/><div><p className="mb-2 text-sm font-medium">Tijd</p>{loading?<div className="h-11 animate-pulse rounded-[10px] bg-[#e9e9e5]"/>:<div className="grid grid-cols-4 gap-2">{slots.map(x=><button type="button" key={x.start} onClick={()=>setStartsAt(x.start)} className={`h-10 rounded-[9px] border text-sm ${startsAt===x.start?"border-[var(--primary)] bg-[var(--primary)] text-white":"border-[var(--border)] bg-white"}`}>{new Intl.DateTimeFormat("nl-NL",{hour:"2-digit",minute:"2-digit",timeZone:timezone}).format(new Date(x.start))}</button>)}</div>}</div>{error?<p role="alert" className="text-sm text-[var(--danger)]">{error}</p>:null}<Button size="lg" disabled={!startsAt||saving} onClick={save}>{saving?"Verplaatsen…":"Afspraak verplaatsen"}</Button></div>
+  const today = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date()),
+    [timezone],
+  );
+
+  const [date, setDate] = useState(today);
+  const [staffId, setStaffId] = useState(initialStaffId);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [startsAt, setStartsAt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    setStartsAt("");
+
+    fetch(`/api/internal/availability?serviceId=${serviceId}&staffId=${staffId}&date=${date}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error);
+        setSlots(payload.slots ?? []);
+      })
+      .catch((caught: unknown) => {
+        if (caught instanceof DOMException && caught.name === "AbortError") return;
+        setError(caught instanceof Error ? caught.message : "Beschikbaarheid kon niet worden geladen.");
+        setSlots([]);
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [date, serviceId, staffId]);
+
+  async function save() {
+    if (!startsAt) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/internal/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId, staffId, startsAt }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error);
+      router.push(`/app/appointments/${appointmentId}`);
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Verplaatsen is niet gelukt.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-8 grid max-w-2xl gap-6 rounded-[var(--radius-card)] bg-[var(--surface)] p-5 sm:p-6">
+      <label className="grid gap-2 text-sm font-medium">
+        <span>Medewerker</span>
+        <select className={selectClassName} value={staffId} onChange={(event) => setStaffId(event.target.value)}>
+          {staff.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+        </select>
+      </label>
+
+      <Field label="Datum" type="date" min={today} value={date} onChange={(event) => setDate(event.target.value)} />
+
+      <div>
+        <p className="mb-3 text-sm font-medium">Beschikbare tijden</p>
+        {loading ? (
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-11 animate-pulse rounded-full bg-white" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {slots.map((slot) => {
+              const selected = startsAt === slot.start;
+              return (
+                <button
+                  type="button"
+                  key={slot.start}
+                  onClick={() => setStartsAt(slot.start)}
+                  className={`min-h-11 rounded-[var(--radius-pill)] border text-sm font-semibold tabular-nums ${selected ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--line)] bg-white"}`}
+                >
+                  {new Intl.DateTimeFormat("nl-NL", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: timezone,
+                  }).format(new Date(slot.start))}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && !slots.length ? <p className="mt-2 text-sm text-[var(--muted)]">Geen beschikbare tijden voor deze combinatie.</p> : null}
+      </div>
+
+      {error ? (
+        <div role="alert" className="rounded-[var(--radius-control)] border border-[#e7c3bd] bg-[#fff7f5] p-4 text-sm leading-6 text-[var(--danger)]">
+          {error}
+        </div>
+      ) : null}
+
+      <Button size="lg" className="w-full sm:w-auto" disabled={!startsAt || saving} onClick={save}>
+        {saving ? "Afspraak verplaatsen…" : "Afspraak verplaatsen"}
+      </Button>
+    </div>
+  );
 }
