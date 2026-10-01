@@ -72,7 +72,7 @@ try {
   const dragCard = page.locator("[data-appointment-id]").filter({ hasText: "Nina Hendriks" }).first();
   await dragCard.waitFor();
   await dragCard.scrollIntoViewIfNeeded();
-  const beforeTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
+  const beforeTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
 
   let releaseMove = () => {};
   let markMoveRequestSeen = () => {};
@@ -96,7 +96,7 @@ try {
   await moveRequestSeen;
   await page.waitForTimeout(80);
 
-  const optimisticTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
+  const optimisticTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
   assert.ok(optimisticTop >= beforeTop + 30, `Appointment should move optimistically before API response: ${beforeTop} -> ${optimisticTop}`);
 
   const moveResponse = page.waitForResponse((response) => response.url().includes("/api/internal/move"));
@@ -104,7 +104,7 @@ try {
   await moveResponse;
   await page.unroute("**/api/internal/move");
   await page.waitForLoadState("networkidle");
-  const revertedTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
+  const revertedTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
   assert.equal(revertedTop, beforeTop, "Rejected move must roll back to the original position");
 
   for (const authPath of ["/login", "/signup", "/onboarding"]) {
