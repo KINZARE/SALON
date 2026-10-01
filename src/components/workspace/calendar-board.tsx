@@ -28,7 +28,7 @@ function toMinute(time: string) { const [hour, minute] = time.slice(0,5).split("
 function DropCell({ staffId, minute, startMinute, disabled }: { staffId: string; minute: number; startMinute: number; disabled: boolean }) {
   const id = `${staffId}|${minute}`;
   const { setNodeRef, isOver } = useDroppable({ id, disabled, data: { staffId, minute } });
-  return <div ref={setNodeRef} aria-hidden className={`absolute inset-x-0 border-t border-[var(--border)]/70 ${isOver ? "bg-[var(--primary-soft)]" : ""}`} style={{ top: (minute-startMinute)*pxPerMinute, height: 15*pxPerMinute }} />;
+  return <div ref={setNodeRef} aria-hidden data-drop-staff={staffId} data-drop-minute={minute} className={`absolute inset-x-0 border-t border-[var(--border)]/70 ${isOver ? "bg-[var(--primary-soft)]" : ""}`} style={{ top: (minute-startMinute)*pxPerMinute, height: 15*pxPerMinute }} />;
 }
 
 function AppointmentCard({ item, timezone, canManage }: { item: Appointment; timezone: string; canManage: boolean }) {
@@ -37,7 +37,7 @@ function AppointmentCard({ item, timezone, canManage }: { item: Appointment; tim
   const start = localParts(item.starts_at, timezone).time;
   const end = localParts(item.service_ends_at, timezone).time;
   return <div ref={setNodeRef} style={{ transform: transform ? `translate3d(${transform.x}px,${transform.y}px,0)` : undefined, opacity: isDragging ? .62 : 1 }} className="relative z-20">
-    <Link href={`/app/appointments/${item.id}`} {...attributes} {...listeners} className={`block h-full overflow-hidden rounded-[10px] border bg-white px-2.5 py-2 shadow-sm transition ${canManage && active ? "cursor-grab active:cursor-grabbing" : ""} ${!active ? "opacity-55" : ""}`}>
+    <Link href={`/app/appointments/${item.id}`} data-appointment-id={item.id} {...attributes} {...listeners} className={`block h-full overflow-hidden rounded-[10px] border bg-white px-2.5 py-2 shadow-sm transition ${canManage && active ? "cursor-grab active:cursor-grabbing" : ""} ${!active ? "opacity-55" : ""}`}>
       <div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{item.customer?.name ?? item.customer_name_snapshot}</span><span className="shrink-0 text-[10px] text-[var(--muted)]">{start}</span></div>
       <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{item.service_name_snapshot} · {start}–{end}</p>
     </Link>

@@ -9,7 +9,7 @@ export async function proxy(request: NextRequest) {
       const value = crypto.randomUUID();
       request.cookies.set("salon-preview-session", value);
       response = NextResponse.next({ request });
-      response.cookies.set("salon-preview-session", value, { httpOnly: true, sameSite: "lax", secure: true, maxAge: 60 * 60 * 24 * 7, path: "/" });
+      response.cookies.set("salon-preview-session", value, { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", maxAge: 60 * 60 * 24 * 7, path: "/" });
     }
     return response;
   }

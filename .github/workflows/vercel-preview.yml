@@ -4,37 +4,75 @@ on:
   push:
     branches: [workspace/operational-core]
 
+env:
+  SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+  SALON_PREVIEW_DEMO_MODE: "1"
+  NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
+
 jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Require preview database secret
+        run: test -n "$SUPABASE_SERVICE_ROLE_KEY"
+      - name: Install application dependencies
+        run: npm install
+      - name: Build production app
+        run: npm run build
+      - name: Install Chromium QA runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start production server
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm run start -- -H 127.0.0.1 > /tmp/salon-server.log 2>&1 &
+          echo $! > /tmp/salon-server.pid
+          for i in {1..40}; do
+            if curl --silent --fail http://127.0.0.1:3000/app/today >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/salon-server.log
+          exit 1
+      - name: Browser and responsive QA
+        env:
+          QA_BASE_URL: "http://127.0.0.1:3000"
+        run: node scripts/workspace-browser-qa.mjs
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-browser-qa-${{ github.sha }}
+          path: qa-artifacts
+          if-no-files-found: ignore
+          retention-days: 14
+
   deploy-preview:
+    needs: browser-qa
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}"
-      SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
-      SALON_PREVIEW_DEMO_MODE: "1"
-      NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-
       - name: Require deployment secrets
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$VERCEL_TOKEN" || {
-            echo "Missing repository secret VERCEL_TOKEN"
-            exit 1
-          }
-          test -n "$SUPABASE_SERVICE_ROLE_KEY" || {
-            echo "Missing repository secret SUPABASE_SERVICE_ROLE_KEY"
-            exit 1
-          }
-
+          test -n "$VERCEL_TOKEN"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
       - name: Ensure Vercel project exists
         shell: bash
         run: |
@@ -42,24 +80,10 @@ jobs:
           if ! npx --yes vercel@latest project inspect salon --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
             npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
           fi
-
       - name: Link Vercel project
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
-
+        run: npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
       - name: Configure Vercel as Next.js
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes vercel@latest project update salon \
-            --framework nextjs \
-            --auto-detect output-directory \
-            --token="$VERCEL_TOKEN" \
-            --non-interactive \
-            --yes
-
+        run: npx --yes vercel@latest project update salon --framework nextjs --auto-detect output-directory --token="$VERCEL_TOKEN" --non-interactive --yes
       - name: Deploy synthetic no-login preview
         id: deploy
         shell: bash
@@ -82,44 +106,29 @@ jobs:
           echo "### SALON operational preview" >> "$GITHUB_STEP_SUMMARY"
           echo "SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
-
       - name: Smoke test no-login synthetic preview
         shell: bash
         env:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
         run: |
           set -euo pipefail
-
-          TODAY_RESULT="$(npx --yes vercel@latest curl /app/today \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/today.html --write-out '%{http_code}|%{url_effective}')"
-          CALENDAR_RESULT="$(npx --yes vercel@latest curl /app/calendar \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/calendar.html --write-out '%{http_code}|%{url_effective}')"
-          CUSTOMERS_RESULT="$(npx --yes vercel@latest curl /app/customers \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/customers.html --write-out '%{http_code}|%{url_effective}')"
-
+          TODAY_RESULT="$(npx --yes vercel@latest curl /app/today --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/today.html --write-out '%{http_code}|%{url_effective}')"
+          CALENDAR_RESULT="$(npx --yes vercel@latest curl /app/calendar --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/calendar.html --write-out '%{http_code}|%{url_effective}')"
+          CUSTOMERS_RESULT="$(npx --yes vercel@latest curl /app/customers --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/customers.html --write-out '%{http_code}|%{url_effective}')"
           TODAY_CODE="${TODAY_RESULT%%|*}"
           CALENDAR_CODE="${CALENDAR_RESULT%%|*}"
           CUSTOMERS_CODE="${CUSTOMERS_RESULT%%|*}"
           TODAY_URL="${TODAY_RESULT#*|}"
-
           echo "today=$TODAY_RESULT calendar=$CALENDAR_RESULT customers=$CUSTOMERS_RESULT"
-
           test "$TODAY_CODE" = "200"
           test "$CALENDAR_CODE" = "200"
           test "$CUSTOMERS_CODE" = "200"
           echo "$TODAY_URL" | grep -Eqi '/app/today([?#].*)?$'
-
           grep -qi "Preview mode" /tmp/today.html
           grep -qi "Today" /tmp/today.html
           grep -qi "Calendar" /tmp/calendar.html
           grep -qi "Sophie de Vries" /tmp/customers.html
-
           if grep -qi "Application error" /tmp/today.html /tmp/calendar.html /tmp/customers.html; then
-            echo "Application error detected in preview smoke test."
             exit 1
           fi
-
           echo "No-login synthetic preview smoke checks passed for $PREVIEW_URL"
