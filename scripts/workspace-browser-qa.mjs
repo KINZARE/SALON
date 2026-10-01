@@ -99,8 +99,9 @@ try {
   const optimisticTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
   assert.ok(optimisticTop >= beforeTop + 30, `Appointment should move optimistically before API response: ${beforeTop} -> ${optimisticTop}`);
 
+  const moveResponse = page.waitForResponse((response) => response.url().includes("/api/internal/move"));
   releaseMove();
-  await page.waitForResponse((response) => response.url().includes("/api/internal/move"));
+  await moveResponse;
   await page.unroute("**/api/internal/move");
   await page.waitForLoadState("networkidle");
   const revertedTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
