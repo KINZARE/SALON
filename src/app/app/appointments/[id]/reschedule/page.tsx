@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAppContext } from "@/lib/auth";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getPublicStaffForService } from "@/services/public-booking";
 import { RescheduleForm } from "@/components/appointments/reschedule-form";
 
 export default async function ReschedulePage({params}:{params:Promise<{id:string}>}){
   const {id}=await params;const {salon,membership}=await requireAppContext();if(!["owner","manager"].includes(membership.role))return <p>Geen toegang.</p>;
-  const db=await createUserSupabaseClient();
+  const db=createAdminSupabaseClient();
   const result=await db.from("appointments").select("id,service_id,staff_id,status,starts_at").eq("id",id).eq("salon_id",salon.id).maybeSingle();
   if(result.error)throw result.error;
   const data=result.data;
