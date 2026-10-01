@@ -6,8 +6,6 @@ import { createUserSupabaseClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { saveCustomer } from "./actions";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
-import { readPreviewWorkspace } from "@/services/preview-workspace";
 
 type HistoryRow={id:string;starts_at:string;status:string;service_name_snapshot:string;price_cents_snapshot:number;currency_snapshot:string};
 
@@ -17,23 +15,15 @@ export default async function CustomerPage({params,searchParams}:{params:Promise
   const {salon,membership}=await requireAppContext();
   if(membership.role==="staff")return <div><h1 className="text-3xl font-semibold tracking-[-0.04em]">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Klantprofielen zijn alleen beschikbaar voor owner en manager.</p></div>;
 
-  let customer:{id:string;name:string;phone:string|null;email:string|null;internal_notes:string|null;created_at:string}|null=null;
-  let appointments:HistoryRow[]=[];
-  if(isPreviewDemoMode()){
-    const state=await readPreviewWorkspace();
-    customer=state.customers.find(item=>item.id===id)??null;
-    appointments=state.appointments.filter(item=>item.customer_id===id).sort((a,b)=>b.starts_at.localeCompare(a.starts_at));
-  }else{
-    const db=await createUserSupabaseClient();
-    const [customerResult,appointmentsResult]=await Promise.all([
-      db.from("customers").select("id,name,phone,email,internal_notes,created_at").eq("salon_id",salon.id).eq("id",id).maybeSingle(),
-      db.from("appointments").select("id,starts_at,status,service_name_snapshot,price_cents_snapshot,currency_snapshot").eq("salon_id",salon.id).eq("customer_id",id).order("starts_at",{ascending:false}).limit(100),
-    ]);
-    if(customerResult.error)throw customerResult.error;
-    if(appointmentsResult.error)throw appointmentsResult.error;
-    customer=customerResult.data;
-    appointments=appointmentsResult.data??[];
-  }
+  const db=await createUserSupabaseClient();
+  const [customerResult,appointmentsResult]=await Promise.all([
+    db.from("customers").select("id,name,phone,email,internal_notes,created_at").eq("salon_id",salon.id).eq("id",id).maybeSingle(),
+    db.from("appointments").select("id,starts_at,status,service_name_snapshot,price_cents_snapshot,currency_snapshot").eq("salon_id",salon.id).eq("customer_id",id).order("starts_at",{ascending:false}).limit(100),
+  ]);
+  if(customerResult.error)throw customerResult.error;
+  if(appointmentsResult.error)throw appointmentsResult.error;
+  const customer=customerResult.data;
+  const appointments=(appointmentsResult.data??[]) as HistoryRow[];
   if(!customer)notFound();
   const completed=appointments.filter(item=>item.status==="completed");
   const noShows=appointments.filter(item=>item.status==="no_show").length;
