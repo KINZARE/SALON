@@ -2,7 +2,7 @@ name: vercel-preview
 
 on:
   push:
-    branches: [preview]
+    branches: [workspace/operational-core]
 
 jobs:
   deploy-preview:
@@ -11,7 +11,7 @@ jobs:
     env:
       VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}"
       SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
-      SALON_PREVIEW_DEMO_MODE: "0"
+      SALON_PREVIEW_DEMO_MODE: "1"
       NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
 
@@ -60,7 +60,7 @@ jobs:
             --non-interactive \
             --yes
 
-      - name: Deploy real Supabase preview
+      - name: Deploy synthetic no-login preview
         id: deploy
         shell: bash
         run: |
@@ -69,59 +69,57 @@ jobs:
             --yes \
             --project salon \
             --token="$VERCEL_TOKEN" \
-            --build-env SALON_PREVIEW_DEMO_MODE=0 \
+            --meta salonQaSha="$GITHUB_SHA" \
+            --build-env SALON_PREVIEW_DEMO_MODE=1 \
             --build-env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --build-env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
-            --env SALON_PREVIEW_DEMO_MODE=0 \
+            --env SALON_PREVIEW_DEMO_MODE=1 \
             --env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### SALON Vercel Preview — real Supabase backend" >> "$GITHUB_STEP_SUMMARY"
-          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "### SALON operational preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Smoke test real-backend preview
+      - name: Smoke test no-login synthetic preview
         shell: bash
         env:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
         run: |
           set -euo pipefail
 
-          HOME_RESULT="$(npx --yes vercel@latest curl / \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/home.html --write-out '%{http_code}|%{url_effective}')"
-          LOGIN_RESULT="$(npx --yes vercel@latest curl /login \
-            --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/login.html --write-out '%{http_code}|%{url_effective}')"
           TODAY_RESULT="$(npx --yes vercel@latest curl /app/today \
             --deployment "$PREVIEW_URL" \
             -- --silent --show-error --location --output /tmp/today.html --write-out '%{http_code}|%{url_effective}')"
-          BOOK_RESULT="$(npx --yes vercel@latest curl /book/this-salon-does-not-exist \
+          CALENDAR_RESULT="$(npx --yes vercel@latest curl /app/calendar \
             --deployment "$PREVIEW_URL" \
-            -- --silent --show-error --location --output /tmp/book.html --write-out '%{http_code}|%{url_effective}')"
+            -- --silent --show-error --location --output /tmp/calendar.html --write-out '%{http_code}|%{url_effective}')"
+          CUSTOMERS_RESULT="$(npx --yes vercel@latest curl /app/customers \
+            --deployment "$PREVIEW_URL" \
+            -- --silent --show-error --location --output /tmp/customers.html --write-out '%{http_code}|%{url_effective}')"
 
-          HOME_CODE="${HOME_RESULT%%|*}"
-          LOGIN_CODE="${LOGIN_RESULT%%|*}"
           TODAY_CODE="${TODAY_RESULT%%|*}"
-          BOOK_CODE="${BOOK_RESULT%%|*}"
+          CALENDAR_CODE="${CALENDAR_RESULT%%|*}"
+          CUSTOMERS_CODE="${CUSTOMERS_RESULT%%|*}"
           TODAY_URL="${TODAY_RESULT#*|}"
 
-          echo "home=$HOME_RESULT login=$LOGIN_RESULT today=$TODAY_RESULT missing-book=$BOOK_RESULT"
+          echo "today=$TODAY_RESULT calendar=$CALENDAR_RESULT customers=$CUSTOMERS_RESULT"
 
-          test "$HOME_CODE" = "200"
-          test "$LOGIN_CODE" = "200"
           test "$TODAY_CODE" = "200"
-          echo "$TODAY_URL" | grep -Eqi '/login([?#].*)?$'
-          test "$BOOK_CODE" = "404"
+          test "$CALENDAR_CODE" = "200"
+          test "$CUSTOMERS_CODE" = "200"
+          echo "$TODAY_URL" | grep -Eqi '/app/today([?#].*)?$'
 
-          if grep -qi "Preview mode" /tmp/home.html; then
-            echo "Demo/preview banner is still present; expected real backend mode."
+          grep -qi "Preview mode" /tmp/today.html
+          grep -qi "Today" /tmp/today.html
+          grep -qi "Calendar" /tmp/calendar.html
+          grep -qi "Sophie de Vries" /tmp/customers.html
+
+          if grep -qi "Application error" /tmp/today.html /tmp/calendar.html /tmp/customers.html; then
+            echo "Application error detected in preview smoke test."
             exit 1
           fi
-          if grep -qi "Application error" /tmp/home.html /tmp/login.html /tmp/today.html /tmp/book.html; then
-            echo "Application error detected in smoke-test response."
-            exit 1
-          fi
 
-          echo "Smoke checks passed for $PREVIEW_URL"
+          echo "No-login synthetic preview smoke checks passed for $PREVIEW_URL"
