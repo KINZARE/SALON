@@ -65,6 +65,46 @@ try {
   await cards.first().click();
   await page.locator("[data-calendar-detail]").waitFor();
   assert.equal(await cards.first().getAttribute("aria-pressed"), "true", "Selected appointment must be reflected in the detail panel");
+  assert.equal(await page.locator("[data-drop-staff]").count(), 4, "Calendar should expose one drop target per active staff member, not one per time slot");
+
+  await page.getByRole("link", { name: "Volgende dag" }).click();
+  await page.waitForLoadState("networkidle");
+  const dragCard = page.locator("[data-appointment-id]").filter({ hasText: "Nina Hendriks" }).first();
+  await dragCard.waitFor();
+  await dragCard.scrollIntoViewIfNeeded();
+  const beforeTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
+
+  let releaseMove = () => {};
+  let markMoveRequestSeen = () => {};
+  const moveRequestSeen = new Promise((resolve) => { markMoveRequestSeen = resolve; });
+  await page.route("**/api/internal/move", async (route) => {
+    markMoveRequestSeen();
+    await new Promise((resolve) => { releaseMove = resolve; });
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "QA rollback" }),
+    });
+  });
+
+  const dragBox = await dragCard.boundingBox();
+  assert.ok(dragBox, "Draggable appointment must have a visible bounding box");
+  await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + Math.min(18, dragBox.height / 2));
+  await page.mouse.down();
+  await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + Math.min(18, dragBox.height / 2) + 48, { steps: 8 });
+  await page.mouse.up();
+  await moveRequestSeen;
+  await page.waitForTimeout(80);
+
+  const optimisticTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
+  assert.ok(optimisticTop >= beforeTop + 30, `Appointment should move optimistically before API response: ${beforeTop} -> ${optimisticTop}`);
+
+  releaseMove();
+  await page.waitForResponse((response) => response.url().includes("/api/internal/move"));
+  await page.unroute("**/api/internal/move");
+  await page.waitForLoadState("networkidle");
+  const revertedTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.style.top ?? "0"));
+  assert.equal(revertedTop, beforeTop, "Rejected move must roll back to the original position");
 
   for (const authPath of ["/login", "/signup", "/onboarding"]) {
     await page.goto(base + authPath, { waitUntil: "networkidle" });
@@ -108,7 +148,7 @@ try {
     mode: "real-no-login",
     workspacePaths,
     widths,
-    flows: ["root-direct-workspace", "calendar-redesign", "appointment-detail-panel", "auth-routes-bypassed", "real-settings-persistence", "public-booking-real-salon", "no-legacy-demo-content", "responsive-workspace"],
+    flows: ["root-direct-workspace", "calendar-redesign", "calendar-optimistic-drag", "calendar-conflict-rollback", "appointment-detail-panel", "auth-routes-bypassed", "real-settings-persistence", "public-booking-real-salon", "no-legacy-demo-content", "responsive-workspace"],
     runtimeErrors,
   };
   await fs.writeFile("qa-artifacts/result.json", JSON.stringify(result, null, 2));
