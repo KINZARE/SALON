@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20.9" },
+  "engines": {
+    "node": ">=20.9"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -33,5 +35,8 @@
     "postcss": "^8.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.0"
+  },
+  "overrides": {
+    "baseline-browser-mapping": "2.11.26"
   }
 }
