@@ -2,8 +2,6 @@ import "server-only";
 import { formatInTimeZone } from "date-fns-tz";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getAvailableSlotsForDate } from "@/services/public-booking";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
-import { createPreviewBooking } from "@/services/preview-workspace";
 
 export async function createInternalBooking(args: {
   salon: { id: string; slug: string; timezone: string };
@@ -18,10 +16,6 @@ export async function createInternalBooking(args: {
   const date = formatInTimeZone(startsAt, args.salon.timezone, "yyyy-MM-dd");
   const availability = await getAvailableSlotsForDate({ salonSlug: args.salon.slug, serviceId: args.serviceId, staffId: args.staffId, date, source: "internal" });
   if (!availability.slots.some((slot) => slot.start === startsAt.toISOString())) throw new Error("SLOT_UNAVAILABLE");
-
-  if (isPreviewDemoMode()) {
-    return createPreviewBooking({ serviceId: args.serviceId, staffId: args.staffId, startsAt: startsAt.toISOString(), customer: args.customer });
-  }
 
   const db = createAdminSupabaseClient();
   const { data, error } = await db.rpc("create_appointment_atomic", {
