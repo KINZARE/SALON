@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createInternalBooking } from "@/services/internal-booking";
 import { isUuid, normalizeOptionalText } from "@/lib/validation";
 
 export async function POST(request: Request) {
-  const db = await createUserSupabaseClient();
-  const userResult = await db.auth.getUser();
-  const user = userResult.data.user;
-  if (!user) return NextResponse.json({ error: "Niet ingelogd." }, { status: 401 });
-  const membership = await db.from("memberships").select("salon_id,role").eq("user_id", user.id).limit(1).maybeSingle();
-  if (!membership.data || !["owner","manager"].includes(membership.data.role)) return NextResponse.json({ error: "Geen toegang." }, { status: 403 });
-  const salonResult = await db.from("salons").select("id,slug,timezone").eq("id", membership.data.salon_id).single();
+  const db = createAdminSupabaseClient();
+  const salonResult = await db.from("salons").select("id,slug,timezone").eq("slug","salon").single();
   if (!salonResult.data) return NextResponse.json({ error: "Salon niet gevonden." }, { status: 404 });
 
   let input: Record<string, unknown>;
@@ -27,7 +22,7 @@ export async function POST(request: Request) {
   if (!isUuid(serviceId) || !isUuid(staffId) || !name || (email && !/^\S+@\S+\.\S+$/.test(email))) return NextResponse.json({ error: "Vul geldige klant-, behandeling-, medewerker- en tijdgegevens in." }, { status: 400 });
 
   try {
-    const appointmentId = await createInternalBooking({ salon: salonResult.data, userId: user.id, serviceId, staffId, startsAt, customer: { id: customerId, name, phone, email, note } });
+    const appointmentId = await createInternalBooking({ salon: salonResult.data, userId: null, serviceId, staffId, startsAt, customer: { id: customerId, name, phone, email, note } });
     return NextResponse.json({ appointmentId }, { status: 201 });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
