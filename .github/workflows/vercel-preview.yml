@@ -37,6 +37,16 @@ jobs:
             npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
           fi
 
+      - name: Configure Vercel as Next.js
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest project update salon \
+            --framework nextjs \
+            --auto-detect output-directory \
+            --token="$VERCEL_TOKEN" \
+            --non-interactive
+
       - name: Deploy preview
         id: deploy
         shell: bash
