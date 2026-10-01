@@ -2,10 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { createUserSupabaseClient } from "@/lib/supabase/server";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
 
 export async function signIn(formData: FormData) {
-  if (isPreviewDemoMode()) redirect("/app/today");
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const supabase = await createUserSupabaseClient();
@@ -15,7 +13,6 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
-  if (isPreviewDemoMode()) redirect("/app/today");
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -28,7 +25,6 @@ export async function signUp(formData: FormData) {
 }
 
 export async function signOut() {
-  if (isPreviewDemoMode()) redirect("/");
   const supabase = await createUserSupabaseClient();
   await supabase.auth.signOut();
   redirect("/login");
