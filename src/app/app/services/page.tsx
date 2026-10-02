@@ -16,9 +16,9 @@ export default async function ServicesPage({searchParams}:{searchParams:Promise<
   const groups=[...categoryData.categories.map(category=>({id:category.id,name:category.name,active:category.active,items:items.filter(item=>item.category_id===category.id)})),{id:"uncategorized",name:"Zonder categorie",active:true,items:items.filter(item=>!item.category_id)}].filter(group=>group.items.length>0);
 
   return <div data-services-workspace className="min-w-0 max-w-full">
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Services</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Behandelingen</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Behandelingen rustig gegroepeerd op categorie, met prijs, tijd en team op dezelfde plek.</p></div>
-      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[var(--muted)] ring-1 ring-[var(--border)]">{items.filter(item=>item.active).length} actief</span>
+    <header className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Services</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Behandelingen</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Behandelingen rustig gegroepeerd op categorie, met prijs, tijd en team op dezelfde plek.</p></div>
+      <span className="self-start whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[var(--muted)] ring-1 ring-[var(--border)] lg:self-auto">{items.filter(item=>item.active).length} actief</span>
     </header>
     {error?<p role="alert" className="mt-5 rounded-[14px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
     {canManage?<section className="mt-7 min-w-0 max-w-full rounded-[22px] border border-[var(--border)] bg-white p-4 sm:p-5">
@@ -33,11 +33,11 @@ export default async function ServicesPage({searchParams}:{searchParams:Promise<
       </div>
     </section>:null}
 
-    <div className="mt-8 grid gap-8">
-      {groups.map(group=><section key={group.id}>
+    <div className="mt-8 grid min-w-0 gap-8">
+      {groups.map(group=><section key={group.id} className="min-w-0 max-w-full">
         <div className="mb-3 flex items-center gap-2"><h2 className="text-sm font-semibold">{group.name}</h2>{!group.active?<span className="text-[10px] text-[var(--muted)]">inactief</span>:null}<span className="text-[10px] text-[var(--muted)]">{group.items.length}</span></div>
-        <div className="grid gap-3">{group.items.map(item=><details key={item.id} className="group overflow-hidden rounded-[22px] border border-[var(--border)] bg-white">
-          <summary className="flex cursor-pointer list-none items-center gap-4 p-4 sm:p-5">
+        <div className="grid min-w-0 gap-3">{group.items.map(item=><details key={item.id} className="group min-w-0 max-w-full overflow-hidden rounded-[22px] border border-[var(--border)] bg-white">
+          <summary className="flex min-w-0 cursor-pointer list-none items-center gap-3 p-4 sm:gap-4 sm:p-5">
             <div className="min-w-0 flex-1"><div className="flex min-w-0 items-center gap-2"><p className="truncate font-semibold">{item.name}</p>{!item.active?<span className="rounded-full bg-[#efeeeb] px-2 py-0.5 text-[9px] font-semibold text-[#77736d]">Inactief</span>:null}</div><p className="mt-1 truncate text-sm text-[var(--muted)]">{item.duration_minutes} min · {item.buffer_minutes} min buffer · {item.online_bookable?"Online boekbaar":"Alleen intern"} · {item.staff_ids.length} medewerkers</p></div>
             <p className="shrink-0 text-sm font-semibold">{formatMoney(item.price_cents,item.currency)}</p><span className="text-[var(--muted)] transition group-open:rotate-180" aria-hidden>⌄</span>
           </summary>
