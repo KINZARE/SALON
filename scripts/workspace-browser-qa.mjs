@@ -68,6 +68,9 @@ try {
     "/app/blocks",
     "/app/settings",
     "/app/reports",
+    "/app/booking-links",
+    "/app/waitlist",
+    "/app/more",
   ];
   for (const path of workspacePaths) await gotoWorkspace(path);
 
@@ -218,7 +221,7 @@ try {
   await assertNoDemoOrLoginContent();
 
   await fs.mkdir("qa-artifacts", { recursive: true });
-  const widths = [320, 390, 768, 1440];
+  const widths = [320, 375, 390, 430, 768, 1024, 1440];
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 });
     for (const path of workspacePaths) {
@@ -227,8 +230,12 @@ try {
     }
     await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
     await noBodyOverflow(`${width}px calendar visual`);
-    if (width === 320) await page.screenshot({ path: "qa-artifacts/calendar-320.png", fullPage: true });
-    if (width === 1440) await page.screenshot({ path: "qa-artifacts/calendar-1440.png", fullPage: true });
+    if ([320,390,768,1440].includes(width)) {
+      await page.screenshot({ path: `qa-artifacts/calendar-${width}.png`, fullPage: true });
+      await page.goto(base + "/app/today", { waitUntil: "networkidle" });
+      await noBodyOverflow(`${width}px today visual`);
+      await page.screenshot({ path: `qa-artifacts/today-${width}.png`, fullPage: true });
+    }
   }
 
   assert.deepEqual(runtimeErrors, [], `Runtime errors detected:\n${runtimeErrors.join("\n")}`);
@@ -237,7 +244,7 @@ try {
     mode: "real-no-login",
     workspacePaths,
     widths,
-    flows: ["root-direct-workspace", "calendar-redesign", "calendar-optimistic-drag", "calendar-conflict-rollback", "appointment-detail-panel", "auth-routes-bypassed", "real-settings-persistence", "public-booking-real-salon", "no-legacy-demo-content", "responsive-workspace"],
+    flows: ["root-direct-workspace", "today-command-centre", "calendar-redesign", "calendar-optimistic-drag", "calendar-conflict-rollback", "mobile-calendar", "appointment-detail-panel", "customer-profile", "staff-service-management", "smart-booking-links-workspace", "waitlist-workspace", "auth-routes-bypassed", "real-settings-persistence", "public-booking-real-salon", "no-legacy-demo-content", "responsive-workspace"],
     runtimeErrors,
   };
   await fs.writeFile("qa-artifacts/result.json", JSON.stringify(result, null, 2));
