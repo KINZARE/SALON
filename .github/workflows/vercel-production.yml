@@ -10,7 +10,7 @@ env:
   SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
-  TESTED_APP_SHA: "ade31f830d97a5ab3e418e3f1388c663fe8d2e8a"
+  TESTED_APP_SHA: "4b2a3f624416baffbcd1d1b2d2dd94d1d0764d44"
 
 jobs:
   verify-and-deploy-production:
@@ -51,6 +51,54 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Verify public demo customer data is synthetic
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+
+          const db = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { persistSession: false, autoRefreshToken: false } },
+          );
+          const { data: salon, error: salonError } = await db
+            .from("salons")
+            .select("id")
+            .eq("slug", "salon")
+            .single();
+          if (salonError) throw salonError;
+
+          const { data: customers, error: customerError } = await db
+            .from("customers")
+            .select("email,phone")
+            .eq("salon_id", salon.id);
+          if (customerError) throw customerError;
+
+          const invalid = (customers ?? []).filter((customer) => {
+            const email = customer.email?.trim().toLowerCase() ?? "";
+            const phone = customer.phone?.trim() ?? "";
+            const emailIsSynthetic =
+              !email ||
+              email.endsWith("@example.com") ||
+              email.endsWith("@salon-demo.nl");
+            const phoneIsSynthetic =
+              !phone || /^\+31 6 0000 \d{4}$/.test(phone);
+            return !emailIsSynthetic || !phoneIsSynthetic;
+          });
+
+          if (invalid.length) {
+            throw new Error(
+              `Production demo privacy gate failed: ${invalid.length} customer record(s) contain non-synthetic contact data.`,
+            );
+          }
+
+          console.log(
+            `Production demo privacy gate passed for ${customers?.length ?? 0} customer records.`,
+          );
+          NODE
 
       - name: Tests
         run: npm test
