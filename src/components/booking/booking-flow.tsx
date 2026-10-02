@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, TextAreaField } from "@/components/ui/field";
 import { formatMoney } from "@/lib/format";
+import { WaitlistJoinForm } from "@/components/booking/waitlist-join-form";
 import type { PublicService, PublicStaff } from "@/services/public-booking";
 
 type Props = {
@@ -187,7 +188,7 @@ export function BookingFlow({ salon, services, staffByService }: Props) {
           <div className="mt-6 min-h-36">
             {loadingSlots ? <div className="grid grid-cols-3 gap-2" aria-label="Tijdstippen laden">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-11 animate-pulse rounded-[10px] bg-[#e9e9e5]" />)}</div> : null}
             {!loadingSlots && slotError ? <div className="rounded-[12px] border border-[#f0cbc6] bg-[#fff6f5] p-4 text-sm text-[var(--danger)]">{slotError}</div> : null}
-            {!loadingSlots && !slotError && !slots.length ? <div className="border-y border-[var(--border)] py-7 text-sm text-[var(--muted)]">Geen beschikbare tijden op deze dag. Kies een andere datum.</div> : null}
+            {!loadingSlots && !slotError && !slots.length ? <div className="border-y border-[var(--border)] py-7 text-sm text-[var(--muted)]"><p>Geen beschikbare tijden op deze dag. Kies een andere datum of laat weten dat je deze dag zoekt.</p><WaitlistJoinForm salonSlug={salon.slug} serviceId={service.id} staffId={staffId} date={date}/></div> : null}
             {!loadingSlots && slots.length ? (
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((item) => (
