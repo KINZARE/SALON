@@ -27,7 +27,7 @@ export function WeekCalendarOverview({dates,appointments,timezone}:{dates:string
   })}</div>;
 }
 
-export function MonthCalendarOverview({dates,month,appointments,timezone,opening,exceptions}:{dates:string[];month:string;appointments:Appointment[];timezone:string;opening:Opening[];exceptions:Exception[]}){
+export function MonthCalendarOverview({dates,month,appointments,timezone,opening,exceptions}:{dates:string[];month:string;appointments:Pick<Appointment,"starts_at"|"status">[];timezone:string;opening:Opening[];exceptions:Exception[]}){
   const counts=new Map<string,number>();for(const item of appointments){if(item.status==="cancelled")continue;const date=formatInTimeZone(new Date(item.starts_at),timezone,"yyyy-MM-dd");counts.set(date,(counts.get(date)??0)+1)}
   const openingMap=new Map(opening.map(row=>[row.weekday,row]));const exceptionMap=new Map(exceptions.map(row=>[row.exception_date,row]));
   const status=(date:string)=>{const day=new Date(`${date}T12:00:00Z`);const exception=exceptionMap.get(date);const weekly=openingMap.get(day.getUTCDay());return{exception,isOpen:exception?exception.is_open:Boolean(weekly?.is_open),day}};

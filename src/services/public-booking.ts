@@ -21,11 +21,12 @@ function isoInterval(row:TimedRow):Interval{return{start:new Date(row.starts_at)
 
 async function getSalonBySlug(slug:string):Promise<PublicSalon|null>{
   const db=createAdminSupabaseClient();
-  const {data,error}=await db.from("salons").select("id,slug,name,timezone,currency").eq("slug",slug).maybeSingle();
+  const {data,error}=await db.from("salons").select("id,slug,name,timezone,currency,settings:booking_settings(allow_staff_choice)").eq("slug",slug).maybeSingle();
   if(error)throw error;if(!data)return null;
-  const settings=await db.from("booking_settings").select("allow_staff_choice").eq("salon_id",data.id).maybeSingle();
-  if(settings.error)throw settings.error;
-  return{...data,allowStaffChoice:settings.data?.allow_staff_choice??true};
+  const {settings:relatedSettings,...salon}=data;
+  const relation=relatedSettings as unknown as {allow_staff_choice:boolean}|{allow_staff_choice:boolean}[]|null;
+  const settings=Array.isArray(relation)?relation[0]:relation;
+  return{...salon,allowStaffChoice:settings?.allow_staff_choice??true};
 }
 
 export async function getPublicSalon(slug:string){return getSalonBySlug(slug)}
@@ -44,27 +45,37 @@ export async function getPublicServices(salonId:string):Promise<PublicService[]>
   }).sort((a,b)=>a.categorySort-b.categorySort||(a.categoryName??"").localeCompare(b.categoryName??"")||a.name.localeCompare(b.name));
 }
 
-export async function getPublicStaffForService(salonId:string,serviceId:string):Promise<PublicStaff[]>{
+export async function getPublicStaffByService(salonId:string,serviceIds:string[]):Promise<Record<string,PublicStaff[]>>{
+  const byService:Record<string,PublicStaff[]>=Object.fromEntries([...new Set(serviceIds)].map(id=>[id,[]]));
+  if(!serviceIds.length)return byService;
   const db=createAdminSupabaseClient();
-  const {data:links,error:linksError}=await db.from("staff_services").select("staff_id").eq("salon_id",salonId).eq("service_id",serviceId);
-  if(linksError)throw linksError;
-  const ids=(links??[]).map(link=>link.staff_id);if(!ids.length)return[];
-  const {data,error}=await db.from("staff").select("id,name,active").eq("salon_id",salonId).eq("active",true).in("id",ids).order("name");
-  if(error)throw error;return(data??[]).map(row=>({id:row.id,name:row.name}));
+  const {data,error}=await db.from("staff").select("id,name,staff_services!staff_services_salon_id_staff_id_fkey!inner(service_id)")
+    .eq("salon_id",salonId).eq("active",true).eq("staff_services.salon_id",salonId).in("staff_services.service_id",serviceIds).order("name");
+  if(error)throw error;
+  for(const row of data??[])for(const link of row.staff_services)byService[link.service_id]?.push({id:row.id,name:row.name});
+  return byService;
+}
+
+export async function getPublicStaffForService(salonId:string,serviceId:string):Promise<PublicStaff[]>{
+  return(await getPublicStaffByService(salonId,[serviceId]))[serviceId]??[];
 }
 
 export async function getAvailableSlotsForDate(args:{salonSlug:string;serviceId:string;date:string;staffId?:string|null;source?:"public"|"internal"}):Promise<PublicAvailability>{
   const db=createAdminSupabaseClient();
   const salon=await getSalonBySlug(args.salonSlug);if(!salon)throw new Error("SALON_NOT_FOUND");
 
-  const {data:serviceData,error:serviceError}=await db.from("services")
+  const [serviceResult,settingsResult,staff]=await Promise.all([
+    db.from("services")
     .select("id,salon_id,name,description,duration_minutes,price_cents,currency,buffer_minutes,active,online_bookable,category_id")
-    .eq("id",args.serviceId).eq("salon_id",salon.id).eq("active",true).maybeSingle();
+    .eq("id",args.serviceId).eq("salon_id",salon.id).eq("active",true).maybeSingle(),
+    db.from("booking_settings").select("slot_interval_minutes,min_lead_minutes,max_days_ahead,allow_staff_choice").eq("salon_id",salon.id).maybeSingle(),
+    getPublicStaffForService(salon.id,args.serviceId),
+  ]);
+  const {data:serviceData,error:serviceError}=serviceResult;
   if(serviceError)throw serviceError;if(!serviceData)throw new Error("SERVICE_NOT_FOUND");
   const service=serviceData as ServiceRow;
   if((args.source??"public")==="public"&&!service.online_bookable)throw new Error("SERVICE_NOT_FOUND");
 
-  const settingsResult=await db.from("booking_settings").select("slot_interval_minutes,min_lead_minutes,max_days_ahead,allow_staff_choice").eq("salon_id",salon.id).maybeSingle();
   if(settingsResult.error)throw settingsResult.error;
   const settings=settingsResult.data??{slot_interval_minutes:15,min_lead_minutes:60,max_days_ahead:90,allow_staff_choice:true};
 
@@ -79,7 +90,6 @@ export async function getAvailableSlotsForDate(args:{salonSlug:string;serviceId:
   const dayStart=fromZonedTime(`${args.date}T00:00:00`,salon.timezone);
   const dayEnd=fromZonedTime(`${nextCalendarDate}T00:00:00`,salon.timezone);
 
-  const staff=await getPublicStaffForService(salon.id,service.id);
   const eligibleStaff=args.staffId?staff.filter(member=>member.id===args.staffId):staff;
   if(!eligibleStaff.length)return{salon,staff,slots:[]};
   const staffIds=eligibleStaff.map(member=>member.id);

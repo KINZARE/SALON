@@ -1,0 +1,91 @@
+{
+  "measuredAt": "2026-10-02T15:30:33.248Z",
+  "sha": "27e2cdc37862c8866133f14271967078bc02c685",
+  "conditions": "Same CI runner; fresh browser context; Today settled before clicking visible Calendar Next Link; wait for usable mobile timeline or desktop drop column; lab navigation elapsed time, not field INP",
+  "results": [
+    {
+      "label": "before",
+      "base": "https://salon-gamma-steel.vercel.app",
+      "width": 390,
+      "run": 0,
+      "elapsedMs": 831.4353490000003
+    },
+    {
+      "label": "before",
+      "base": "https://salon-gamma-steel.vercel.app",
+      "width": 390,
+      "run": 1,
+      "elapsedMs": 819.8460910000003
+    },
+    {
+      "label": "before",
+      "base": "https://salon-gamma-steel.vercel.app",
+      "width": 390,
+      "run": 2,
+      "elapsedMs": 1835.961292
+    },
+    {
+      "label": "before",
+      "base": "https://salon-gamma-steel.vercel.app",
+      "width": 1440,
+      "run": 0,
+      "elapsedMs": 829.2577669999991
+    },
+    {
+      "label": "before",
+      "base": "https://salon-gamma-steel.vercel.app",
+      "width": 1440,
+      "run": 1,
+      "elapsedMs": 2833.8874890000006
+    },
+    {
+      "label": "before",
+      "base": "https://salon-gamma-steel.vercel.app",
+      "width": 1440,
+      "run": 2,
+      "elapsedMs": 1332.100065999999
+    },
+    {
+      "label": "after",
+      "base": "https://salon-15mjkjsux-kwinphetmanee-2069.vercel.app",
+      "width": 390,
+      "run": 0,
+      "elapsedMs": 814.3800850000007
+    },
+    {
+      "label": "after",
+      "base": "https://salon-15mjkjsux-kwinphetmanee-2069.vercel.app",
+      "width": 390,
+      "run": 1,
+      "elapsedMs": 823.7503229999929
+    },
+    {
+      "label": "after",
+      "base": "https://salon-15mjkjsux-kwinphetmanee-2069.vercel.app",
+      "width": 390,
+      "run": 2,
+      "elapsedMs": 831.1119350000008
+    },
+    {
+      "label": "after",
+      "base": "https://salon-15mjkjsux-kwinphetmanee-2069.vercel.app",
+      "width": 1440,
+      "run": 0,
+      "elapsedMs": 833.9100519999993
+    },
+    {
+      "label": "after",
+      "base": "https://salon-15mjkjsux-kwinphetmanee-2069.vercel.app",
+      "width": 1440,
+      "run": 1,
+      "elapsedMs": 831.8659750000006
+    },
+    {
+      "label": "after",
+      "base": "https://salon-15mjkjsux-kwinphetmanee-2069.vercel.app",
+      "width": 1440,
+      "run": 2,
+      "elapsedMs": 857.9378089999955
+    }
+  ]
+}
