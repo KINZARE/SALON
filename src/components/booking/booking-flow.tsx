@@ -56,6 +56,15 @@ export function BookingFlow({ salon, services, staffByService }: Props) {
 
   const service = services.find((item) => item.id === serviceId) ?? null;
   const staff = serviceId ? staffByService[serviceId] ?? [] : [];
+  const serviceGroups = useMemo(() => {
+    const groups = new Map<string,{label:string;items:PublicService[]}>();
+    for (const item of services) {
+      const key=item.categoryId??"uncategorized";
+      const current=groups.get(key)??{label:item.categoryName??"Behandelingen",items:[]};
+      current.items.push(item);groups.set(key,current);
+    }
+    return [...groups.values()];
+  }, [services]);
   const visibleStep = salon.allowStaffChoice
     ? step
     : ({ 1: 1, 3: 2, 4: 3, 5: 4 } as Record<number, number>)[step] ?? 1;
@@ -129,20 +138,27 @@ export function BookingFlow({ salon, services, staffByService }: Props) {
         <section>
           <p className="text-sm font-medium text-[var(--muted)]">Stap 1</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em]">Welke behandeling wil je?</h1>
-          <div className="mt-6 divide-y divide-[var(--border)] border-y border-[var(--border)]">
-            {services.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => { setServiceId(item.id); setStaffId(null); setStep(salon.allowStaffChoice ? 2 : 3); }}
-                className="flex w-full items-start justify-between gap-5 py-4 text-left transition hover:bg-black/[.018]"
-              >
-                <span>
-                  <span className="block text-[15px] font-semibold">{item.name}</span>
-                  <span className="mt-1 block text-sm text-[var(--muted)]">{item.durationMinutes} min{item.description ? ` · ${item.description}` : ""}</span>
-                </span>
-                <span className="shrink-0 text-sm font-semibold">{formatMoney(item.priceCents, item.currency)}</span>
-              </button>
+          <div className="mt-6 grid gap-6">
+            {serviceGroups.map((group) => (
+              <section key={group.label}>
+                {serviceGroups.length > 1 ? <h2 className="mb-2 text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">{group.label}</h2> : null}
+                <div className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
+                  {group.items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => { setServiceId(item.id); setStaffId(null); setStep(salon.allowStaffChoice ? 2 : 3); }}
+                      className="flex w-full items-start justify-between gap-5 py-4 text-left transition hover:bg-black/[.018]"
+                    >
+                      <span>
+                        <span className="block text-[15px] font-semibold">{item.name}</span>
+                        <span className="mt-1 block text-sm text-[var(--muted)]">{item.durationMinutes} min{item.description ? ` · ${item.description}` : ""}</span>
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold">{formatMoney(item.priceCents, item.currency)}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         </section>

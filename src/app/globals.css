@@ -1,38 +1,47 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbfaf8;
+  --background: #ffffff;
   --surface: #ffffff;
-  --surface-soft: #f3f0ec;
-  --surface-strong: #e9e5df;
-  --foreground: #181713;
-  --ink: #0f0f0d;
-  --muted: #77736d;
-  --subtle: #aaa39a;
-  --border: #e7e2db;
-  --border-strong: #d8d1c8;
-  --primary: #b15f2c;
-  --primary-hover: #97501f;
-  --primary-soft: #f6ece5;
-  --accent: #b15f2c;
-  --accent-light: #cf8047;
-  --accent-dark: #97501f;
+  --surface-soft: #f7f7f4;
+  --surface-strong: #efefea;
+  --foreground: #0f0f0f;
+  --ink: #0f0f0f;
+  --muted: #666660;
+  --subtle: #9a9a94;
+  --border: #e7e7e1;
+  --border-strong: #d8d8d0;
+
+  /* Brand system from the supplied SALON reference */
+  --primary: #e7fe55;
+  --primary-hover: #d9f247;
+  --primary-soft: #f4ffb7;
+  --secondary: #bfe8ec;
+  --secondary-hover: #afe0e5;
+  --secondary-soft: #e8f8fa;
+
+  /* Readable interaction tones derived from the brand palette */
+  --accent: #586600;
+  --accent-light: #bfe8ec;
+  --accent-dark: #0f0f0f;
+
   --success: #4f735e;
-  --warning: #9b6d26;
-  --info: #587981;
+  --warning: #8d6a27;
+  --info: #4d757c;
   --danger: #a4473d;
-  --status-pending: #b88735;
-  --status-confirmed: #5f8069;
-  --status-checked-in: #607f89;
-  --status-completed: #5a5751;
-  --status-cancelled: #a96a62;
-  --status-no-show: #a33f36;
+  --status-pending: #9a762e;
+  --status-confirmed: #557663;
+  --status-checked-in: #52777d;
+  --status-completed: #555550;
+  --status-cancelled: #a7655e;
+  --status-no-show: #9f3f37;
+
   --radius: 14px;
   --radius-card: 24px;
   --radius-card-lg: 32px;
   --radius-pill: 999px;
-  --shadow-soft: 0 14px 40px rgba(39, 32, 24, .07);
-  --shadow-float: 0 18px 50px rgba(39, 32, 24, .10);
+  --shadow-soft: 0 14px 40px rgba(15, 15, 15, .07);
+  --shadow-float: 0 18px 50px rgba(15, 15, 15, .10);
 }
 
 * { box-sizing: border-box; }
@@ -45,10 +54,12 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 92% 0%, rgba(177,95,44,.055), transparent 28rem),
+    radial-gradient(circle at 96% 0%, rgba(231, 254, 85, .13), transparent 25rem),
+    radial-gradient(circle at 0% 10%, rgba(191, 232, 236, .16), transparent 24rem),
     var(--background);
   color: var(--foreground);
-  font-family: var(--font-onest), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-urbanist), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -58,18 +69,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 a { text-decoration: none; }
 
 :focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 52%, transparent);
+  outline: 2px solid var(--secondary);
   outline-offset: 3px;
 }
 
 ::selection {
-  background: #ead9cd;
+  background: var(--primary);
   color: var(--ink);
 }
 
 .salon-surface {
   border: 1px solid var(--border);
-  background: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.94);
   border-radius: var(--radius-card);
 }
 
@@ -84,12 +95,12 @@ a { text-decoration: none; }
 
 .calendar-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #cfc7bd transparent;
+  scrollbar-color: var(--secondary) transparent;
 }
 
 .calendar-scroll::-webkit-scrollbar { height: 10px; width: 10px; }
 .calendar-scroll::-webkit-scrollbar-thumb {
-  background: #cfc7bd;
+  background: var(--secondary);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: padding-box;

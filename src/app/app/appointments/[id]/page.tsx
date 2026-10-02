@@ -8,6 +8,8 @@ import { transitionAppointmentStatus,updateAppointmentNote } from "./actions";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SelfServiceLinkButton } from "@/components/workspace/self-service-link-button";
+import { IntakeLinkButton } from "@/components/workspace/intake-link-button";
+import { getAppointmentIntakeState } from "@/services/intake";
 
 const actions:Record<string,Array<{label:string;status:string;variant?:"primary"|"secondary"|"danger"}>>={
   pending:[{label:"Bevestigen",status:"confirmed"}],
@@ -41,6 +43,7 @@ export default async function AppointmentPage({params,searchParams}:{params:Prom
   if(!appointment)notFound();
 
   const canManage=["owner","manager"].includes(membership.role);
+  const intake=canManage?await getAppointmentIntakeState(salon.id,appointment.id,appointment.service_id):{forms:[],submissions:[]};
   const start=formatInTimeZone(new Date(appointment.starts_at),salon.timezone,"HH:mm");
   const end=formatInTimeZone(new Date(appointment.service_ends_at),salon.timezone,"HH:mm");
   const date=formatInTimeZone(new Date(appointment.starts_at),salon.timezone,"EEEE d MMMM yyyy");
@@ -69,7 +72,10 @@ export default async function AppointmentPage({params,searchParams}:{params:Prom
       {appointment.status==="confirmed"?<form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="no_show"/><Button variant="ghost">No-show</Button></form>:null}
       <form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="cancelled"/><Button variant="danger">Annuleren</Button></form>
       <SelfServiceLinkButton appointmentId={appointment.id}/>
+      <IntakeLinkButton appointmentId={appointment.id} forms={intake.forms.map(form=>({id:form.id,title:form.title}))}/>
     </section>:null}
+
+    {canManage&&intake.forms.length?<section className="mt-4 rounded-[18px] border border-[var(--border)] bg-white px-4 py-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">Intake</p><p className="text-xs text-[var(--muted)]">{intake.submissions.length?`${intake.submissions.length} ontvangen`:"Nog niet ontvangen"}</p></div></section>:null}
 
     <div className="mt-8 grid gap-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)]">
       <section className="overflow-hidden rounded-[24px] border border-[var(--border)] bg-white">

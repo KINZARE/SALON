@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Onest } from "next/font/google";
+import { Urbanist } from "next/font/google";
 import "./globals.css";
 
-const onest = Onest({
+const urbanist = Urbanist({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   display: "swap",
-  variable: "--font-onest",
+  variable: "--font-urbanist",
 });
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="nl" className={onest.variable}>
+    <html lang="nl" className={urbanist.variable}>
       <body>{children}</body>
     </html>
   );

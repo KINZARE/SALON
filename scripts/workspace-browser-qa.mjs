@@ -6,6 +6,8 @@ const base = process.env.QA_BASE_URL ?? "http://127.0.0.1:3000";
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
+page.setDefaultTimeout(15_000);
+page.setDefaultNavigationTimeout(25_000);
 const runtimeErrors = [];
 
 page.on("console", (message) => {
@@ -70,6 +72,9 @@ try {
     "/app/reports",
     "/app/booking-links",
     "/app/waitlist",
+    "/app/intake",
+    "/app/settings/schedule",
+    "/app/settings/widget",
     "/app/more",
   ];
   for (const path of workspacePaths) await gotoWorkspace(path);
@@ -81,7 +86,7 @@ try {
   await page.getByRole("link", { name: /Nieuwe afspraak/ }).waitFor();
   const cards = page.locator("[data-appointment-id]");
   assert.ok(await cards.count() > 0, "Calendar must render appointment cards from the real database");
-  await cards.first().click();
+  if (await cards.first().getAttribute("aria-pressed") !== "true") await cards.first().click();
   await page.locator("[data-calendar-detail]").waitFor();
   assert.equal(await cards.first().getAttribute("aria-pressed"), "true", "Selected appointment must be reflected in the detail panel");
   assert.equal(await page.locator("[data-drop-staff]").count(), 4, "Calendar should expose one drop target per active staff member, not one per time slot");
@@ -95,8 +100,22 @@ try {
   assert.ok(appointmentHref, "Calendar detail must expose the appointment action centre");
   await page.goto(base + appointmentHref, { waitUntil: "networkidle" });
   await page.locator("[data-appointment-action-centre]").waitFor();
-  await page.locator("[data-status-chip]").waitFor();
-  await page.getByRole("link", { name: "Verplaatsen", exact: true }).waitFor();
+  const statusChip = page.locator("[data-status-chip]");
+  await statusChip.waitFor();
+  const moveLink = page.getByRole("link", { name: "Verplaatsen", exact: true });
+  if (await moveLink.count() === 0) {
+    assert.match((await statusChip.innerText()).trim(), /^(Afgerond|Geannuleerd|No-show)$/, "Only terminal appointments may omit Move");
+  }
+
+  await page.goto(base + "/app/calendar?view=week", { waitUntil: "networkidle" });
+  await page.locator("[data-calendar-week]").waitFor();
+  const weekAppointment = page.locator("[data-calendar-week] a[href^='/app/appointments/']").first();
+  assert.ok(await weekAppointment.count() > 0, "Week view appointments must link to the appointment action centre");
+
+  await page.goto(base + "/app/calendar?view=month", { waitUntil: "networkidle" });
+  await page.getByRole("link", { name: /Dag/ }).waitFor();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator("[data-calendar-month]").waitFor();
 
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
@@ -116,7 +135,7 @@ try {
 
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
   const detailSeed = page.locator("[data-appointment-id]").first();
-  await detailSeed.click();
+  if (await detailSeed.getAttribute("aria-pressed") !== "true") await detailSeed.click();
   const detailHref = await page.locator("[data-calendar-detail] a").getAttribute("href");
   assert.ok(detailHref, "Calendar detail must link to appointment");
   await page.goto(base + detailHref, { waitUntil: "networkidle" });
@@ -134,10 +153,11 @@ try {
   await page.goto(base + "/app/services", { waitUntil: "networkidle" });
   assert.ok(await page.locator("[data-service-editor]").count() > 0, "Services must use focused editor surfaces");
 
+  console.log("QA_STAGE calendar-drag");
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
-  await page.getByRole("link", { name: "Volgende dag" }).click();
-  await page.waitForLoadState("networkidle");
-  const dragCard = page.locator("[data-appointment-id]").filter({ hasText: "Nina Hendriks" }).first();
+  const dragCard = page.locator(
+    '[data-appointment-id]:has([aria-label="Bevestigd"]), [data-appointment-id]:has([aria-label="Ingecheckt"]), [data-appointment-id]:has([aria-label="In afwachting"])'
+  ).first();
   await dragCard.waitFor();
   await dragCard.scrollIntoViewIfNeeded();
   const beforeTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
@@ -161,7 +181,10 @@ try {
   await page.mouse.down();
   await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + Math.min(18, dragBox.height / 2) + 48, { steps: 8 });
   await page.mouse.up();
-  await moveRequestSeen;
+  await Promise.race([
+    moveRequestSeen,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Drag move request was not emitted within 10 seconds")), 10_000)),
+  ]);
   await page.waitForTimeout(80);
 
   const optimisticTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
@@ -214,12 +237,31 @@ try {
   assert.equal(await page.getByLabel("Naam").inputValue(), "SALON Studio Amsterdam", "Real settings write must persist");
   await assertNoDemoOrLoginContent();
 
+  await page.goto(base + "/app/reports?preset=last30", { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Rapportage" }).waitFor();
+  await page.getByRole("link", { name: "CSV exporteren" }).waitFor();
+
+  await page.goto(base + "/app/intake", { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Formulieren & toestemming" }).waitFor();
+
+  await page.goto(base + "/app/settings/schedule", { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Afwijkende opening & shifts" }).waitFor();
+
+  await page.goto(base + "/app/settings/widget", { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Boeken op je eigen website" }).waitFor();
+
   await page.goto(base + "/book/salon", { waitUntil: "networkidle" });
   assert.equal(new URL(page.url()).pathname, "/book/salon");
   await page.getByText("Online afspraak maken").waitFor();
   await page.getByText("Knippen & stylen", { exact: true }).first().waitFor();
   await assertNoDemoOrLoginContent();
 
+  await page.goto(base + "/embed/salon", { waitUntil: "networkidle" });
+  await page.getByText("Online afspraak maken").waitFor();
+  await page.getByText("Knippen & stylen", { exact: true }).first().waitFor();
+  await noBodyOverflow("booking embed");
+
+  console.log("QA_STAGE responsive-sweep");
   await fs.mkdir("qa-artifacts", { recursive: true });
   const widths = [320, 375, 390, 430, 768, 1024, 1440];
   for (const width of widths) {
