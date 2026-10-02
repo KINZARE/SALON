@@ -121,3 +121,19 @@ test('a malformed calendar staff filter produces an empty result without a UUID 
   assert.deepEqual(await completion.getAppointmentsForRange(tenant, 'Europe/Amsterdam', '2026-10-01', '2026-11-01', 'invalid'), []);
   assert.equal(urls.length, 0);
 });
+
+test('live availability fetches service, booking policy and eligible staff in parallel after salon lookup', async t => {
+  let active = 0, maximum = 0;
+  t.mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const table = url.pathname.split('/').at(-1);
+    if (table === 'salons') return Response.json({ id: tenant, slug: 'salon', timezone: 'Europe/Amsterdam', settings: { allow_staff_choice: true } });
+    active++; maximum = Math.max(maximum, active);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    active--;
+    return Response.json(table === 'services' ? { id: tenant, active: true, online_bookable: true } : table === 'booking_settings' ? { max_days_ahead: 365, min_lead_minutes: 0 } : []);
+  });
+  const date = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  await publicBooking.getAvailableSlotsForDate({ salonSlug: 'salon', serviceId: tenant, date });
+  assert.equal(maximum, 3, 'Three independent reads must overlap');
+});

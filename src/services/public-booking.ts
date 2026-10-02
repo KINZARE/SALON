@@ -56,14 +56,18 @@ export async function getAvailableSlotsForDate(args:{salonSlug:string;serviceId:
   const db=createAdminSupabaseClient();
   const salon=await getSalonBySlug(args.salonSlug);if(!salon)throw new Error("SALON_NOT_FOUND");
 
-  const {data:serviceData,error:serviceError}=await db.from("services")
+  const [serviceResult,settingsResult,staff]=await Promise.all([
+    db.from("services")
     .select("id,salon_id,name,description,duration_minutes,price_cents,currency,buffer_minutes,active,online_bookable,category_id")
-    .eq("id",args.serviceId).eq("salon_id",salon.id).eq("active",true).maybeSingle();
+    .eq("id",args.serviceId).eq("salon_id",salon.id).eq("active",true).maybeSingle(),
+    db.from("booking_settings").select("slot_interval_minutes,min_lead_minutes,max_days_ahead,allow_staff_choice").eq("salon_id",salon.id).maybeSingle(),
+    getPublicStaffForService(salon.id,args.serviceId),
+  ]);
+  const {data:serviceData,error:serviceError}=serviceResult;
   if(serviceError)throw serviceError;if(!serviceData)throw new Error("SERVICE_NOT_FOUND");
   const service=serviceData as ServiceRow;
   if((args.source??"public")==="public"&&!service.online_bookable)throw new Error("SERVICE_NOT_FOUND");
 
-  const settingsResult=await db.from("booking_settings").select("slot_interval_minutes,min_lead_minutes,max_days_ahead,allow_staff_choice").eq("salon_id",salon.id).maybeSingle();
   if(settingsResult.error)throw settingsResult.error;
   const settings=settingsResult.data??{slot_interval_minutes:15,min_lead_minutes:60,max_days_ahead:90,allow_staff_choice:true};
 
@@ -78,7 +82,6 @@ export async function getAvailableSlotsForDate(args:{salonSlug:string;serviceId:
   const dayStart=fromZonedTime(`${args.date}T00:00:00`,salon.timezone);
   const dayEnd=fromZonedTime(`${nextCalendarDate}T00:00:00`,salon.timezone);
 
-  const staff=await getPublicStaffForService(salon.id,service.id);
   const eligibleStaff=args.staffId?staff.filter(member=>member.id===args.staffId):staff;
   if(!eligibleStaff.length)return{salon,staff,slots:[]};
   const staffIds=eligibleStaff.map(member=>member.id);
