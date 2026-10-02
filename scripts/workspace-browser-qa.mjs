@@ -180,7 +180,7 @@ try {
   assert.ok(customerActionHref, "Customer list must link to customer detail");
   await page.goto(base + customerActionHref, { waitUntil: "networkidle" });
   await page.locator("[data-customer-action-centre]").waitFor();
-  await page.getByText("Volgende afspraak", { exact: true }).waitFor();
+  await page.getByText("Komende afspraak", { exact: true }).waitFor();
   const rebook = page.getByRole("link", { name: /Nieuwe afspraak/ }).first();
   await rebook.waitFor();
   assert.match(await rebook.getAttribute("href") ?? "", /^\/app\/calendar\/new\?customerId=/);
