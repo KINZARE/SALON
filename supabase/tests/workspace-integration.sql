@@ -34,7 +34,8 @@ begin
   saved:=public.save_workspace_entity(tenant,'staff',jsonb_build_object('name','Manager-created staff','email',null,'role','manager','active',true,'service_ids',jsonb_build_array(treatment),'schedules',schedules,'breaks',jsonb_build_array(jsonb_build_object('weekday',1,'start_time','13:00','end_time','13:30'))));
   if (select count(*) from public.staff_schedules where staff_id=saved)<>7 or (select count(*) from public.breaks where staff_id=saved)<>1 then raise exception 'FAIL atomic staff schedule breaks';end if;
   if exists(select 1 from public.memberships where user_id=saved) then raise exception 'FAIL staff role changed login';end if;
-  perform public.save_workspace_entity(tenant,'service',jsonb_build_object('id',treatment,'name','Changed treatment','duration_minutes',90,'buffer_minutes',20,'price_cents',9900,'active',true,'online_bookable',false,'staff_ids',jsonb_build_array(member,colleague)));
+  perform public.save_workspace_service(tenant,jsonb_build_object('id',treatment,'name','Changed treatment','description','','duration_minutes',90,'buffer_minutes',20,'price_cents',9900,'active',true,'online_bookable',false,'staff_ids',jsonb_build_array(member,colleague),'payment_mode','deposit','deposit_cents',2000));
+  if not exists(select 1 from public.services where id=treatment and salon_id=tenant and payment_mode='deposit' and deposit_cents=2000) then raise exception 'FAIL transactional deposit policy';end if;
   select to_jsonb(a)-array['updated_at','starts_at','service_ends_at','occupied_until','staff_id'] into after_snapshot from public.appointments a where id=booking;
   if after_snapshot<>before_snapshot then raise exception 'FAIL historical snapshots';end if;
   rejected:=false;begin perform public.save_workspace_entity(other_tenant,'customer',jsonb_build_object('name','Forbidden'));exception when insufficient_privilege then rejected:=true;end;
@@ -61,6 +62,11 @@ begin
   if exists(select 1 from public.appointments) or exists(select 1 from public.customers) then raise exception 'FAIL foreign tenant data';end if;
   execute 'reset role';
   if has_function_privilege('anon','public.workspace_preview_read(uuid,jsonb)','EXECUTE') or has_function_privilege('authenticated','public.workspace_preview_write(uuid,integer,jsonb)','EXECUTE') then raise exception 'FAIL preview privilege';end if;
-end $$;
-select 'PASS: owner/manager CRUD, tenant isolation, staff scope, overlap and adjacency, snapshots, stale move, blocks, transitions, preview privileges' as result;
+  if has_function_privilege('anon','public.claim_notification_jobs(integer)','EXECUTE') or has_function_privilege('authenticated','public.claim_notification_jobs(integer)','EXECUTE') or not has_function_privilege('service_role','public.claim_notification_jobs(integer)','EXECUTE') then raise exception 'FAIL notification claim privilege';end if;
+  if has_table_privilege('anon','public.appointment_self_service_tokens','SELECT') or has_table_privilege('authenticated','public.appointment_self_service_tokens','SELECT') then raise exception 'FAIL self service direct access';end if;
+  if has_table_privilege('anon','public.smart_booking_links','SELECT') or has_table_privilege('authenticated','public.smart_booking_links','SELECT') then raise exception 'FAIL smart link direct access';end if;
+  if has_table_privilege('anon','public.waitlist_entries','SELECT') or has_table_privilege('authenticated','public.waitlist_entries','SELECT') then raise exception 'FAIL waitlist direct access';end if;
+  if (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('appointment_self_service_tokens','smart_booking_links','waitlist_entries') and c.relrowsecurity)<>3 then raise exception 'FAIL server-only table RLS';end if;
+end $;
+select 'PASS: owner/manager CRUD, tenant isolation, staff scope, overlap, snapshots, deposit policy, stale move, blocks, transitions, server-only public workflows' as result;
 rollback;
