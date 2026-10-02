@@ -43,6 +43,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           <Link aria-label="Volgende dag" href={`/app/calendar?date=${nextDate}`} className="grid h-full w-10 place-items-center border-l border-[var(--border)] text-lg text-[var(--muted)] hover:bg-[var(--surface-soft)]">›</Link>
         </div>
         {date!==today?<Link href="/app/calendar" className="inline-flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-soft)]">Vandaag</Link>:null}
+        {canManage?<Link data-calendar-block-action href={`/app/blocks?date=${date}`} className="inline-flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--surface-soft)]">Blokkeer tijd</Link>:null}
         {canManage?<Link href="/app/calendar/new" className="inline-flex h-11 items-center gap-2 rounded-[14px] bg-[var(--ink)] px-4 text-sm font-semibold text-white hover:bg-[#24231f]"><span className="text-lg leading-none">＋</span>Nieuwe afspraak</Link>:null}
       </div>
     </header>
