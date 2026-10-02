@@ -11,7 +11,7 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
   SALON_QA_SHA: "${{ github.sha }}"
-  TESTED_APP_SHA: "a82c0b01583c5ab37e405cfec3f6767e88cabb33"
+  TESTED_APP_SHA: "93113b58750f30b55e8088eb3a31ed84bd61d799"
 
 jobs:
   verify-and-deploy-production:
@@ -200,17 +200,22 @@ jobs:
           assert.equal(deployment.target, 'production');
           assert.equal(deployment.meta?.salonProductionSha, process.env.SALON_QA_SHA);
           assert.equal(deployment.meta?.salonTestedAppSha, process.env.TESTED_APP_SHA);
-          assert.ok(deployment.alias?.includes('salon-gamma-steel.vercel.app'), 'Production alias must point to the verified deployment');
-          const evidence = { deploymentId: deployment.id, url: process.env.PROD_URL, sha: deployment.meta.salonProductionSha, testedAppSha: deployment.meta.salonTestedAppSha, state: deployment.readyState, target: deployment.target, aliases: deployment.alias };
+          const aliasUrl = new URL('https://api.vercel.com/v4/aliases/salon-gamma-steel.vercel.app');
+          if (project.orgId?.startsWith('team_')) aliasUrl.searchParams.set('teamId', project.orgId);
+          const aliasResponse = await fetch(aliasUrl, { headers: { authorization: `Bearer ${process.env.VERCEL_TOKEN}` } });
+          assert.ok(aliasResponse.ok, `Alias metadata request failed: ${aliasResponse.status}`);
+          const alias = await aliasResponse.json();
+          assert.equal(alias.deploymentId, deployment.id, 'Current production alias must point to the verified deployment');
+          const evidence = { deploymentId: deployment.id, url: process.env.PROD_URL, sha: deployment.meta.salonProductionSha, testedAppSha: deployment.meta.salonTestedAppSha, state: deployment.readyState, target: deployment.target, aliases: deployment.alias, verifiedAlias: 'salon-gamma-steel.vercel.app', aliasDeploymentId: alias.deploymentId };
           await fs.mkdir('qa-artifacts', { recursive: true });
           await fs.writeFile('qa-artifacts/production-deployment.json', JSON.stringify(evidence, null, 2));
           console.log('PRODUCTION_SHA_ALIAS_VERIFIED', JSON.stringify(evidence));
           NODE
 
-      - name: Public production smoke test
+      - name: Public production alias smoke test
         shell: bash
         env:
-          PROD_URL: "${{ steps.deploy.outputs.url }}"
+          PROD_URL: "https://salon-gamma-steel.vercel.app"
         run: |
           set -euo pipefail
           ROOT_RESULT="$(curl --silent --show-error --location --output /tmp/prod-root.html --write-out '%{http_code}|%{url_effective}' "$PROD_URL/")"
@@ -233,7 +238,7 @@ jobs:
 
       - name: Full browser QA on deployed production
         env:
-          QA_BASE_URL: "${{ steps.deploy.outputs.url }}"
+          QA_BASE_URL: "https://salon-gamma-steel.vercel.app"
         run: node scripts/workspace-browser-qa.mjs
 
       - name: Production performance sanity check
