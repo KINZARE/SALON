@@ -4,7 +4,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 export async function getWorkspaceServices(salonId: string) {
   const db = createAdminSupabaseClient();
   const [servicesResult, linksResult] = await Promise.all([
-    db.from("services").select("id,name,description,duration_minutes,buffer_minutes,price_cents,currency,active,online_bookable").eq("salon_id", salonId).order("name"),
+    db.from("services").select("id,name,description,duration_minutes,buffer_minutes,price_cents,currency,active,online_bookable,payment_mode,deposit_cents").eq("salon_id", salonId).order("name"),
     db.from("staff_services").select("staff_id,service_id").eq("salon_id", salonId),
   ]);
   if (servicesResult.error) throw servicesResult.error;

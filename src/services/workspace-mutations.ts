@@ -8,6 +8,13 @@ export async function saveWorkspaceEntity(salonId: string, kind: string, payload
   return data as string;
 }
 
+export async function saveWorkspaceService(salonId: string, payload: Record<string, unknown>) {
+  const db = createAdminSupabaseClient();
+  const { data, error } = await db.rpc("save_workspace_service", { p_salon_id: salonId, p_payload: payload });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
 export async function moveWorkspaceAppointment(args: {
   appointmentId: string;
   staffId: string;
