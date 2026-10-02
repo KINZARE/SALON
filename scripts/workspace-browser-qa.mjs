@@ -41,7 +41,7 @@ try {
   const rootResponse = await page.goto(base + "/", { waitUntil: "networkidle" });
   assert.ok(rootResponse);
   assert.equal(new URL(page.url()).pathname, "/app/today", "Root must open the real workspace directly");
-  await page.getByRole("heading", { name: "Today" }).waitFor();
+  await page.getByRole("heading", { name: "Je salon vandaag" }).waitFor();
   await assertNoDemoOrLoginContent();
 
   await page.setViewportSize({ width: 1440, height: 900 });
