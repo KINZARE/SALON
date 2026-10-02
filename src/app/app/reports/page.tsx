@@ -47,6 +47,7 @@ export default async function ReportsPage({searchParams}:{searchParams:Promise<R
     [String(summary.noShows),"no-shows"],
     [String(summary.newCustomers),"nieuwe klanten"],
     [String(summary.returningCustomers),"terugkerend"],
+    [`${summary.repeatRate}%`,"terugkeerpercentage"],
   ];
   const exportParams=new URLSearchParams({preset,from:range.from,to:range.to});
 
