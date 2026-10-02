@@ -42,7 +42,7 @@ The only candidate-staff mutation loop is the intentional conflict retry in no-p
 | Appointments, availability, payments, waitlist, intake, tokens | Dynamic and no-store; no cached booking authority |
 | Fonts, bundled CSS/JS | Existing next/font Urbanist Latin 400/500/600, swap; hashed static assets |
 
-Global app force-dynamic removed. All real workspace data routes remain dynamic through connection() and fresh reads; build verifies auth redirects static. Existing app/loading.tsx provides navigation feedback. Desktop lazy board has an accessible loading status and listens to media changes. Only the primary Calendar link now fully prefetches on unconstrained connections; save-data and slow-2g/2g/3g retain default partial prefetch. This is client router prefetch, not a database availability cache. All existing Calendar revalidatePath/router.refresh mutation paths are preserved. No new cache tags, TTLs, session environment switches, or mutation shortcuts.
+Global app force-dynamic removed. All real workspace data routes remain dynamic through connection() and fresh reads; build verifies auth redirects static. Existing app/loading.tsx provides navigation feedback. Desktop lazy board has an accessible loading status and listens to media changes. Calendar retains default partial shell prefetch. A proposed full dynamic prefetch was removed after review because its five-minute client payload retention could hide bookings made from other sessions. Live appointment reads on navigation take priority over this shortcut. All existing Calendar revalidatePath/router.refresh mutation paths are preserved. No new cache tags, TTLs, session environment switches, or mutation shortcuts.
 
 ## Full route inventory
 

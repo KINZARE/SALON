@@ -41,3 +41,5 @@
 
 - Public booking/embed N+1 staff-per-service reads replaced by one batch query. Booking effect regression discovered by real form-flow test and corrected with step===3 availability guard.
 - First measured live preview: mobile Today LCP 1596→732ms, Day 2768→700ms, calendar JS 167407→148518 bytes. Mobile link navigation was nearly unchanged; targeted full Calendar prefetch added with data-saving/slow-network opt-out and existing invalidation retained.
+
+Review correction: removed full Calendar prefetch to preserve fresh cross-session appointment reads. Production alias verification now checks current alias deploymentId, followed by public-alias QA.
