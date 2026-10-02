@@ -98,8 +98,12 @@ try {
   assert.ok(appointmentHref, "Calendar detail must expose the appointment action centre");
   await page.goto(base + appointmentHref, { waitUntil: "networkidle" });
   await page.locator("[data-appointment-action-centre]").waitFor();
-  await page.locator("[data-status-chip]").waitFor();
-  await page.getByRole("link", { name: "Verplaatsen", exact: true }).waitFor();
+  const statusChip = page.locator("[data-status-chip]");
+  await statusChip.waitFor();
+  const moveLink = page.getByRole("link", { name: "Verplaatsen", exact: true });
+  if (await moveLink.count() === 0) {
+    assert.match((await statusChip.innerText()).trim(), /^(Afgerond|Geannuleerd|No-show)$/, "Only terminal appointments may omit Move");
+  }
 
   await page.goto(base + "/app/calendar?view=week", { waitUntil: "networkidle" });
   await page.locator("[data-calendar-week]").waitFor();
