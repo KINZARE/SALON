@@ -16,7 +16,7 @@ export function WeekCalendarOverview({dates,appointments,timezone}:{dates:string
         <div className="mt-0.5 flex items-baseline justify-between gap-2"><strong className="text-lg">{new Intl.DateTimeFormat("nl-NL",{day:"numeric",month:"short",timeZone:"UTC"}).format(day)}</strong><span className="text-[11px] text-[var(--muted)]">{items.length}</span></div>
       </Link>
       <div className="mt-3 grid gap-2">
-        {items.slice(0,7).map(item=><Link key={item.id} href={`/app/calendar/${item.id}`} className="rounded-[12px] bg-[var(--surface-soft)] p-2.5 hover:bg-[var(--primary-soft)]">
+        {items.slice(0,7).map(item=><Link key={item.id} href={`/app/appointments/${item.id}`} className="rounded-[12px] bg-[var(--surface-soft)] p-2.5 hover:bg-[var(--primary-soft)]">
           <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{formatInTimeZone(new Date(item.starts_at),timezone,"HH:mm")}</span><span className="text-[9px] text-[var(--muted)]">{item.status}</span></div>
           <p className="mt-1 truncate text-xs font-medium">{item.customer_name_snapshot}</p><p className="truncate text-[10px] text-[var(--muted)]">{item.service_name_snapshot} · {item.staff?.name??"—"}</p>
         </Link>)}
