@@ -182,6 +182,31 @@ jobs:
           grep -q '\[fra1\]' /tmp/vercel-production-inspect.txt
           npx --yes vercel@latest alias ls --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-production-aliases.txt || true
 
+      - name: Independently verify production SHA and alias metadata
+        env:
+          PROD_URL: "${{ steps.deploy.outputs.url }}"
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs/promises';
+          const project = JSON.parse(await fs.readFile('.vercel/project.json', 'utf8'));
+          const host = new URL(process.env.PROD_URL).hostname;
+          const url = new URL(`https://api.vercel.com/v13/deployments/${host}`);
+          if (project.orgId?.startsWith('team_')) url.searchParams.set('teamId', project.orgId);
+          const response = await fetch(url, { headers: { authorization: `Bearer ${process.env.VERCEL_TOKEN}` } });
+          assert.ok(response.ok, `Deployment metadata request failed: ${response.status}`);
+          const deployment = await response.json();
+          assert.equal(deployment.readyState, 'READY');
+          assert.equal(deployment.target, 'production');
+          assert.equal(deployment.meta?.salonProductionSha, process.env.SALON_QA_SHA);
+          assert.equal(deployment.meta?.salonTestedAppSha, process.env.TESTED_APP_SHA);
+          assert.ok(deployment.alias?.includes('salon-gamma-steel.vercel.app'), 'Production alias must point to the verified deployment');
+          const evidence = { deploymentId: deployment.id, url: process.env.PROD_URL, sha: deployment.meta.salonProductionSha, testedAppSha: deployment.meta.salonTestedAppSha, state: deployment.readyState, target: deployment.target, aliases: deployment.alias };
+          await fs.mkdir('qa-artifacts', { recursive: true });
+          await fs.writeFile('qa-artifacts/production-deployment.json', JSON.stringify(evidence, null, 2));
+          console.log('PRODUCTION_SHA_ALIAS_VERIFIED', JSON.stringify(evidence));
+          NODE
+
       - name: Public production smoke test
         shell: bash
         env:
