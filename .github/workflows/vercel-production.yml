@@ -10,12 +10,13 @@ env:
   SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
-  TESTED_APP_SHA: "4b2a3f624416baffbcd1d1b2d2dd94d1d0764d44"
+  SALON_QA_SHA: "${{ github.sha }}"
+  TESTED_APP_SHA: "a82c0b01583c5ab37e405cfec3f6767e88cabb33"
 
 jobs:
   verify-and-deploy-production:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}"
     steps:
@@ -50,7 +51,7 @@ jobs:
           test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Verify public demo customer data is synthetic
         shell: bash
@@ -178,6 +179,7 @@ jobs:
           set -euo pipefail
           npx --yes vercel@latest inspect "$PROD_URL" --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-production-inspect.txt
           grep -Eqi 'Ready' /tmp/vercel-production-inspect.txt
+          grep -q '\[fra1\]' /tmp/vercel-production-inspect.txt
           npx --yes vercel@latest alias ls --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-production-aliases.txt || true
 
       - name: Public production smoke test
@@ -203,3 +205,28 @@ jobs:
             exit 1
           fi
           echo "Public SALON production smoke checks passed."
+
+      - name: Full browser QA on deployed production
+        env:
+          QA_BASE_URL: "${{ steps.deploy.outputs.url }}"
+        run: node scripts/workspace-browser-qa.mjs
+
+      - name: Production performance sanity check
+        env:
+          QA_BASE_URL: "${{ steps.deploy.outputs.url }}"
+        run: node scripts/performance-measure.mjs
+
+      - name: Compare production navigation with immutable baseline
+        env:
+          QA_BASELINE_URL: "https://salon-fcn8mz3nv-kwinphetmanee-2069.vercel.app"
+          QA_BASE_URL: "${{ steps.deploy.outputs.url }}"
+        run: node scripts/performance-navigation.mjs
+
+      - name: Preserve exact production release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-qa-performance-${{ github.sha }}
+          path: qa-artifacts
+          if-no-files-found: ignore
+          retention-days: 30
