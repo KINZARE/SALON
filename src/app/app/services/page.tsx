@@ -2,20 +2,37 @@ import { requireAppContext } from "@/lib/auth";
 import { getWorkspaceServices } from "@/services/workspace-data";
 import { getStaff } from "@/services/app-data";
 import { formatMoney } from "@/lib/format";
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { ServiceEditor } from "@/components/workspace/service-editor";
 import { saveService } from "./actions";
 
 export default async function ServicesPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
-  const {salon,membership}=await requireAppContext();if(membership.role==="staff")return <AccessDenied/>;
-  const [items,staff,query]=await Promise.all([getWorkspaceServices(salon.id),getStaff(salon.id),searchParams]);const error=typeof query.error==="string"?query.error:null;const canManage=["owner","manager"].includes(membership.role);
-  return <><header><h1 className="text-3xl font-semibold tracking-[-0.04em]">Services</h1><p className="mt-1 text-sm text-[var(--muted)]">Duur, buffer, prijs, boekbaarheid en medewerkers.</p></header>
-    {error?<p role="alert" className="mt-5 rounded-[10px] border border-[#efc7c2] bg-[#fff5f4] p-3 text-sm text-[var(--danger)]">{error}</p>:null}
-    <div className="mt-7 divide-y divide-[var(--border)] border-y border-[var(--border)]">{items.map(item=><details key={item.id} className="group py-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-semibold">{item.name}</p><p className="mt-1 text-sm text-[var(--muted)]">{item.duration_minutes} min + {item.buffer_minutes} min buffer · {item.online_bookable?"Online":"Intern"}{!item.active?" · Inactief":""}</p></div><p className="shrink-0 text-sm font-semibold">{formatMoney(item.price_cents,item.currency)}</p></summary>{canManage?<ServiceForm item={item} staff={staff}/>:null}</details>)}{!items.length?<p className="py-8 text-sm text-[var(--muted)]">Nog geen behandelingen.</p>:null}</div>
-    {canManage?<section className="mt-10 max-w-2xl"><h2 className="text-lg font-semibold">Behandeling toevoegen</h2><ServiceForm staff={staff}/></section>:null}
-  </>
+  const {salon,membership}=await requireAppContext();
+  if(membership.role==="staff")return <AccessDenied/>;
+  const [items,staff,query]=await Promise.all([getWorkspaceServices(salon.id),getStaff(salon.id),searchParams]);
+  const error=typeof query.error==="string"?query.error:null;
+  const canManage=["owner","manager"].includes(membership.role);
+
+  return <div data-services-workspace>
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Services</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Behandelingen</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Prijs, duur, buffer, online boekbaarheid en wie de behandeling uitvoert.</p></div>
+      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[var(--muted)] ring-1 ring-[var(--border)]">{items.filter(item=>item.active).length} actief</span>
+    </header>
+    {error?<p role="alert" className="mt-5 rounded-[14px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
+
+    <div className="mt-7 grid gap-3">
+      {items.map(item=><details key={item.id} className="group overflow-hidden rounded-[22px] border border-[var(--border)] bg-white">
+        <summary className="flex cursor-pointer list-none items-center gap-4 p-4 sm:p-5">
+          <div className="min-w-0 flex-1"><div className="flex min-w-0 items-center gap-2"><p className="truncate font-semibold">{item.name}</p>{!item.active?<span className="rounded-full bg-[#efeeeb] px-2 py-0.5 text-[9px] font-semibold text-[#77736d]">Inactief</span>:null}</div><p className="mt-1 truncate text-sm text-[var(--muted)]">{item.duration_minutes} min · {item.buffer_minutes} min buffer · {item.online_bookable?"Online boekbaar":"Alleen intern"} · {item.staff_ids.length} medewerkers</p></div>
+          <p className="shrink-0 text-sm font-semibold">{formatMoney(item.price_cents,item.currency)}</p>
+          <span className="text-[var(--muted)] transition group-open:rotate-180" aria-hidden>⌄</span>
+        </summary>
+        {canManage?<div className="border-t border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:p-5"><ServiceEditor item={item} staff={staff} action={saveService}/></div>:null}
+      </details>)}
+      {!items.length?<div className="rounded-[22px] border border-dashed border-[var(--border-strong)] bg-white p-8 text-center"><p className="font-semibold">Nog geen behandelingen</p><p className="mt-1 text-sm text-[var(--muted)]">Voeg de eerste behandeling hieronder toe.</p></div>:null}
+    </div>
+
+    {canManage?<section className="mt-10 max-w-3xl"><div className="mb-4"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--muted)]">Nieuw</p><h2 className="mt-1 text-2xl font-semibold tracking-[-.04em]">Behandeling toevoegen</h2></div><ServiceEditor staff={staff} action={saveService}/></section>:null}
+  </div>;
 }
-function ServiceForm({item,staff}:{item?:Awaited<ReturnType<typeof getWorkspaceServices>>[number];staff:Awaited<ReturnType<typeof getStaff>>}){
-  return <form action={saveService} className="mt-5 grid gap-4 border-t border-[var(--border)] pt-5 sm:grid-cols-2">{item?<input type="hidden" name="id" value={item.id}/>:null}<div className="sm:col-span-2"><Field label="Naam" name="name" required maxLength={120} defaultValue={item?.name??""}/></div><Field label="Duur (min)" name="duration" type="number" min={5} max={720} defaultValue={item?.duration_minutes??60} required/><Field label="Buffer (min)" name="buffer" type="number" min={0} max={180} defaultValue={item?.buffer_minutes??0} required/><Field label="Prijs (€)" name="price" inputMode="decimal" defaultValue={item?(item.price_cents/100).toFixed(2).replace(".",","):"65,00"} required/><div className="flex items-end gap-5 pb-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={item?.active??true}/> Actief</label><label className="flex items-center gap-2 text-sm"><input type="checkbox" name="onlineBookable" defaultChecked={item?.online_bookable??true}/> Online</label></div><label className="sm:col-span-2 grid gap-1.5 text-sm font-medium"><span>Beschrijving</span><textarea name="description" maxLength={600} rows={3} defaultValue={item?.description??""} className="rounded-[11px] border border-[var(--border)] bg-white px-3.5 py-3"/></label><fieldset className="sm:col-span-2"><legend className="text-sm font-medium">Uitvoerbaar door</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{staff.map(member=><label key={member.id} className="flex min-h-11 items-center gap-3 rounded-[10px] border border-[var(--border)] px-3 text-sm"><input type="checkbox" name="staffIds" value={member.id} defaultChecked={item?.staff_ids.includes(member.id)??false}/>{member.name}</label>)}</div></fieldset><div className="sm:col-span-2"><Button variant={item?"secondary":"primary"}>{item?"Wijzigingen opslaan":"Behandeling toevoegen"}</Button></div></form>
-}
+
 function AccessDenied(){return <div><h1 className="text-3xl font-semibold">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Services worden beheerd door owner of manager.</p></div>}
