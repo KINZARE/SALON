@@ -94,7 +94,34 @@ try {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
   assert.equal(await page.locator("[data-desktop-calendar]").isVisible(), true, "Desktop calendar must remain visible on wide screens");
+  await page.locator("[data-calendar-block-action]").waitFor();
 
+  const blockHref = await page.locator("[data-calendar-block-action]").getAttribute("href");
+  assert.ok(blockHref?.includes("date="), "Calendar block action must prefill the selected date");
+  await page.goto(base + blockHref, { waitUntil: "networkidle" });
+  assert.ok((await page.getByLabel("Van").inputValue()).startsWith(new URL(base + blockHref).searchParams.get("date") ?? ""), "Block form must use the calendar date");
+
+  await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
+  const detailSeed = page.locator("[data-appointment-id]").first();
+  await detailSeed.click();
+  const detailHref = await page.locator("[data-calendar-detail] a").getAttribute("href");
+  assert.ok(detailHref, "Calendar detail must link to appointment");
+  await page.goto(base + detailHref, { waitUntil: "networkidle" });
+  await page.locator("[data-appointment-action-centre]").waitFor();
+
+  await page.goto(base + "/app/customers", { waitUntil: "networkidle" });
+  const customerHref = await page.locator("a[href^='/app/customers/']").first().getAttribute("href");
+  assert.ok(customerHref, "Customer list must expose a customer detail route");
+  await page.goto(base + customerHref, { waitUntil: "networkidle" });
+  await page.locator("[data-customer-profile]").waitFor();
+  await page.getByText("Komende afspraak", { exact: true }).waitFor();
+
+  await page.goto(base + "/app/staff", { waitUntil: "networkidle" });
+  assert.ok(await page.locator("[data-staff-editor]").count() > 0, "Staff must use focused editor surfaces");
+  await page.goto(base + "/app/services", { waitUntil: "networkidle" });
+  assert.ok(await page.locator("[data-service-editor]").count() > 0, "Services must use focused editor surfaces");
+
+  await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
   await page.getByRole("link", { name: "Volgende dag" }).click();
   await page.waitForLoadState("networkidle");
   const dragCard = page.locator("[data-appointment-id]").filter({ hasText: "Nina Hendriks" }).first();
