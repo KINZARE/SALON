@@ -50,9 +50,9 @@ test('Today loads only active staff and the selected day schedule in one tenant-
 
 test('calendar period staff filtering reaches the database and excludes detail-only columns', async t => {
   const urls = captureRequests(t);
-  await (completion.getAppointmentsForRange as (...args: string[]) => Promise<unknown>)(tenant, 'Europe/Amsterdam', '2026-10-01', '2026-11-01', 'staff');
+  await (completion.getAppointmentsForRange as (...args: string[]) => Promise<unknown>)(tenant, 'Europe/Amsterdam', '2026-10-01', '2026-11-01', tenant);
   assert.equal(urls.length, 1);
-  assert.equal(urls[0].searchParams.get('staff_id'), 'eq.staff');
+  assert.equal(urls[0].searchParams.get('staff_id'), `eq.${tenant}`);
   assert.equal(urls[0].searchParams.get('starts_at'), 'gte.2026-09-30T22:00:00.000Z');
   assert.ok(!urls[0].searchParams.get('select')?.includes('price_cents_snapshot'));
 });
@@ -114,4 +114,10 @@ test('public eligible staff loads in one query with tenant and active restrictio
   assert.equal(urls[0].searchParams.get('salon_id'), `eq.${tenant}`);
   assert.equal(urls[0].searchParams.get('active'), 'eq.true');
   assert.equal(urls[0].searchParams.get('staff_services.service_id'), 'eq.service');
+});
+
+test('a malformed calendar staff filter produces an empty result without a UUID database error', async t => {
+  const urls = captureRequests(t);
+  assert.deepEqual(await completion.getAppointmentsForRange(tenant, 'Europe/Amsterdam', '2026-10-01', '2026-11-01', 'invalid'), []);
+  assert.equal(urls.length, 0);
 });

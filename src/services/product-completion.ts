@@ -1,8 +1,10 @@
 import "server-only";
 import { fromZonedTime } from "date-fns-tz";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isUuid } from "@/lib/validation";
 
 export async function getAppointmentsForRange(salonId:string,timezone:string,fromDate:string,toDateExclusive:string,staffId?:string|null){
+  if(staffId&&!isUuid(staffId))return [];
   const db=createAdminSupabaseClient();
   const from=fromZonedTime(`${fromDate}T00:00:00`,timezone);
   const to=fromZonedTime(`${toDateExclusive}T00:00:00`,timezone);

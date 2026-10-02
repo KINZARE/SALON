@@ -215,6 +215,11 @@ jobs:
         env:
           QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
         run: node scripts/performance-measure.mjs
+      - name: Compare actual Today to Calendar navigation
+        env:
+          QA_BASELINE_URL: https://salon-gamma-steel.vercel.app
+          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+        run: node scripts/performance-navigation.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
