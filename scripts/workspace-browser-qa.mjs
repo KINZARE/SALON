@@ -133,7 +133,7 @@ try {
 
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
   const detailSeed = page.locator("[data-appointment-id]").first();
-  await detailSeed.click();
+  if (await detailSeed.getAttribute("aria-pressed") !== "true") await detailSeed.click();
   const detailHref = await page.locator("[data-calendar-detail] a").getAttribute("href");
   assert.ok(detailHref, "Calendar detail must link to appointment");
   await page.goto(base + detailHref, { waitUntil: "networkidle" });
