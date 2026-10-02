@@ -1,0 +1,34 @@
+name: performance-baseline
+on:
+  push:
+    branches: [performance/salon-fast-clean]
+    paths: [scripts/performance-measure.mjs, .github/workflows/performance-baseline.yml]
+jobs:
+  measure-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Read production infrastructure
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx --yes vercel@latest project inspect salon --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest inspect https://salon-gamma-steel.vercel.app --token="$VERCEL_TOKEN"
+      - name: Measure unchanged live production
+        env:
+          QA_BASE_URL: https://salon-gamma-steel.vercel.app
+          SALON_QA_SHA: ef4c5369117de1742845e219e16626ff9f278ce6
+        run: node scripts/performance-measure.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: salon-production-performance-before
+          path: qa-artifacts/performance
+          retention-days: 30
