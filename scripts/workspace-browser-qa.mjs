@@ -84,7 +84,7 @@ try {
   await page.getByRole("link", { name: /Nieuwe afspraak/ }).waitFor();
   const cards = page.locator("[data-appointment-id]");
   assert.ok(await cards.count() > 0, "Calendar must render appointment cards from the real database");
-  await cards.first().click();
+  if (await cards.first().getAttribute("aria-pressed") !== "true") await cards.first().click();
   await page.locator("[data-calendar-detail]").waitFor();
   assert.equal(await cards.first().getAttribute("aria-pressed"), "true", "Selected appointment must be reflected in the detail panel");
   assert.equal(await page.locator("[data-drop-staff]").count(), 4, "Calendar should expose one drop target per active staff member, not one per time slot");
