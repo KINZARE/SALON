@@ -60,11 +60,12 @@ const toneClasses: Record<AppointmentTone, string> = {
 };
 
 const statusClasses: Record<StatusTone, string> = {
-  info: "bg-[#eaf2ff] text-[#285daf]",
-  warning: "bg-[#fff4d8] text-[#8a6517]",
-  success: "bg-[#e6f7ed] text-[#257244]",
-  danger: "bg-[#ffedec] text-[#b13c35]",
-  muted: "bg-[#f1f3f6] text-[#677489]",
+  info: "bg-[#e8f0f2] text-[#48676f]",
+  warning: "bg-[#f7ecd4] text-[#7a5a1f]",
+  success: "bg-[#e5eee7] text-[#42654e]",
+  complete: "bg-[#ebe9e5] text-[#4b4945]",
+  danger: "bg-[#f8e7e4] text-[#9b4338]",
+  muted: "bg-[#efeeeb] text-[#77736d]",
 };
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
