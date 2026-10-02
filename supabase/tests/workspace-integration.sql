@@ -61,7 +61,7 @@ begin
   perform set_config('request.jwt.claims',jsonb_build_object('sub',stranger,'role','authenticated')::text,true);
   if exists(select 1 from public.appointments) or exists(select 1 from public.customers) then raise exception 'FAIL foreign tenant data';end if;
   execute 'reset role';
-  if has_function_privilege('anon','public.workspace_preview_read(uuid,jsonb)','EXECUTE') or has_function_privilege('authenticated','public.workspace_preview_write(uuid,integer,jsonb)','EXECUTE') then raise exception 'FAIL preview privilege';end if;
+  if to_regprocedure('public.workspace_preview_read(uuid,jsonb)') is not null or to_regprocedure('public.workspace_preview_write(uuid,integer,jsonb)') is not null then raise exception 'FAIL legacy preview functions still exist';end if;
   if has_function_privilege('anon','public.claim_notification_jobs(integer)','EXECUTE') or has_function_privilege('authenticated','public.claim_notification_jobs(integer)','EXECUTE') or not has_function_privilege('service_role','public.claim_notification_jobs(integer)','EXECUTE') then raise exception 'FAIL notification claim privilege';end if;
   if has_table_privilege('anon','public.appointment_self_service_tokens','SELECT') or has_table_privilege('authenticated','public.appointment_self_service_tokens','SELECT') then raise exception 'FAIL self service direct access';end if;
   if has_table_privilege('anon','public.smart_booking_links','SELECT') or has_table_privilege('authenticated','public.smart_booking_links','SELECT') then raise exception 'FAIL smart link direct access';end if;
