@@ -28,12 +28,183 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify this release changes no application code
+      - name: Verify this release changes no application runtime code
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin "$TESTED_APP_SHA" --depth=1 || true
-          CHANGED="$(git diff --name-only "$TESTED_APP_SHA" HEAD | grep -v '^\.github/workflows/vercel-production\.yml$' || true)"
+          CHANGED="$(git diff --name-only "$TESTED_APP_SHA" HEAD | grep -Ev '^(\.github/workflows/vercel-production\.yml|scripts/workspace-browser-qa\.mjs)
+          if [ -n "$CHANGED" ]; then
+            echo "Unexpected application/runtime files changed since tested app SHA:"
+            echo "$CHANGED"
+            exit 1
+          fi
+          echo "Application runtime tree matches tested release $TESTED_APP_SHA; only release/QA harness files differ."
+
+      - name: Require production deployment secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify public demo customer data is synthetic
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+
+          const db = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { persistSession: false, autoRefreshToken: false } },
+          );
+          const { data: salon, error: salonError } = await db
+            .from("salons")
+            .select("id")
+            .eq("slug", "salon")
+            .single();
+          if (salonError) throw salonError;
+
+          const { data: customers, error: customerError } = await db
+            .from("customers")
+            .select("email,phone")
+            .eq("salon_id", salon.id);
+          if (customerError) throw customerError;
+
+          const invalid = (customers ?? []).filter((customer) => {
+            const email = customer.email?.trim().toLowerCase() ?? "";
+            const phone = customer.phone?.trim() ?? "";
+            const emailIsSynthetic =
+              !email ||
+              email.endsWith("@example.com") ||
+              email.endsWith("@salon-demo.nl");
+            const phoneIsSynthetic =
+              !phone || /^\+31 6 0000 \d{4}$/.test(phone);
+            return !emailIsSynthetic || !phoneIsSynthetic;
+          });
+
+          if (invalid.length) {
+            throw new Error(
+              `Production demo privacy gate failed: ${invalid.length} customer record(s) contain non-synthetic contact data.`,
+            );
+          }
+
+          console.log(
+            `Production demo privacy gate passed for ${customers?.length ?? 0} customer records.`,
+          );
+          NODE
+
+      - name: Tests
+        run: npm test
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+      - name: Install Chromium QA runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Start verified production server locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm run start -- -H 127.0.0.1 > /tmp/salon-prod-server.log 2>&1 &
+          for i in {1..40}; do
+            if curl --silent --fail http://127.0.0.1:3000/app/today >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/salon-prod-server.log
+          exit 1
+
+      - name: Full workspace browser QA before production
+        env:
+          QA_BASE_URL: "http://127.0.0.1:3000"
+        run: node scripts/workspace-browser-qa.mjs
+
+      - name: Ensure and link Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! npx --yes vercel@latest project inspect salon --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
+            npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
+          fi
+          npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest project update salon --framework nextjs --auto-detect output-directory --token="$VERCEL_TOKEN" --non-interactive --yes
+
+      - name: Deploy exact release to Vercel Production
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(npx --yes vercel@latest deploy \
+            --prod \
+            --yes \
+            --project salon \
+            --token="$VERCEL_TOKEN" \
+            --meta salonProductionSha="${{ github.sha }}" \
+            --meta salonTestedAppSha="$TESTED_APP_SHA" \
+            --build-env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+            --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            --build-env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+            --env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+            --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "### SALON Production" >> "$GITHUB_STEP_SUMMARY"
+          echo "Main SHA: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tested app SHA: $TESTED_APP_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployment: $URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify production deployment READY and aliases
+        shell: bash
+        env:
+          PROD_URL: "${{ steps.deploy.outputs.url }}"
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest inspect "$PROD_URL" --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-production-inspect.txt
+          grep -Eqi 'Ready' /tmp/vercel-production-inspect.txt
+          npx --yes vercel@latest alias ls --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-production-aliases.txt || true
+
+      - name: Public production smoke test
+        shell: bash
+        env:
+          PROD_URL: "${{ steps.deploy.outputs.url }}"
+        run: |
+          set -euo pipefail
+          ROOT_RESULT="$(curl --silent --show-error --location --output /tmp/prod-root.html --write-out '%{http_code}|%{url_effective}' "$PROD_URL/")"
+          TODAY_RESULT="$(curl --silent --show-error --location --output /tmp/prod-today.html --write-out '%{http_code}|%{url_effective}' "$PROD_URL/app/today")"
+          ROOT_CODE="${ROOT_RESULT%%|*}"
+          TODAY_CODE="${TODAY_RESULT%%|*}"
+          ROOT_URL="${ROOT_RESULT#*|}"
+          TODAY_URL="${TODAY_RESULT#*|}"
+          echo "root=$ROOT_RESULT today=$TODAY_RESULT"
+          test "$ROOT_CODE" = "200"
+          test "$TODAY_CODE" = "200"
+          echo "$ROOT_URL" | grep -Eqi '/app/today([?#].*)?$'
+          echo "$TODAY_URL" | grep -Eqi '/app/today([?#].*)?$'
+          grep -qi "SALON" /tmp/prod-today.html
+          if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode|Baan Thai Wellness" /tmp/prod-root.html /tmp/prod-today.html; then
+            echo "Unexpected login/demo/protection content detected in production"
+            exit 1
+          fi
+          echo "Public SALON production smoke checks passed."
+ || true)"
           if [ -n "$CHANGED" ]; then
             echo "Unexpected files changed since tested app SHA:"
             echo "$CHANGED"
