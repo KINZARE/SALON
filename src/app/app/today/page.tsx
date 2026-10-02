@@ -9,7 +9,7 @@ import { QuickActions } from "@/components/workspace/quick-actions";
 
 export default async function TodayPage() {
   const { salon, membership } = await requireAppContext();
-  const data = await getTodayWorkspace(salon.id, salon.timezone);
+  const data = await getTodayWorkspace(salon.id, salon.timezone, { includeWaitlist: membership.role !== "staff" });
   const canManage = ["owner","manager"].includes(membership.role);
   const dateLabel = new Intl.DateTimeFormat("nl-NL",{weekday:"long",day:"numeric",month:"long",timeZone:salon.timezone}).format(new Date());
 
