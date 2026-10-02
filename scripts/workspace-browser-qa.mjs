@@ -71,6 +71,7 @@ try {
   ];
   for (const path of workspacePaths) await gotoWorkspace(path);
 
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Calendar" }).waitFor();
   await page.getByText("Teamagenda", { exact: true }).waitFor();
