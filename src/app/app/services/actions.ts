@@ -24,12 +24,8 @@ export async function saveService(formData:FormData){
   const staffIds=formData.getAll("staffIds").map(String);
   if(!name||name.length>120||!Number.isInteger(duration)||duration<5||duration>720||!Number.isInteger(buffer)||buffer<0||buffer>180||priceCents===null)redirect("/app/services?error=Controleer+naam,+duur,+buffer+en+prijs.");
   let policy;try{policy=normalizePaymentPolicy({mode:paymentMode,depositCents,priceCents})}catch{redirect("/app/services?error=Controleer+de+betaalregel+en+aanbetaling.")}
-  const db=createAdminSupabaseClient();
-  if(categoryId){const category=await db.from("service_categories").select("id").eq("salon_id",salon.id).eq("id",categoryId).maybeSingle();if(category.error||!category.data)redirect("/app/services?error=Deze+categorie+bestaat+niet+meer.")}
   try{
-    const serviceId=await saveWorkspaceService(salon.id,{id:id||undefined,name,description,duration_minutes:duration,buffer_minutes:buffer,price_cents:priceCents,active:formData.get("active")==="on",online_bookable:formData.get("onlineBookable")==="on",staff_ids:staffIds,payment_mode:policy.mode,deposit_cents:policy.depositCents});
-    const assignment=await db.from("services").update({category_id:categoryId||null}).eq("salon_id",salon.id).eq("id",serviceId);
-    if(assignment.error)throw assignment.error;
+    await saveWorkspaceService(salon.id,{id:id||undefined,name,description,category_id:categoryId||null,duration_minutes:duration,buffer_minutes:buffer,price_cents:priceCents,active:formData.get("active")==="on",online_bookable:formData.get("onlineBookable")==="on",staff_ids:staffIds,payment_mode:policy.mode,deposit_cents:policy.depositCents});
   }catch(error){console.error("service_save_failed",{error});redirect("/app/services?error=Behandeling+kon+niet+worden+opgeslagen.")}
   revalidatePath("/app/services");revalidatePath("/app/calendar");revalidatePath(`/book/${salon.slug}`);redirect("/app/services?saved=1");
 }
