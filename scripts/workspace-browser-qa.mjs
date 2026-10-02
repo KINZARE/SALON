@@ -240,6 +240,11 @@ try {
   await page.goto(base + "/app/reports?preset=last30", { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Rapportage" }).waitFor();
   await page.getByRole("link", { name: "CSV exporteren" }).waitFor();
+  const csv = await context.request.get(base + "/api/internal/reports/export?preset=last30");
+  assert.equal(csv.status(), 200);
+  assert.match(csv.headers()["content-type"], /text\/csv/);
+  assert.equal(csv.headers()["cache-control"], "no-store");
+  assert.match(await csv.text(), /Afspraak ID,Datum,Tijd,Klant,Behandeling/);
 
   await page.goto(base + "/app/intake", { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Formulieren & toestemming" }).waitFor();
@@ -255,6 +260,46 @@ try {
   await page.getByText("Online afspraak maken").waitFor();
   await page.getByText("Knippen & stylen", { exact: true }).first().waitFor();
   await assertNoDemoOrLoginContent();
+  console.log("QA_STAGE public-booking-selection");
+  await page.getByRole("button", { name: /Knippen & stylen/ }).first().click();
+  await page.getByRole("heading", { name: /Heb je een voorkeur\?|Kies een tijd/ }).waitFor();
+  if (await page.getByRole("heading", { name: "Heb je een voorkeur?", exact: true }).count()) {
+    assert.ok(await page.getByRole("button").count() > 2, "Service must retain its eligible staff choices");
+    await page.getByRole("button", { name: /Geen voorkeur/ }).click();
+  }
+  await page.getByRole("heading", { name: "Kies een tijd", exact: true }).waitFor();
+  let available = false;
+  const localToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  for (let offset = 1; offset <= 7 && !available; offset++) {
+    const date = new Date(Date.parse(`${localToday}T12:00:00Z`) + offset * 86400000);
+    const label = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", timeZone: "UTC" }).format(date);
+    const responsePromise = page.waitForResponse(response => response.url().includes("/api/public/salon/availability?") && new URL(response.url()).searchParams.get("date") === date.toISOString().slice(0, 10));
+    await page.getByRole("button").filter({ has: page.getByText(label, { exact: true }) }).click();
+    const response = await responsePromise;
+    assert.equal(response.status(), 200, "Real public availability must succeed");
+    const payload = await response.json();
+    assert.ok(!JSON.stringify(payload).includes("customer_name_snapshot"), "Public availability must not expose appointment customer data");
+    if (payload.slots?.length) {
+      const time = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }).format(new Date(payload.slots[0].start));
+      await page.getByRole("button", { name: time, exact: true }).click();
+      await page.getByRole("button", { name: "Verder", exact: true }).click();
+      await page.getByRole("heading", { name: "Je gegevens", exact: true }).waitFor();
+      for (const label of ["Naam", "Telefoon", "E-mail"]) await page.getByLabel(label, { exact: true }).waitFor();
+      await page.getByLabel("Naam", { exact: true }).focus();
+      await page.keyboard.press("Tab");
+      assert.equal(await page.getByLabel("Telefoon", { exact: true }).evaluate(element => element === document.activeElement), true, "Booking fields must remain keyboard reachable");
+      available = true;
+    }
+  }
+  assert.ok(available, "At least one real slot must reach the customer form in the coming week");
+
+  const rejectedBooking = await context.request.post(base + "/api/public/salon/book", { data: {} });
+  assert.equal(rejectedBooking.status(), 400, "Malformed booking must not mutate the database");
+  for (const path of ["/manage/invalid", "/book-link/invalid", "/intake/invalid"]) {
+    assert.equal((await context.request.get(base + path)).status(), 404, `${path} must deny invalid secure links`);
+  }
+  const worker = await context.request.get(base + "/api/cron/notifications");
+  assert.ok([401, 503].includes(worker.status()), "Unauthenticated request must not claim notification jobs");
 
   await page.goto(base + "/embed/salon", { waitUntil: "networkidle" });
   await page.getByText("Online afspraak maken").waitFor();
@@ -286,7 +331,7 @@ try {
     mode: "real-no-login",
     workspacePaths,
     widths,
-    flows: ["root-direct-workspace", "today-command-centre", "calendar-redesign", "calendar-optimistic-drag", "calendar-conflict-rollback", "mobile-calendar", "appointment-detail-panel", "customer-profile", "staff-service-management", "smart-booking-links-workspace", "waitlist-workspace", "auth-routes-bypassed", "real-settings-persistence", "public-booking-real-salon", "no-legacy-demo-content", "responsive-workspace"],
+    flows: ["root-direct-workspace", "today-command-centre", "calendar-redesign", "calendar-optimistic-drag", "calendar-conflict-rollback", "mobile-calendar", "appointment-detail-panel", "customer-profile", "staff-service-management", "smart-booking-links-workspace", "waitlist-workspace", "auth-routes-bypassed", "real-settings-persistence", "reports-csv", "public-booking-real-salon", "public-booking-staff-slot-customer-form", "booking-keyboard-focus", "invalid-booking-and-token-denial", "notification-worker-denial", "no-legacy-demo-content", "responsive-workspace"],
     runtimeErrors,
   };
   await fs.writeFile("qa-artifacts/result.json", JSON.stringify(result, null, 2));

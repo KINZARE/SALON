@@ -45,11 +45,19 @@ export async function getPublicServices(salonId:string):Promise<PublicService[]>
   }).sort((a,b)=>a.categorySort-b.categorySort||(a.categoryName??"").localeCompare(b.categoryName??"")||a.name.localeCompare(b.name));
 }
 
-export async function getPublicStaffForService(salonId:string,serviceId:string):Promise<PublicStaff[]>{
+export async function getPublicStaffByService(salonId:string,serviceIds:string[]):Promise<Record<string,PublicStaff[]>>{
+  const byService:Record<string,PublicStaff[]>=Object.fromEntries([...new Set(serviceIds)].map(id=>[id,[]]));
+  if(!serviceIds.length)return byService;
   const db=createAdminSupabaseClient();
   const {data,error}=await db.from("staff").select("id,name,staff_services!staff_services_salon_id_staff_id_fkey!inner(service_id)")
-    .eq("salon_id",salonId).eq("active",true).eq("staff_services.salon_id",salonId).eq("staff_services.service_id",serviceId).order("name");
-  if(error)throw error;return(data??[]).map(row=>({id:row.id,name:row.name}));
+    .eq("salon_id",salonId).eq("active",true).eq("staff_services.salon_id",salonId).in("staff_services.service_id",serviceIds).order("name");
+  if(error)throw error;
+  for(const row of data??[])for(const link of row.staff_services)byService[link.service_id]?.push({id:row.id,name:row.name});
+  return byService;
+}
+
+export async function getPublicStaffForService(salonId:string,serviceId:string):Promise<PublicStaff[]>{
+  return(await getPublicStaffByService(salonId,[serviceId]))[serviceId]??[];
 }
 
 export async function getAvailableSlotsForDate(args:{salonSlug:string;serviceId:string;date:string;staffId?:string|null;source?:"public"|"internal"}):Promise<PublicAvailability>{

@@ -15,7 +15,7 @@ const { getTodayWorkspace } = await load('src/services/today-workspace.ts');
 const appData = await load('src/services/app-data.ts');
 const workspace = await load('src/services/workspace-data.ts');
 const completion = await load('src/services/product-completion.ts');
-const { getPublicSalon, getPublicServices, getPublicStaffForService, getAvailableSlotsForDate } = await load('src/services/public-booking.ts');
+const { getPublicSalon, getPublicServices, getPublicStaffForService, getPublicStaffByService, getAvailableSlotsForDate } = await load('src/services/public-booking.ts');
 const { formatInTimeZone, fromZonedTime } = await import('date-fns-tz');
 const realFetch = globalThis.fetch;
 let requests = [];
@@ -61,6 +61,14 @@ await measure('Calendar Month', async () => {
   await Promise.all([(completion.getMonthAppointments ?? completion.getAppointmentsForRange)(salon.id, salon.timezone, month[0], shiftCalendarDate(month.at(-1), 1)), appData.getOpeningHours(salon.id), completion.getOpeningExceptions(salon.id, month[0], month.at(-1))]);
 });
 await measure('Public booking metadata', async () => { const s = await getPublicSalon('salon'); await getPublicServices(s.id); });
+await measure('Public booking full page', async () => {
+  const s = await getPublicSalon('salon');
+  const list = await getPublicServices(s.id);
+  if(s.allowStaffChoice){
+    if(getPublicStaffByService)await getPublicStaffByService(s.id,list.map(item=>item.id));
+    else await Promise.all(list.map(item=>getPublicStaffForService(s.id,item.id)));
+  }
+});
 const services = await getPublicServices(salon.id);
 if (services.length) {
   await measure('Public eligible staff', () => getPublicStaffForService(salon.id, services[0].id));

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { BookingFlow } from "@/components/booking/booking-flow";
-import { getPublicSalon, getPublicServices, getPublicStaffForService } from "@/services/public-booking";
+import { getPublicSalon, getPublicServices, getPublicStaffByService } from "@/services/public-booking";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +9,9 @@ export default async function BookingPage({ params }: { params: Promise<{ salonS
   const salon = await getPublicSalon(salonSlug);
   if (!salon) notFound();
   const services = await getPublicServices(salon.id);
-  const staffEntries = salon.allowStaffChoice
-    ? await Promise.all(services.map(async (service) => [service.id, await getPublicStaffForService(salon.id, service.id)] as const))
-    : services.map((service) => [service.id, []] as const);
-  const staffByService = Object.fromEntries(staffEntries);
+  const staffByService = salon.allowStaffChoice
+    ? await getPublicStaffByService(salon.id, services.map(service=>service.id))
+    : {};
 
   return (
     <main className="min-h-screen bg-white sm:bg-[var(--background)]">

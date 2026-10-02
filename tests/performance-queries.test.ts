@@ -113,7 +113,7 @@ test('public eligible staff loads in one query with tenant and active restrictio
   assert.deepEqual(staff, [{ id: 'staff', name: 'A' }]);
   assert.equal(urls[0].searchParams.get('salon_id'), `eq.${tenant}`);
   assert.equal(urls[0].searchParams.get('active'), 'eq.true');
-  assert.equal(urls[0].searchParams.get('staff_services.service_id'), 'eq.service');
+  assert.equal(urls[0].searchParams.get('staff_services.service_id'), 'in.(service)');
 });
 
 test('a malformed calendar staff filter produces an empty result without a UUID database error', async t => {
@@ -136,4 +136,21 @@ test('live availability fetches service, booking policy and eligible staff in pa
   const date = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   await publicBooking.getAvailableSlotsForDate({ salonSlug: 'salon', serviceId: tenant, date });
   assert.equal(maximum, 3, 'Three independent reads must overlap');
+});
+
+test('booking page loads all service-to-staff mappings with a constant one-query cost', async t => {
+  const urls = captureRequests(t, [
+    { id: 'a', name: 'A', staff_services: [{ service_id: 'one' }, { service_id: 'two' }] },
+    { id: 'b', name: 'B', staff_services: [{ service_id: 'two' }] },
+  ]);
+  const loader = (publicBooking as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>).getPublicStaffByService;
+  assert.equal(typeof loader, 'function');
+  assert.deepEqual(await loader(tenant, ['one', 'two', 'three']), {
+    one: [{ id: 'a', name: 'A' }], two: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], three: [],
+  });
+  assert.equal(urls.length, 1);
+  assert.equal(urls[0].searchParams.get('salon_id'), `eq.${tenant}`);
+  assert.equal(urls[0].searchParams.get('staff_services.salon_id'), `eq.${tenant}`);
+  assert.equal(urls[0].searchParams.get('active'), 'eq.true');
+  assert.equal(urls[0].searchParams.get('staff_services.service_id'), 'in.(one,two,three)');
 });
