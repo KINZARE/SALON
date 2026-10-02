@@ -2,13 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { WorkspaceIcon, type WorkspaceIconName } from "@/components/ui/workspace-icon";
 
 type Role = "owner" | "manager" | "staff";
 type NavItem = readonly [string, string, WorkspaceIconName];
+type Connection = { saveData?: boolean; effectiveType?: string; addEventListener?: (event:string,listener:()=>void)=>void; removeEventListener?: (event:string,listener:()=>void)=>void };
+const connection = () => (navigator as Navigator & { connection?: Connection }).connection;
+const canPrefetchCalendar = () => !connection()?.saveData && !["slow-2g","2g","3g"].includes(connection()?.effectiveType??"");
+function subscribeConnection(listener:()=>void) {
+  const network=connection();
+  network?.addEventListener?.("change",listener);
+  return()=>network?.removeEventListener?.("change",listener);
+}
+const serverPrefetch = () => false;
 
 export function AppNav({ role }: { role: Role }) {
   const pathname = usePathname();
+  // Only the primary Calendar destination gets a complete prefetch. Mutations
+  // already invalidate /app/calendar or refresh the router; booking stays live.
+  const prefetchCalendar=useSyncExternalStore(subscribeConnection,canPrefetchCalendar,serverPrefetch);
   const primary: readonly NavItem[] = role === "staff"
     ? [["Today", "/app/today", "today"], ["Calendar", "/app/calendar", "calendar"], ["More", "/app/more", "more"]]
     : [["Today", "/app/today", "today"], ["Calendar", "/app/calendar", "calendar"], ["Customers", "/app/customers", "customers"], ["More", "/app/more", "more"]];
@@ -26,6 +39,7 @@ export function AppNav({ role }: { role: Role }) {
       <Link
         key={href}
         href={href}
+        prefetch={label==="Calendar"&&prefetchCalendar?true:undefined}
         className={`group flex min-h-11 items-center gap-3 rounded-[14px] px-3.5 text-sm font-medium transition-colors ${active ? "bg-[var(--ink)] text-white" : "text-[var(--muted)] hover:bg-white hover:text-[var(--ink)]"}`}
       >
         <span className={`grid h-8 w-8 place-items-center rounded-[11px] transition-colors ${active ? "bg-[var(--primary)] text-[var(--ink)]" : "bg-white text-[var(--muted)] ring-1 ring-[var(--border)] group-hover:bg-[var(--secondary-soft)] group-hover:text-[var(--ink)]"}`}>
@@ -75,6 +89,7 @@ export function AppNav({ role }: { role: Role }) {
               <Link
                 key={href}
                 href={href}
+                prefetch={label==="Calendar"&&prefetchCalendar?true:undefined}
                 aria-label={label}
                 className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[18px] px-1 text-[11px] font-medium transition-colors ${active ? "bg-[var(--primary)] text-[var(--ink)]" : "text-[var(--muted)]"}`}
               >
