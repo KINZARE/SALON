@@ -4,6 +4,7 @@ import { requireAppContext } from "@/lib/auth";
 import { getAppointmentsForDate, getBlocks, getOpeningHours, getStaff } from "@/services/app-data";
 import { getCalendarBreaks } from "@/services/workspace-data";
 import { CalendarBoard } from "@/components/workspace/calendar-board";
+import { MobileCalendarTimeline } from "@/components/workspace/mobile-calendar-timeline";
 
 const minutes=(value:string|null|undefined,fallback:number)=>{if(!value)return fallback;const [hour,minute]=value.slice(0,5).split(":").map(Number);return hour*60+minute;};
 
@@ -31,18 +32,18 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   return <>
     <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <div className="flex items-center gap-2 text-xs font-medium text-[var(--primary)]"><span className="h-2 w-2 rounded-full bg-[var(--primary)]"/>Teamagenda</div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-[34px]">Calendar</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">Afspraken, medewerkers, pauzes en geblokkeerde tijd in één planning.</p>
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-[var(--accent)]"><span className="h-2 w-2 rounded-full bg-[var(--accent)]"/>Teamagenda</div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Calendar</h1>
+        <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Afspraken, medewerkers, pauzes en geblokkeerde tijd in één rustige planning.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex h-11 items-center rounded-xl border border-[var(--border)] bg-white shadow-sm">
-          <Link aria-label="Vorige dag" href={`/app/calendar?date=${previousDate}`} className="grid h-full w-10 place-items-center border-r border-[var(--border)] text-lg text-[#60708a] hover:bg-[#f8faff]">‹</Link>
+        <div className="flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white">
+          <Link aria-label="Vorige dag" href={`/app/calendar?date=${previousDate}`} className="grid h-full w-10 place-items-center border-r border-[var(--border)] text-lg text-[var(--muted)] hover:bg-[var(--surface-soft)]">‹</Link>
           <div className="min-w-[180px] px-4 text-center text-sm font-semibold capitalize">{selectedLabel}</div>
-          <Link aria-label="Volgende dag" href={`/app/calendar?date=${nextDate}`} className="grid h-full w-10 place-items-center border-l border-[var(--border)] text-lg text-[#60708a] hover:bg-[#f8faff]">›</Link>
+          <Link aria-label="Volgende dag" href={`/app/calendar?date=${nextDate}`} className="grid h-full w-10 place-items-center border-l border-[var(--border)] text-lg text-[var(--muted)] hover:bg-[var(--surface-soft)]">›</Link>
         </div>
-        {date!==today?<Link href="/app/calendar" className="inline-flex h-11 items-center rounded-xl border border-[var(--border)] bg-white px-3.5 text-sm font-medium text-[#52627b] shadow-sm hover:bg-[#f8faff]">Vandaag</Link>:null}
-        {canManage?<Link href="/app/calendar/new" className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(37,99,235,.2)] hover:bg-[var(--primary-hover)]"><span className="text-lg leading-none">＋</span>Nieuwe afspraak</Link>:null}
+        {date!==today?<Link href="/app/calendar" className="inline-flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-soft)]">Vandaag</Link>:null}
+        {canManage?<Link href="/app/calendar/new" className="inline-flex h-11 items-center gap-2 rounded-[14px] bg-[var(--ink)] px-4 text-sm font-semibold text-white hover:bg-[#24231f]"><span className="text-lg leading-none">＋</span>Nieuwe afspraak</Link>:null}
       </div>
     </header>
 
@@ -51,16 +52,16 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         const d=new Date(`${value}T12:00:00Z`);
         const active=value===date;
         const isToday=value===today;
-        return <Link key={value} href={`/app/calendar?date=${value}`} className={`min-w-[112px] rounded-xl border px-3 py-2.5 transition ${active?"border-[#bfd3ff] bg-[#edf4ff] shadow-sm":"border-[var(--border)] bg-white hover:border-[#cad5e5] hover:bg-[#fbfcfe]"}`}>
-          <div className="flex items-center justify-between gap-2">
-            <span className={`text-[11px] font-semibold uppercase tracking-[.08em] ${active?"text-[var(--primary)]":"text-[var(--muted)]"}`}>{new Intl.DateTimeFormat("nl-NL",{weekday:"short",timeZone:"UTC"}).format(d)}</span>
-            {isToday?<span className="rounded-full bg-[var(--primary)] px-1.5 py-0.5 text-[9px] font-semibold text-white">NU</span>:null}
-          </div>
+        return <Link key={value} href={`/app/calendar?date=${value}`} className={`min-w-[112px] rounded-[14px] border px-3 py-2.5 transition ${active?"border-[#dec2b0] bg-[var(--primary-soft)]":"border-[var(--border)] bg-white hover:bg-[var(--surface-soft)]"}`}>
+          <div className="flex items-center justify-between gap-2"><span className={`text-[11px] font-semibold uppercase tracking-[.08em] ${active?"text-[var(--accent-dark)]":"text-[var(--muted)]"}`}>{new Intl.DateTimeFormat("nl-NL",{weekday:"short",timeZone:"UTC"}).format(d)}</span>{isToday?<span className="rounded-full bg-[var(--ink)] px-1.5 py-0.5 text-[9px] font-semibold text-white">NU</span>:null}</div>
           <span className="mt-1 block text-sm font-semibold">{new Intl.DateTimeFormat("nl-NL",{day:"numeric",month:"short",timeZone:"UTC"}).format(d)}</span>
         </Link>;
       })}
     </div>
 
-    <CalendarBoard date={date} timezone={salon.timezone} appointments={appointments} staff={staff} blocks={blocks} breaks={breaks} canManage={canManage} startMinute={startMinute} endMinute={endMinute}/>
+    <MobileCalendarTimeline date={date} timezone={salon.timezone} appointments={appointments} staff={staff} blocks={blocks} breaks={breaks} canManage={canManage}/>
+    <div data-desktop-calendar className="hidden md:block">
+      <CalendarBoard date={date} timezone={salon.timezone} appointments={appointments} staff={staff} blocks={blocks} breaks={breaks} canManage={canManage} startMinute={startMinute} endMinute={endMinute}/>
+    </div>
   </>;
 }

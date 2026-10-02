@@ -18,7 +18,8 @@ import {
 } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/format";
-import { getAppointmentTone, getStatusMeta, type AppointmentTone, type StatusTone } from "@/lib/calendar-ui";
+import { getAppointmentVisual, getStatusMeta, type StatusTone } from "@/lib/calendar-ui";
+import { getStaffIdentity, type StaffTone } from "@/lib/staff-identity";
 import { getDraggedTargetMinute, shiftAppointmentTimes } from "@/domain/calendar-drag";
 
 type Appointment = {
@@ -47,16 +48,12 @@ const slotMinutes = 15;
 const pad = (value: number) => String(value).padStart(2, "0");
 const minuteLabel = (minute: number) => `${pad(Math.floor(minute / 60))}:${pad(minute % 60)}`;
 
-const toneClasses: Record<AppointmentTone, string> = {
-  blue: "border-[#9bc8f8] bg-[#eaf5ff] text-[#214c74]",
-  violet: "border-[#c9b6f7] bg-[#f1edff] text-[#514278]",
-  rose: "border-[#f6adc6] bg-[#fff0f5] text-[#7b3851]",
-  amber: "border-[#f1ce79] bg-[#fff8dd] text-[#6e5720]",
-  mint: "border-[#9fddba] bg-[#eaf9f0] text-[#2d6545]",
-  sky: "border-[#9fdbe9] bg-[#eaf9fd] text-[#2b6070]",
-  success: "border-[#9fddba] bg-[#eaf9f0] text-[#2d6545]",
-  danger: "border-[#f6b0ad] bg-[#fff0ef] text-[#8c3430]",
-  muted: "border-[#d8dee7] bg-[#f4f6f8] text-[#68758a]",
+const railClasses: Record<StaffTone, string> = {
+  clay: "border-l-[#c57747]",
+  sage: "border-l-[#75917d]",
+  sand: "border-l-[#b79761]",
+  sky: "border-l-[#7797a0]",
+  lilac: "border-l-[#9887a4]",
 };
 
 const statusClasses: Record<StatusTone, string> = {
@@ -85,15 +82,19 @@ function AppointmentVisual({ item, timezone, selected=false, overlay=false }: { 
   const start = localParts(item.starts_at, timezone).time;
   const end = localParts(item.service_ends_at, timezone).time;
   const customerName = item.customer?.name ?? item.customer_name_snapshot;
-  const tone=getAppointmentTone(item.service_name_snapshot,item.status);
+  const visual = getAppointmentVisual(item.status, item.staff_id);
+  const status = getStatusMeta(item.status);
+  const terminal = ["cancelled", "no_show", "completed"].includes(item.status);
 
-  return <div className={`h-full w-full overflow-hidden rounded-[9px] border-l-[3px] px-2.5 py-2 pr-8 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)] ${toneClasses[tone]} ${selected ? "ring-2 ring-[#2563eb]/25" : ""} ${overlay ? "min-h-[56px] w-[190px] rotate-[1deg] shadow-xl ring-1 ring-black/5" : ""}`}>
-    <span className="block text-[10px] font-medium opacity-75">{start}–{end}</span>
-    <span className="mt-0.5 block truncate text-xs font-semibold text-[#16233b]">{customerName}</span>
-    <span className="mt-0.5 block truncate text-[10px] font-medium opacity-80">{item.service_name_snapshot}</span>
+  return <div className={`h-full w-full overflow-hidden rounded-[10px] border border-[var(--border)] border-l-[4px] ${railClasses[visual.railTone]} bg-[#fffdf9] px-2.5 py-2 pr-8 text-left shadow-[0_1px_2px_rgba(39,32,24,.04)] ${terminal ? "opacity-70" : ""} ${selected ? "ring-2 ring-[var(--primary-soft)] ring-offset-1 ring-offset-white" : ""} ${overlay ? "min-h-[58px] w-[200px] rotate-[1deg] shadow-xl" : ""}`}>
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="block shrink-0 text-[10px] font-semibold tabular-nums text-[var(--muted)]">{start}–{end}</span>
+      <span className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full ${status.tone === "danger" ? "bg-[var(--status-no-show)]" : status.tone === "warning" ? "bg-[var(--status-pending)]" : status.tone === "success" ? "bg-[var(--status-confirmed)]" : status.tone === "info" ? "bg-[var(--status-checked-in)]" : "bg-[var(--status-completed)]"}`} aria-label={status.label} />
+    </div>
+    <span className="mt-1 block truncate text-xs font-semibold text-[var(--ink)]">{customerName}</span>
+    <span className="mt-0.5 block truncate text-[10px] font-medium text-[var(--muted)]">{item.service_name_snapshot}</span>
   </div>;
 }
-
 function AppointmentCard({ item, timezone, canManage, selected, onSelect }: { item: Appointment; timezone: string; canManage: boolean; selected: boolean; onSelect: () => void }) {
   const active = !["completed","cancelled","no_show"].includes(item.status);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -129,7 +130,7 @@ function StaffDropColumn({ member, disabled, children, height }: { member: Staff
   return <div
     ref={setNodeRef}
     data-drop-staff={member.id}
-    className={`relative border-l border-[var(--border)] transition-colors ${isOver ? "bg-[#f5f9ff]" : "bg-white"}`}
+    className={`relative border-l border-[var(--border)] transition-colors ${isOver ? "bg-[var(--primary-soft)]" : "bg-white"}`}
     style={{
       height,
       backgroundImage: "linear-gradient(to bottom, transparent calc(100% - 1px), #edf0f5 calc(100% - 1px))",
@@ -155,7 +156,7 @@ function AppointmentPanel({ item, timezone }: { item: Appointment | null; timezo
       <h2 className="mt-3 text-xl font-semibold tracking-[-0.03em]">{customerName}</h2>
       <p className="mt-1 text-sm font-medium text-[var(--muted)]">{item.service_name_snapshot}</p>
       <div className="mt-4 flex items-center gap-2 text-xs text-[#53627a]"><span aria-hidden>◷</span><span>{dateLabel} · {start}–{end}</span></div>
-      <Link href={`/app/appointments/${item.id}`} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primary-hover)]">Open afspraak</Link>
+      <Link href={`/app/appointments/${item.id}`} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[var(--ink)] px-4 text-sm font-semibold text-white hover:bg-[#24231f]">Open afspraak</Link>
     </div>
     <div className="divide-y divide-[var(--border)] px-5">
       <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#9aa5b5]">Klant</p><p className="mt-1.5 text-sm font-semibold">{customerName}</p></div>
@@ -183,6 +184,9 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
   const [selectedId,setSelectedId]=useState<string | null>(appointments[0]?.id ?? null);
   const [undo,setUndo] = useState<null | { appointmentId:string; fromStaffId:string; fromStartsAt:string; toStaffId:string; toStartsAt:string }>(null);
   const height=(endMinute-startMinute)*pxPerMinute;
+  const nowLocal=localParts(new Date().toISOString(),timezone);
+  const isToday=nowLocal.date===date;
+  const nowMinute=toMinute(nowLocal.time);
   const hourRows=useMemo(()=>Array.from({length:Math.ceil((endMinute-startMinute)/60)+1},(_,index)=>startMinute+index*60).filter(value=>value<=endMinute),[startMinute,endMinute]);
 
   useEffect(()=>{
@@ -365,9 +369,10 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
           <div className="grid border-b border-[var(--border)] bg-[#fbfcfe]" style={{gridTemplateColumns:`70px repeat(${staff.length},minmax(170px,1fr))`}}>
             <div className="flex items-center justify-center text-[10px] font-semibold uppercase tracking-[.1em] text-[#9aa5b5]">Tijd</div>
             {staff.map(member=>{
-              const initials=member.name.split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase();
-              return <div key={member.id} className="flex items-center gap-2.5 border-l border-[var(--border)] px-3 py-3.5">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-[#edf3ff] text-[10px] font-bold text-[var(--primary)]">{initials}</span>
+              const identity=getStaffIdentity(member.id,member.name);
+              const avatarClass:Record<StaffTone,string>={clay:"bg-[#f4e4da] text-[#8a4a25]",sage:"bg-[#e4ece6] text-[#4f6c57]",sand:"bg-[#f2eadc] text-[#80683f]",sky:"bg-[#e4ecef] text-[#4f7078]",lilac:"bg-[#ece6ef] text-[#6e5d78]"};
+              return <div key={member.id} data-staff-identity={member.id} className="flex items-center gap-2.5 border-l border-[var(--border)] px-3 py-3.5">
+                <span className={`grid h-8 w-8 place-items-center rounded-full text-[10px] font-bold ${avatarClass[identity.tone]}`}>{identity.initials}</span>
                 <div className="min-w-0"><p className="truncate text-xs font-semibold">{member.name}</p><p className="mt-0.5 text-[10px] text-[var(--muted)]">Beschikbaar</p></div>
               </div>;
             })}
@@ -380,6 +385,7 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
                 const memberBlocks=blocksByStaff.get(member.id)??[];
                 const memberBreaks=breaksByStaff.get(member.id)??[];
                 return <StaffDropColumn key={member.id} member={member} disabled={!canManage||busy} height={height}>
+                  {isToday && nowMinute>=startMinute && nowMinute<=endMinute ? <div data-current-time-line className="pointer-events-none absolute inset-x-0 z-30 border-t border-[var(--accent)]" style={{top:(nowMinute-startMinute)*pxPerMinute}}><span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-[var(--accent)]" /></div> : null}
                   {memberBreaks.map((item,index)=>{const from=toMinute(item.start_time),to=toMinute(item.end_time);return <div key={index} className="pointer-events-none absolute inset-x-1.5 z-10 overflow-hidden rounded-[7px] border border-dashed border-[#d3d9e3] bg-[repeating-linear-gradient(135deg,#f8f9fb,#f8f9fb_6px,#eef1f5_6px,#eef1f5_12px)] px-2 py-1 text-[10px] font-medium text-[#7b8799]" style={{top:(from-startMinute)*pxPerMinute,height:Math.max(18,(to-from)*pxPerMinute)}}>Pauze</div>})}
                   {memberBlocks.map(block=>{const start=localParts(block.starts_at,timezone),end=localParts(block.ends_at,timezone);if(start.date!==date)return null;const from=toMinute(start.time),to=end.date===date?toMinute(end.time):endMinute;return <div key={block.id} className="pointer-events-none absolute inset-x-1.5 z-10 overflow-hidden rounded-[7px] border border-[#e6d9ca] bg-[#faf5ee] px-2 py-1 text-[10px] font-medium text-[#82664c]" style={{top:(from-startMinute)*pxPerMinute,height:Math.max(18,(to-from)*pxPerMinute)}}>{block.reason||"Geblokkeerd"}</div>})}
                   {memberAppointments.map(item=>{const start=localParts(item.starts_at,timezone);if(start.date!==date)return null;const top=(toMinute(start.time)-startMinute)*pxPerMinute;const duration=Math.max(30,(new Date(item.service_ends_at).getTime()-new Date(item.starts_at).getTime())/60_000);return <div key={item.id} className="absolute inset-x-1.5" style={{top,height:Math.max(44,duration*pxPerMinute)}}><AppointmentCard item={item} timezone={timezone} canManage={canManage} selected={selectedId===item.id} onSelect={()=>setSelectedId(item.id)}/></div>})}
