@@ -11,6 +11,7 @@ export default async function MorePage(){
       ["Services","Behandelingen, duur en prijs","/app/services","services"],
       ["Staff","Medewerkers, roosters en pauzes","/app/staff","staff"],
       ["Reports","Operationeel maandoverzicht","/app/reports","reports"],
+      ["Waitlist","Vrijgekomen plekken opvolgen","/app/waitlist","customers"],
       ["Settings","Salon, openingstijden en booking","/app/settings","settings"],
       ["Blocks","Komende vrije tijd en sluitingen","/app/blocks","blocks"],
     ];
