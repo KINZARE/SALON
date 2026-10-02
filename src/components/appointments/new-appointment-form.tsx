@@ -10,15 +10,15 @@ type Staff={id:string;name:string};
 type Slot={start:string};
 type Customer={id:string;name:string;phone:string|null;email:string|null};
 
-export function NewAppointmentForm({services,staffByService,timezone}:{services:Service[];staffByService:Record<string,Staff[]>;timezone:string}) {
+export function NewAppointmentForm({services,staffByService,timezone,initialCustomer=null}:{services:Service[];staffByService:Record<string,Staff[]>;timezone:string;initialCustomer?:Customer|null}) {
   const router=useRouter();
   const [serviceId,setServiceId]=useState(services[0]?.id??"");
   const staff=staffByService[serviceId]??[];
   const [staffId,setStaffId]=useState(staff[0]?.id??"");
   const today=useMemo(()=>new Intl.DateTimeFormat("en-CA",{timeZone:timezone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()),[timezone]);
   const [date,setDate]=useState(today);const [slots,setSlots]=useState<Slot[]>([]);const [startsAt,setStartsAt]=useState("");const [loading,setLoading]=useState(false);const [saving,setSaving]=useState(false);const [error,setError]=useState<string|null>(null);
-  const [query,setQuery]=useState("");const [results,setResults]=useState<Customer[]>([]);const [searching,setSearching]=useState(false);
-  const [customerId,setCustomerId]=useState("");const [customerName,setCustomerName]=useState("");const [customerPhone,setCustomerPhone]=useState("");const [customerEmail,setCustomerEmail]=useState("");
+  const [query,setQuery]=useState(initialCustomer?.name??"");const [results,setResults]=useState<Customer[]>([]);const [searching,setSearching]=useState(false);
+  const [customerId,setCustomerId]=useState(initialCustomer?.id??"");const [customerName,setCustomerName]=useState(initialCustomer?.name??"");const [customerPhone,setCustomerPhone]=useState(initialCustomer?.phone??"");const [customerEmail,setCustomerEmail]=useState(initialCustomer?.email??"");
   const dirty=Boolean(startsAt||customerName||customerPhone||customerEmail);
 
   useEffect(()=>{const next=(staffByService[serviceId]??[])[0]?.id??"";setStaffId(next);setStartsAt("")},[serviceId,staffByService]);
