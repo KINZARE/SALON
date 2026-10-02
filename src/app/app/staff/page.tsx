@@ -1,22 +1,53 @@
 import { requireAppContext } from "@/lib/auth";
 import { getWorkspaceStaff } from "@/services/workspace-data";
 import { getServices } from "@/services/app-data";
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { getStaffIdentity, type StaffTone } from "@/lib/staff-identity";
+import { StaffEditor } from "@/components/workspace/staff-editor";
 import { saveStaff } from "./actions";
-const days=[[1,"Maandag"],[2,"Dinsdag"],[3,"Woensdag"],[4,"Donderdag"],[5,"Vrijdag"],[6,"Zaterdag"],[0,"Zondag"]] as const;
+
+const avatarClass:Record<StaffTone,string>={
+  clay:"bg-[#f4e4da] text-[#8a4a25]",
+  sage:"bg-[#e4ece6] text-[#4f6c57]",
+  sand:"bg-[#f2eadc] text-[#80683f]",
+  sky:"bg-[#e4ecef] text-[#4f7078]",
+  lilac:"bg-[#ece6ef] text-[#6e5d78]",
+};
+
 export default async function StaffPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
-  const {salon,membership}=await requireAppContext();if(membership.role==="staff")return <AccessDenied/>;const [items,services,query]=await Promise.all([getWorkspaceStaff(salon.id),getServices(salon.id),searchParams]);const error=typeof query.error==="string"?query.error:null;
-  return <><header><h1 className="text-3xl font-semibold tracking-[-0.04em]">Team</h1><p className="mt-1 text-sm text-[var(--muted)]">Medewerkers, rollen, services, weekroosters en vaste pauzes.</p></header>{error?<p role="alert" className="mt-5 rounded-[10px] border border-[#efc7c2] bg-[#fff5f4] p-3 text-sm text-[var(--danger)]">{error}</p>:null}
-    <div className="mt-7 divide-y divide-[var(--border)] border-y border-[var(--border)]">{items.map(item=><details key={item.id} className="py-4"><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-semibold">{item.name}</p><p className="mt-1 text-sm text-[var(--muted)]">{item.operational_role} · {item.active?"Actief":"Inactief"}</p></div><span className="text-xs text-[var(--muted)]">Bewerken</span></summary><StaffForm item={item} services={services}/></details>)}{!items.length?<p className="py-8 text-sm text-[var(--muted)]">Nog geen medewerkers.</p>:null}</div>
-    <section className="mt-10 max-w-3xl"><h2 className="text-lg font-semibold">Medewerker toevoegen</h2><StaffForm services={services}/></section>
-  </>
+  const {salon,membership}=await requireAppContext();
+  if(membership.role==="staff")return <AccessDenied/>;
+  const [items,services,query]=await Promise.all([getWorkspaceStaff(salon.id),getServices(salon.id),searchParams]);
+  const error=typeof query.error==="string"?query.error:null;
+
+  return <div data-staff-workspace>
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Team</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Mensen & beschikbaarheid</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Beheer wie werkt, welke behandelingen ze doen en wanneer ze beschikbaar zijn.</p></div>
+      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[var(--muted)] ring-1 ring-[var(--border)]">{items.filter(item=>item.active).length} actief</span>
+    </header>
+    {error?<p role="alert" className="mt-5 rounded-[14px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
+
+    <div className="mt-7 grid gap-3">
+      {items.map(item=>{
+        const identity=getStaffIdentity(item.id,item.name);
+        const workingDays=item.schedules.filter(row=>row.is_working).length;
+        return <details key={item.id} className="group overflow-hidden rounded-[22px] border border-[var(--border)] bg-white">
+          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 sm:p-5">
+            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-xs font-bold ${avatarClass[identity.tone]}`}>{identity.initials}</span>
+            <div className="min-w-0 flex-1"><p className="truncate font-semibold">{item.name}</p><p className="mt-1 truncate text-sm text-[var(--muted)]">{item.operational_role} · {item.service_ids.length} behandelingen · {workingDays} werkdagen</p></div>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${item.active?"bg-[#e5eee7] text-[#42654e]":"bg-[#efeeeb] text-[#77736d]"}`}>{item.active?"Actief":"Inactief"}</span>
+            <span className="ml-1 text-[var(--muted)] transition group-open:rotate-180" aria-hidden>⌄</span>
+          </summary>
+          <div className="border-t border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:p-5"><StaffEditor item={item} services={services} action={saveStaff}/></div>
+        </details>;
+      })}
+      {!items.length?<div className="rounded-[22px] border border-dashed border-[var(--border-strong)] bg-white p-8 text-center"><p className="font-semibold">Nog geen medewerkers</p><p className="mt-1 text-sm text-[var(--muted)]">Voeg de eerste medewerker hieronder toe.</p></div>:null}
+    </div>
+
+    <section className="mt-10 max-w-4xl">
+      <div className="mb-4"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--muted)]">Nieuw</p><h2 className="mt-1 text-2xl font-semibold tracking-[-.04em]">Medewerker toevoegen</h2></div>
+      <StaffEditor services={services} action={saveStaff}/>
+    </section>
+  </div>;
 }
-function StaffForm({item,services}:{item?:Awaited<ReturnType<typeof getWorkspaceStaff>>[number];services:Awaited<ReturnType<typeof getServices>>}){
-  const schedule=new Map(item?.schedules.map(row=>[row.weekday,row])??[]);const breaks=new Map(item?.breaks.map(row=>[row.weekday,row])??[]);
-  return <form action={saveStaff} className="mt-5 grid min-w-0 gap-5 border-t border-[var(--border)] pt-5">{item?<input type="hidden" name="id" value={item.id}/>:null}<div className="grid min-w-0 gap-4 sm:grid-cols-3"><Field label="Naam" name="name" required maxLength={120} defaultValue={item?.name??""}/><Field label="E-mail (optioneel)" name="email" type="email" defaultValue={item?.email??""}/><label className="grid gap-1.5 text-sm font-medium"><span>Operationele rol</span><select name="role" defaultValue={item?.operational_role??"staff"} className="h-11 rounded-[11px] border border-[var(--border)] bg-white px-3.5"><option value="staff">Staff</option><option value="manager">Manager</option><option value="owner">Owner</option></select></label></div><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" name="active" defaultChecked={item?.active??true}/> Actief inzetbaar</label>
-    <fieldset className="min-w-0"><legend className="text-sm font-medium">Behandelingen</legend><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{services.filter(service=>service.active||item?.service_ids.includes(service.id)).map(service=><label key={service.id} className="flex min-h-11 items-center gap-3 rounded-[10px] border border-[var(--border)] px-3 text-sm"><input type="checkbox" name="serviceIds" value={service.id} defaultChecked={item?.service_ids.includes(service.id)??false}/>{service.name}</label>)}</div></fieldset>
-    <fieldset className="min-w-0"><legend className="text-sm font-medium">Weekrooster & vaste pauze</legend><div className="mt-2 overflow-x-auto"><div className="min-w-[680px] divide-y divide-[var(--border)] border-y border-[var(--border)]">{days.map(([weekday,label])=>{const row=schedule.get(weekday);const pause=breaks.get(weekday);const working=row?.is_working??(weekday!==0);return <div key={weekday} className="grid grid-cols-[140px_90px_90px_90px_90px] items-center gap-3 py-3"><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" name={`working-${weekday}`} defaultChecked={working}/>{label}</label><input aria-label={`${label} start`} type="time" name={`start-${weekday}`} defaultValue={row?.start_time?.slice(0,5)??"09:00"} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/><input aria-label={`${label} einde`} type="time" name={`end-${weekday}`} defaultValue={row?.end_time?.slice(0,5)??"18:00"} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/><input aria-label={`${label} pauze start`} type="time" name={`break-start-${weekday}`} defaultValue={pause?.start_time?.slice(0,5)??""} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/><input aria-label={`${label} pauze einde`} type="time" name={`break-end-${weekday}`} defaultValue={pause?.end_time?.slice(0,5)??""} className="h-10 rounded-[9px] border border-[var(--border)] px-2"/></div>})}</div></div><p className="mt-2 text-xs text-[var(--muted)]">Laat pauzevelden leeg als er geen vaste pauze is. Conflicterende roosterwijzigingen worden server-side geweigerd.</p></fieldset><div><Button variant={item?"secondary":"primary"}>{item?"Wijzigingen opslaan":"Medewerker toevoegen"}</Button></div>
-  </form>
-}
+
 function AccessDenied(){return <div><h1 className="text-3xl font-semibold">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Teambeheer is alleen beschikbaar voor owner en manager.</p></div>}
