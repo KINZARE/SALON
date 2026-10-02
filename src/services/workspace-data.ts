@@ -1,6 +1,17 @@
 import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
+export async function getTodayStaffSchedule(salonId: string, weekday: number, date: string) {
+  const db = createAdminSupabaseClient();
+  const { data, error } = await db.from("staff")
+    .select("id,name,active,schedules:staff_schedules!staff_schedules_salon_id_staff_id_fkey(weekday,is_working,start_time,end_time),breaks:breaks!breaks_salon_id_staff_id_fkey(weekday,start_time,end_time),overrides:staff_schedule_overrides!staff_schedule_overrides_salon_id_staff_id_fkey(is_working,start_time,end_time)")
+    .eq("salon_id", salonId).eq("active", true)
+    .eq("schedules.weekday", weekday).eq("breaks.weekday", weekday).eq("breaks.active", true)
+    .eq("overrides.override_date", date).order("name");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getWorkspaceServices(salonId: string) {
   const db = createAdminSupabaseClient();
   const [servicesResult, linksResult] = await Promise.all([

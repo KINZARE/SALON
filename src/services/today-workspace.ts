@@ -2,8 +2,8 @@ import "server-only";
 
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { computeStaffGaps, type CapacityInterval } from "@/domain/day-capacity";
-import { getAppointmentsForDate, getBlocks, getOpeningHours } from "@/services/app-data";
-import { getWorkspaceStaff } from "@/services/workspace-data";
+import { getAppointmentsForDate, getBlocks, getDayOpening } from "@/services/app-data";
+import { getTodayStaffSchedule } from "@/services/workspace-data";
 import { findWaitlistMatchesForGaps } from "@/services/waitlist";
 
 type Appointments = Awaited<ReturnType<typeof getAppointmentsForDate>>;
@@ -57,23 +57,22 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
   const dayStart = fromZonedTime(`${date}T00:00:00`, timezone);
   const dayEnd = fromZonedTime(`${nextDate}T00:00:00`, timezone);
 
-  const [appointments, staff, openingHours, blocks] = await Promise.all([
+  const [appointments, staff, open, blocks] = await Promise.all([
     getAppointmentsForDate(salonId, timezone, date),
-    getWorkspaceStaff(salonId),
-    getOpeningHours(salonId),
-    getBlocks(salonId, dayStart.toISOString()),
+    getTodayStaffSchedule(salonId, weekday, date),
+    getDayOpening(salonId, weekday, date),
+    getBlocks(salonId, dayStart.toISOString(), dayEnd.toISOString()),
   ]);
 
-  const open = openingHours.find((row) => row.weekday === weekday && row.is_open);
   const dayBlocks = blocks.filter((block) => new Date(block.starts_at) < dayEnd && new Date(block.ends_at) > dayStart);
   const gaps: TodayGap[] = [];
   let workingStaffCount = 0;
 
-  if (open) {
+  if (open?.is_open && open.start_time && open.end_time) {
     const salonWindow = localInterval(date, timezone, open.start_time, open.end_time);
     for (const member of staff.filter((item) => item.active)) {
-      const schedule = member.schedules.find((row) => row.weekday === weekday && row.is_working);
-      if (!schedule) continue;
+      const schedule = member.overrides?.[0] ?? member.schedules.find((row) => row.weekday === weekday);
+      if (!schedule?.is_working || !schedule.start_time || !schedule.end_time) continue;
       const staffWindow = localInterval(date, timezone, schedule.start_time, schedule.end_time);
       const working = intersect(salonWindow, staffWindow);
       if (!working) continue;

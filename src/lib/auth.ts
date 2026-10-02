@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createUserSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -18,6 +19,9 @@ export async function requireUser() {
 }
 
 export const requireAppContext = cache(async (): Promise<AppContext> => {
+  // Opt into request-time data at the loader rather than forcing every layout
+  // fetch and segment to be uncached. React cache only deduplicates this request.
+  await connection();
   const db = createAdminSupabaseClient();
   const salonResult = await db
     .from("salons")

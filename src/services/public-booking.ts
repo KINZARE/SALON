@@ -21,11 +21,12 @@ function isoInterval(row:TimedRow):Interval{return{start:new Date(row.starts_at)
 
 async function getSalonBySlug(slug:string):Promise<PublicSalon|null>{
   const db=createAdminSupabaseClient();
-  const {data,error}=await db.from("salons").select("id,slug,name,timezone,currency").eq("slug",slug).maybeSingle();
+  const {data,error}=await db.from("salons").select("id,slug,name,timezone,currency,settings:booking_settings(allow_staff_choice)").eq("slug",slug).maybeSingle();
   if(error)throw error;if(!data)return null;
-  const settings=await db.from("booking_settings").select("allow_staff_choice").eq("salon_id",data.id).maybeSingle();
-  if(settings.error)throw settings.error;
-  return{...data,allowStaffChoice:settings.data?.allow_staff_choice??true};
+  const {settings:relatedSettings,...salon}=data;
+  const relation=relatedSettings as unknown as {allow_staff_choice:boolean}|{allow_staff_choice:boolean}[]|null;
+  const settings=Array.isArray(relation)?relation[0]:relation;
+  return{...salon,allowStaffChoice:settings?.allow_staff_choice??true};
 }
 
 export async function getPublicSalon(slug:string){return getSalonBySlug(slug)}
@@ -46,10 +47,8 @@ export async function getPublicServices(salonId:string):Promise<PublicService[]>
 
 export async function getPublicStaffForService(salonId:string,serviceId:string):Promise<PublicStaff[]>{
   const db=createAdminSupabaseClient();
-  const {data:links,error:linksError}=await db.from("staff_services").select("staff_id").eq("salon_id",salonId).eq("service_id",serviceId);
-  if(linksError)throw linksError;
-  const ids=(links??[]).map(link=>link.staff_id);if(!ids.length)return[];
-  const {data,error}=await db.from("staff").select("id,name,active").eq("salon_id",salonId).eq("active",true).in("id",ids).order("name");
+  const {data,error}=await db.from("staff").select("id,name,staff_services!staff_services_salon_id_staff_id_fkey!inner(service_id)")
+    .eq("salon_id",salonId).eq("active",true).eq("staff_services.salon_id",salonId).eq("staff_services.service_id",serviceId).order("name");
   if(error)throw error;return(data??[]).map(row=>({id:row.id,name:row.name}));
 }
 

@@ -263,7 +263,7 @@ try {
 
   console.log("QA_STAGE responsive-sweep");
   await fs.mkdir("qa-artifacts", { recursive: true });
-  const widths = [320, 375, 390, 430, 768, 1024, 1440];
+  const widths = [320, 360, 375, 390, 430, 768, 1024, 1280, 1440];
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 });
     for (const path of workspacePaths) {

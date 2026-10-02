@@ -2,15 +2,27 @@ import "server-only";
 import { fromZonedTime } from "date-fns-tz";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-export async function getAppointmentsForRange(salonId:string,timezone:string,fromDate:string,toDateExclusive:string){
+export async function getAppointmentsForRange(salonId:string,timezone:string,fromDate:string,toDateExclusive:string,staffId?:string|null){
   const db=createAdminSupabaseClient();
   const from=fromZonedTime(`${fromDate}T00:00:00`,timezone);
   const to=fromZonedTime(`${toDateExclusive}T00:00:00`,timezone);
-  const {data,error}=await db.from("appointments")
-    .select("id,starts_at,service_ends_at,occupied_until,status,customer_name_snapshot,service_name_snapshot,price_cents_snapshot,currency_snapshot,duration_minutes_snapshot,customer_id,staff_id,service_id,staff:staff!appointments_salon_id_staff_id_fkey(name)")
+  let query=db.from("appointments")
+    .select("id,starts_at,status,customer_name_snapshot,service_name_snapshot,staff_id,staff:staff!appointments_salon_id_staff_id_fkey(name)")
     .eq("salon_id",salonId).gte("starts_at",from.toISOString()).lt("starts_at",to.toISOString()).order("starts_at");
+  if(staffId)query=query.eq("staff_id",staffId);
+  const {data,error}=await query;
   if(error)throw error;
   return(data??[]).map(row=>({...row,staff:row.staff?.[0]??null}));
+}
+
+export async function getMonthAppointments(salonId:string,timezone:string,fromDate:string,toDateExclusive:string){
+  const db=createAdminSupabaseClient();
+  const from=fromZonedTime(`${fromDate}T00:00:00`,timezone);
+  const to=fromZonedTime(`${toDateExclusive}T00:00:00`,timezone);
+  const {data,error}=await db.from("appointments").select("starts_at,status")
+    .eq("salon_id",salonId).gte("starts_at",from.toISOString()).lt("starts_at",to.toISOString());
+  if(error)throw error;
+  return data??[];
 }
 
 export async function getServiceCategories(salonId:string){
@@ -19,9 +31,11 @@ export async function getServiceCategories(salonId:string){
   if(error)throw error;return data??[];
 }
 
-export async function getOpeningExceptions(salonId:string,fromDate:string){
+export async function getOpeningExceptions(salonId:string,fromDate:string,toDate?:string){
   const db=createAdminSupabaseClient();
-  const {data,error}=await db.from("opening_exceptions").select("id,exception_date,is_open,start_time,end_time,note").eq("salon_id",salonId).gte("exception_date",fromDate).order("exception_date").limit(120);
+  let query=db.from("opening_exceptions").select("id,exception_date,is_open,start_time,end_time,note").eq("salon_id",salonId).gte("exception_date",fromDate).order("exception_date");
+  query=toDate?query.lte("exception_date",toDate):query.limit(120);
+  const {data,error}=await query;
   if(error)throw error;return data??[];
 }
 

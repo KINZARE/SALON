@@ -56,6 +56,15 @@ jobs:
         env:
           QA_BASE_URL: "http://127.0.0.1:3000"
         run: node scripts/workspace-browser-qa.mjs
+      - name: Compare real database reads against unchanged baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin ef4c5369117de1742845e219e16626ff9f278ce6 --depth=1
+          git worktree add --detach /tmp/salon-performance-before ef4c5369117de1742845e219e16626ff9f278ce6
+          ln -s "$PWD/node_modules" /tmp/salon-performance-before/node_modules
+          SALON_SOURCE_ROOT=/tmp/salon-performance-before QA_PROFILE_LABEL=before node --experimental-strip-types scripts/performance-queries.mjs
+          QA_PROFILE_LABEL=after node --experimental-strip-types scripts/performance-queries.mjs
       - name: Upload QA evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,6 +76,8 @@ jobs:
 
   deploy-preview:
     needs: browser-qa
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.url }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -181,3 +192,32 @@ jobs:
             exit 1
           fi
           echo "Public no-login access verified for $PREVIEW_URL"
+
+  live-preview-verification:
+    needs: deploy-preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SALON_QA_SHA }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Full browser QA on exact preview
+        env:
+          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+        run: node scripts/workspace-browser-qa.mjs
+      - name: Equivalent live performance measurements
+        env:
+          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+        run: node scripts/performance-measure.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-preview-qa-performance-${{ env.SALON_QA_SHA }}
+          path: qa-artifacts
+          retention-days: 30

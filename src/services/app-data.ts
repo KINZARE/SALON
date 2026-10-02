@@ -45,11 +45,25 @@ export async function getStaff(salonId: string) {
   return data ?? [];
 }
 
-export async function getBlocks(salonId: string, fromIso: string) {
+export async function getBlocks(salonId: string, fromIso: string, toIso?: string) {
   const supabase = createAdminSupabaseClient();
-  const { data, error } = await supabase.from("blocks").select("id,staff_id,starts_at,ends_at,reason").eq("salon_id", salonId).gte("ends_at", fromIso).order("starts_at").limit(100);
+  let query = supabase.from("blocks").select("id,staff_id,starts_at,ends_at,reason").eq("salon_id", salonId).gt("ends_at", fromIso).order("starts_at");
+  // Day consumers need all overlapping blocks, including blocks spanning midnight.
+  // The management list retains its existing bounded upcoming query.
+  query = toIso ? query.lt("starts_at", toIso) : query.limit(100);
+  const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getDayOpening(salonId: string, weekday: number, date: string) {
+  const db = createAdminSupabaseClient();
+  const { data, error } = await db.from("salons")
+    .select("opening:opening_hours(weekday,is_open,start_time,end_time),exceptions:opening_exceptions(is_open,start_time,end_time)")
+    .eq("id", salonId).eq("opening.weekday", weekday).eq("exceptions.exception_date", date).single();
+  if (error) throw error;
+  // A closed exception is authoritative too; never fall through to weekly hours.
+  return data.exceptions?.[0] ?? data.opening?.[0] ?? null;
 }
 
 export async function getBookingSettings(salonId: string) {
