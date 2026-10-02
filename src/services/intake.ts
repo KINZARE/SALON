@@ -35,15 +35,18 @@ export async function getAppointmentIntakeState(salonId:string,appointmentId:str
 
 export async function issueAppointmentIntakeToken(args:{salonId:string;appointmentId:string;formId:string}){
   const db=createAdminSupabaseClient();
-  const [appointmentResult,formResult,fieldsResult,linkResult]=await Promise.all([
-    db.from("appointments").select("id,salon_id,service_id,starts_at,status").eq("salon_id",args.salonId).eq("id",args.appointmentId).maybeSingle(),
+  const appointmentResult=await db.from("appointments").select("id,salon_id,service_id,starts_at,status").eq("salon_id",args.salonId).eq("id",args.appointmentId).maybeSingle();
+  if(appointmentResult.error)throw appointmentResult.error;
+  const appointment=appointmentResult.data;
+  if(!appointment?.service_id)throw new Error("INTAKE_FORM_NOT_AVAILABLE");
+  const [formResult,fieldsResult,linkResult]=await Promise.all([
     db.from("intake_forms").select("id,title,description,active,version,consent_statement").eq("salon_id",args.salonId).eq("id",args.formId).eq("active",true).maybeSingle(),
     db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order").eq("salon_id",args.salonId).eq("form_id",args.formId).order("sort_order"),
-    db.from("intake_form_services").select("form_id,service_id").eq("salon_id",args.salonId).eq("form_id",args.formId).maybeSingle(),
+    db.from("intake_form_services").select("form_id,service_id").eq("salon_id",args.salonId).eq("form_id",args.formId).eq("service_id",appointment.service_id).maybeSingle(),
   ]);
-  if(appointmentResult.error)throw appointmentResult.error;if(formResult.error)throw formResult.error;if(fieldsResult.error)throw fieldsResult.error;if(linkResult.error)throw linkResult.error;
-  const appointment=appointmentResult.data;const form=formResult.data;const formLink=linkResult.data;
-  if(!appointment||!form||!formLink||formLink.service_id!==appointment.service_id)throw new Error("INTAKE_FORM_NOT_AVAILABLE");
+  if(formResult.error)throw formResult.error;if(fieldsResult.error)throw fieldsResult.error;if(linkResult.error)throw linkResult.error;
+  const form=formResult.data;const formLink=linkResult.data;
+  if(!form||!formLink)throw new Error("INTAKE_FORM_NOT_AVAILABLE");
   if(!eligibleStatuses.has(appointment.status)||new Date(appointment.starts_at)<=new Date())throw new Error("APPOINTMENT_NOT_INTAKE_ELIGIBLE");
 
   const snapshot:IntakeSnapshot={
