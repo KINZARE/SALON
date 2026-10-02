@@ -188,6 +188,7 @@ try {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto(base + "/app/staff", { waitUntil: "networkidle" });
   await page.locator("[data-staff-workspace]").waitFor();
+  await page.locator("[data-staff-workspace] details").first().locator("summary").click();
   await page.locator("[data-mobile-staff-schedule]").first().waitFor();
   await noBodyOverflow("390px staff editor");
 
