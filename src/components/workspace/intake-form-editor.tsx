@@ -68,8 +68,8 @@ export function IntakeFormEditor({item,services,action}:{item?:ExistingForm;serv
 
     <section className="min-w-0 max-w-full rounded-[22px] border border-[var(--border)] bg-white p-4 sm:p-5">
       <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><h3 className="font-semibold">Velden</h3><p className="mt-1 text-xs text-[var(--muted)]">Volgorde en verplichting zijn direct onderdeel van de formulierversie.</p></div><button type="button" onClick={()=>setFields(current=>[...current,{key:makeKey(),label:"",type:"short_text",required:false,options:""}])} className="h-10 self-start rounded-[11px] border border-[var(--border)] bg-white px-3 text-xs font-semibold">+ Veld</button></div>
-      <div className="mt-4 grid gap-3">{fields.map((field,index)=><div key={field.key} className="grid gap-2 rounded-[14px] bg-[var(--background)] p-3">
-        <div className="grid gap-2 sm:grid-cols-[1fr_170px_auto]">
+      <div className="mt-4 grid min-w-0 gap-3">{fields.map((field,index)=><div key={field.key} className="grid min-w-0 gap-2 rounded-[14px] bg-[var(--background)] p-3">
+        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_170px_auto]">
           <input aria-label={`Label veld ${index+1}`} value={field.label} onChange={event=>patch(index,{label:event.target.value})} placeholder="Vraag of label" maxLength={180} className="h-11 min-w-0 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/>
           <select aria-label={`Type veld ${index+1}`} value={field.type} onChange={event=>patch(index,{type:event.target.value as IntakeFieldType})} className="h-11 w-full min-w-0 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm">{types.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
           <label className="flex min-h-11 items-center gap-2 px-1 text-xs"><input type="checkbox" checked={field.required} onChange={event=>patch(index,{required:event.target.checked})}/> Verplicht</label>
@@ -85,7 +85,7 @@ export function IntakeFormEditor({item,services,action}:{item?:ExistingForm;serv
 
     <section className="min-w-0 max-w-full rounded-[22px] border border-[var(--border)] bg-white p-4 sm:p-5">
       <div><h3 className="font-semibold">Behandelingen</h3><p className="mt-1 text-xs text-[var(--muted)]">Het formulier wordt alleen aangeboden bij gekoppelde behandelingen.</p></div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">{services.filter(service=>service.active||item?.service_ids.includes(service.id)).map(service=><label key={service.id} className="flex min-h-11 min-w-0 items-center gap-3 rounded-[13px] border border-[var(--border)] bg-[var(--background)] px-3 text-sm"><input type="checkbox" name="serviceIds" value={service.id} defaultChecked={item?.service_ids.includes(service.id)??false}/><span className="min-w-0 break-words">{service.name}</span></label>)}</div>
+      <div className="mt-4 grid min-w-0 gap-2 sm:grid-cols-2">{services.filter(service=>service.active||item?.service_ids.includes(service.id)).map(service=><label key={service.id} className="flex min-h-11 min-w-0 items-center gap-3 rounded-[13px] border border-[var(--border)] bg-[var(--background)] px-3 text-sm"><input type="checkbox" name="serviceIds" value={service.id} defaultChecked={item?.service_ids.includes(service.id)??false}/><span className="min-w-0 break-words">{service.name}</span></label>)}</div>
     </section>
 
     <div><Button size="lg" variant={item?"secondary":"primary"}>{item?"Formulier opslaan":"Formulier toevoegen"}</Button></div>
