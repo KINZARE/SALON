@@ -176,9 +176,9 @@ try {
 
   await page.goto(base + "/app/customers", { waitUntil: "networkidle" });
   const firstCustomer = page.locator("a[href^='/app/customers/']").first();
-  const customerHref = await firstCustomer.getAttribute("href");
-  assert.ok(customerHref, "Customer list must link to customer detail");
-  await page.goto(base + customerHref, { waitUntil: "networkidle" });
+  const customerActionHref = await firstCustomer.getAttribute("href");
+  assert.ok(customerActionHref, "Customer list must link to customer detail");
+  await page.goto(base + customerActionHref, { waitUntil: "networkidle" });
   await page.locator("[data-customer-action-centre]").waitFor();
   await page.getByText("Volgende afspraak", { exact: true }).waitFor();
   const rebook = page.getByRole("link", { name: /Nieuwe afspraak/ }).first();
