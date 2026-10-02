@@ -1,68 +1,49 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireAppContext } from "@/lib/auth";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
+import { saveWorkspaceEntity } from "@/services/workspace-mutations";
 
-function assertOwner(role: string) {
-  if (role !== "owner") throw new Error("FORBIDDEN");
-}
-
-export async function updateSalonProfile(formData: FormData) {
-  const { salon, membership } = await requireAppContext();
-  assertOwner(membership.role);
-  const name = String(formData.get("name") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const address = String(formData.get("address") ?? "").trim();
-  if (!name || name.length > 120 || email.length > 254 || phone.length > 60 || address.length > 300) throw new Error("INVALID_SALON");
-  if (isPreviewDemoMode()) { revalidatePath("/app/settings"); return; }
-  const db = await createUserSupabaseClient();
-  const { error } = await db.from("salons").update({ name, phone: phone || null, email: email || null, address: address || null }).eq("id", salon.id);
-  if (error) throw error;
-  revalidatePath("/app/settings");
-  revalidatePath("/app");
-}
-
-export async function updateBookingSettings(formData: FormData) {
-  const { salon, membership } = await requireAppContext();
-  assertOwner(membership.role);
-  const slotInterval = Number(formData.get("slotInterval") ?? 15);
-  const minLead = Number(formData.get("minLead") ?? 60);
-  const maxDays = Number(formData.get("maxDays") ?? 90);
-  const cancellationHours = Number(formData.get("cancellationHours") ?? 24);
-  const allowStaffChoice = formData.get("allowStaffChoice") === "on";
-  if (![5,10,15,20,30,60].includes(slotInterval) || !Number.isInteger(minLead) || minLead < 0 || !Number.isInteger(maxDays) || maxDays < 1 || maxDays > 365 || !Number.isInteger(cancellationHours) || cancellationHours < 0) throw new Error("INVALID_BOOKING_SETTINGS");
-  if (isPreviewDemoMode()) { revalidatePath("/app/settings"); return; }
-  const db = await createUserSupabaseClient();
-  const { error } = await db.from("booking_settings").update({
-    slot_interval_minutes: slotInterval,
-    min_lead_minutes: minLead,
-    max_days_ahead: maxDays,
-    allow_staff_choice: allowStaffChoice,
-    cancellation_hours: cancellationHours,
-  }).eq("salon_id", salon.id);
-  if (error) throw error;
-  revalidatePath("/app/settings");
-  revalidatePath(`/book/${salon.slug}`);
-}
-
-export async function updateOpeningHours(formData: FormData) {
-  const { salon, membership } = await requireAppContext();
-  assertOwner(membership.role);
-  const rows = Array.from({ length: 7 }, (_, weekday) => {
-    const isOpen = formData.get(`open-${weekday}`) === "on";
-    const start = String(formData.get(`start-${weekday}`) ?? "09:00");
-    const end = String(formData.get(`end-${weekday}`) ?? "18:00");
-    if (isOpen && (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end) || start >= end)) throw new Error("INVALID_OPENING_HOURS");
-    return { salon_id: salon.id, weekday, is_open: isOpen, start_time: isOpen ? start : null, end_time: isOpen ? end : null };
+export async function saveSettings(formData:FormData){
+  const {salon,membership}=await requireAppContext();
+  if(!["owner","manager"].includes(membership.role))throw new Error("FORBIDDEN");
+  const name=String(formData.get("name")??"").trim();
+  const phone=String(formData.get("phone")??"").trim();
+  const email=String(formData.get("email")??"").trim();
+  const address=String(formData.get("address")??"").trim();
+  const slotInterval=Number(formData.get("slotInterval")??15);
+  const minLead=Number(formData.get("minLead")??60);
+  const maxDays=Number(formData.get("maxDays")??90);
+  const cancellationHours=Number(formData.get("cancellationHours")??24);
+  if(!name||name.length>120||email.length>254||phone.length>60||address.length>300||![5,10,15,20,30,60].includes(slotInterval)||!Number.isInteger(minLead)||minLead<0||!Number.isInteger(maxDays)||maxDays<1||maxDays>365||!Number.isInteger(cancellationHours)||cancellationHours<0){
+    redirect("/app/settings?error=Controleer+de+salon-+en+bookinginstellingen.");
+  }
+  const openingHours=Array.from({length:7},(_,weekday)=>{
+    const is_open=formData.get(`open-${weekday}`)==="on";
+    const start_time=String(formData.get(`start-${weekday}`)??"09:00");
+    const end_time=String(formData.get(`end-${weekday}`)??"18:00");
+    if(is_open&&(!/^\d{2}:\d{2}$/.test(start_time)||!/^\d{2}:\d{2}$/.test(end_time)||start_time>=end_time)){
+      redirect("/app/settings?error=Controleer+de+openingstijden.");
+    }
+    return{weekday,is_open,start_time:is_open?start_time:null,end_time:is_open?end_time:null};
   });
-  if (isPreviewDemoMode()) { revalidatePath("/app/settings"); return; }
-  const db = await createUserSupabaseClient();
-  const { error } = await db.from("opening_hours").upsert(rows, { onConflict: "salon_id,weekday" });
-  if (error) throw error;
-  revalidatePath("/app/settings");
-  revalidatePath("/app/calendar");
-  revalidatePath(`/book/${salon.slug}`);
+  try{
+    await saveWorkspaceEntity(salon.id,"settings",{
+      salon:{name,phone,email,address},
+      settings:{
+        slot_interval_minutes:slotInterval,min_lead_minutes:minLead,max_days_ahead:maxDays,
+        allow_staff_choice:formData.get("allowStaffChoice")==="on",cancellation_hours:cancellationHours
+      },
+      openingHours
+    });
+  }catch(error){
+    const message=error instanceof Error?error.message:"";
+    console.error("settings_save_failed",{message});
+    redirect(message.includes("APPOINTMENTS_IN_SCHEDULE")
+      ?"/app/settings?error=Deze+openingstijden+maken+bestaande+toekomstige+afspraken+ongeldig.+Verplaats+die+eerst."
+      :"/app/settings?error=Instellingen+konden+niet+worden+opgeslagen.");
+  }
+  revalidatePath("/app/settings");revalidatePath("/app/calendar");revalidatePath("/app/today");revalidatePath(`/book/${salon.slug}`);
+  redirect("/app/settings?saved=1");
 }

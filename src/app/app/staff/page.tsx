@@ -1,38 +1,53 @@
 import { requireAppContext } from "@/lib/auth";
-import { getServices, getStaff } from "@/services/app-data";
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { createStaff, toggleStaff } from "./actions";
+import { getWorkspaceStaff } from "@/services/workspace-data";
+import { getServices } from "@/services/app-data";
+import { getStaffIdentity, type StaffTone } from "@/lib/staff-identity";
+import { StaffEditor } from "@/components/workspace/staff-editor";
+import { saveStaff } from "./actions";
 
-const days = [[1,"Ma"],[2,"Di"],[3,"Wo"],[4,"Do"],[5,"Vr"],[6,"Za"],[0,"Zo"]] as const;
+const avatarClass:Record<StaffTone,string>={
+  clay:"bg-[#f4e4da] text-[#8a4a25]",
+  sage:"bg-[#e4ece6] text-[#4f6c57]",
+  sand:"bg-[#f2eadc] text-[#80683f]",
+  sky:"bg-[#e4ecef] text-[#4f7078]",
+  lilac:"bg-[#ece6ef] text-[#6e5d78]",
+};
 
-export default async function StaffPage() {
-  const { salon, membership } = await requireAppContext();
-  if (membership.role === "staff") return <AccessDenied />;
-  const [items, services] = await Promise.all([getStaff(salon.id), getServices(salon.id)]);
-  const activeServices = services.filter((service) => service.active);
+export default async function StaffPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  const {salon,membership}=await requireAppContext();
+  if(membership.role==="staff")return <AccessDenied/>;
+  const [items,services,query]=await Promise.all([getWorkspaceStaff(salon.id),getServices(salon.id),searchParams]);
+  const error=typeof query.error==="string"?query.error:null;
 
-  return <>
-    <header><h1 className="text-3xl font-semibold tracking-[-0.04em]">Staff</h1><p className="mt-1 text-sm text-[var(--muted)]">Medewerkers, behandelingen en standaard rooster.</p></header>
-    <div className="mt-7 divide-y divide-[var(--border)] border-y border-[var(--border)]">
-      {items.map((item) => <div key={item.id} className="flex items-center justify-between gap-4 py-4"><div><p className="font-semibold">{item.name}</p><p className="mt-1 text-sm text-[var(--muted)]">{item.active ? "Actief" : "Inactief"}</p></div>{membership.role === "owner" ? <form action={toggleStaff}><input type="hidden" name="id" value={item.id}/><input type="hidden" name="active" value={String(item.active)}/><button className="text-xs font-medium text-[var(--muted)] hover:text-black">{item.active ? "Pauzeren" : "Activeren"}</button></form> : null}</div>)}
-      {!items.length ? <p className="py-8 text-sm text-[var(--muted)]">Nog geen medewerkers.</p> : null}
+  return <div data-staff-workspace>
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Team</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Mensen & beschikbaarheid</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Beheer wie werkt, welke behandelingen ze doen en wanneer ze beschikbaar zijn.</p></div>
+      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[var(--muted)] ring-1 ring-[var(--border)]">{items.filter(item=>item.active).length} actief</span>
+    </header>
+    {error?<p role="alert" className="mt-5 rounded-[14px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
+
+    <div className="mt-7 grid gap-3">
+      {items.map(item=>{
+        const identity=getStaffIdentity(item.id,item.name);
+        const workingDays=item.schedules.filter(row=>row.is_working).length;
+        return <details key={item.id} className="group overflow-hidden rounded-[22px] border border-[var(--border)] bg-white">
+          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 sm:p-5">
+            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-xs font-bold ${avatarClass[identity.tone]}`}>{identity.initials}</span>
+            <div className="min-w-0 flex-1"><p className="truncate font-semibold">{item.name}</p><p className="mt-1 truncate text-sm text-[var(--muted)]">{item.operational_role} · {item.service_ids.length} behandelingen · {workingDays} werkdagen</p></div>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${item.active?"bg-[#e5eee7] text-[#42654e]":"bg-[#efeeeb] text-[#77736d]"}`}>{item.active?"Actief":"Inactief"}</span>
+            <span className="ml-1 text-[var(--muted)] transition group-open:rotate-180" aria-hidden>⌄</span>
+          </summary>
+          <div className="border-t border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:p-5"><StaffEditor item={item} services={services} action={saveStaff}/></div>
+        </details>;
+      })}
+      {!items.length?<div className="rounded-[22px] border border-dashed border-[var(--border-strong)] bg-white p-8 text-center"><p className="font-semibold">Nog geen medewerkers</p><p className="mt-1 text-sm text-[var(--muted)]">Voeg de eerste medewerker hieronder toe.</p></div>:null}
     </div>
 
-    {membership.role === "owner" ? <section className="mt-10 max-w-xl">
-      <h2 className="text-lg font-semibold">Medewerker toevoegen</h2>
-      <p className="mt-1 text-sm text-[var(--muted)]">Gebruik een normaal weekrooster. Afwijkingen en vrije tijd regel je met blocks.</p>
-      <form action={createStaff} className="mt-5 grid gap-5">
-        <Field label="Naam" name="name" required maxLength={120}/>
-        <div><p className="mb-2 text-sm font-medium">Behandelingen</p><div className="grid gap-2 sm:grid-cols-2">{activeServices.map((service) => <label key={service.id} className="flex min-h-11 items-center gap-3 rounded-[10px] border border-[var(--border)] px-3 text-sm"><input type="checkbox" name="serviceIds" value={service.id} className="h-4 w-4"/> {service.name}</label>)}</div>{!activeServices.length ? <p className="text-sm text-[var(--muted)]">Maak eerst een actieve behandeling aan.</p> : null}</div>
-        <div><p className="mb-2 text-sm font-medium">Werkdagen</p><div className="flex flex-wrap gap-2">{days.map(([value,label]) => <label key={value} className="cursor-pointer"><input className="peer sr-only" type="checkbox" name="weekdays" value={value} defaultChecked={value !== 0}/><span className="flex h-10 min-w-11 items-center justify-center rounded-[10px] border border-[var(--border)] px-3 text-sm peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary-soft)]">{label}</span></label>)}</div></div>
-        <div className="grid grid-cols-2 gap-3"><Field label="Start" name="startTime" type="time" defaultValue="09:00" required/><Field label="Einde" name="endTime" type="time" defaultValue="18:00" required/></div>
-        <div><Button disabled={!activeServices.length}>Medewerker toevoegen</Button></div>
-      </form>
-    </section> : null}
-  </>;
+    <section className="mt-10 max-w-4xl">
+      <div className="mb-4"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--muted)]">Nieuw</p><h2 className="mt-1 text-2xl font-semibold tracking-[-.04em]">Medewerker toevoegen</h2></div>
+      <StaffEditor services={services} action={saveStaff}/>
+    </section>
+  </div>;
 }
 
-function AccessDenied() {
-  return <div><h1 className="text-3xl font-semibold tracking-[-0.04em]">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Deze pagina is alleen beschikbaar voor owner en manager.</p></div>;
-}
+function AccessDenied(){return <div><h1 className="text-3xl font-semibold">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Teambeheer is alleen beschikbaar voor owner en manager.</p></div>}

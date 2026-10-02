@@ -2,59 +2,97 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { requireAppContext } from "@/lib/auth";
-import { createUserSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/format";
-import { transitionAppointmentStatus } from "./actions";
+import { transitionAppointmentStatus,updateAppointmentNote } from "./actions";
 import { Button } from "@/components/ui/button";
-import { isPreviewDemoMode } from "@/lib/preview-mode";
-import { getDemoAppointment } from "@/demo/preview-data";
+import { StatusChip } from "@/components/ui/status-chip";
+import { SelfServiceLinkButton } from "@/components/workspace/self-service-link-button";
 
-const actions: Record<string, Array<{ label: string; status: string; variant?: "primary" | "secondary" | "danger" }>> = {
-  pending: [{ label: "Bevestigen", status: "confirmed" }, { label: "Annuleren", status: "cancelled", variant: "danger" }],
-  confirmed: [{ label: "Check-in", status: "checked_in" }, { label: "No-show", status: "no_show", variant: "secondary" }, { label: "Annuleren", status: "cancelled", variant: "danger" }],
-  checked_in: [{ label: "Afronden", status: "completed" }, { label: "Annuleren", status: "cancelled", variant: "danger" }],
-  completed: [], cancelled: [], no_show: [],
+const actions:Record<string,Array<{label:string;status:string;variant?:"primary"|"secondary"|"danger"}>>={
+  pending:[{label:"Bevestigen",status:"confirmed"}],
+  confirmed:[{label:"Check-in",status:"checked_in",variant:"secondary"}],
+  checked_in:[{label:"Afronden",status:"completed"}],
+  completed:[],cancelled:[],no_show:[],
 };
 
-export default async function AppointmentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string,string|string[]|undefined>> }) {
-  const { id } = await params;
-  const query = await searchParams;
-  const errorMessage = typeof query.error === "string" ? query.error : null;
-  const { salon, membership } = await requireAppContext();
-  let appointment;
-  let customer;
-  let staff;
-  if (isPreviewDemoMode()) {
-    const localDate = formatInTimeZone(new Date(), salon.timezone, "yyyy-MM-dd");
-    const demo = getDemoAppointment(id, localDate);
-    if (!demo) notFound();
-    appointment = demo;
-    customer = demo.customer;
-    staff = demo.staff;
-  } else {
-    const db = await createUserSupabaseClient();
-    const result = await db.from("appointments").select("id,customer_id,staff_id,service_id,customer_name_snapshot,starts_at,service_ends_at,status,payment_status,service_name_snapshot,duration_minutes_snapshot,price_cents_snapshot,currency_snapshot,note").eq("id", id).eq("salon_id", salon.id).maybeSingle();
-    if (result.error) throw result.error;
-    if (!result.data) notFound();
-    appointment = result.data;
-    const [customerResult, staffResult] = await Promise.all([
-      db.from("customers").select("name,phone,email").eq("id", appointment.customer_id).maybeSingle(),
-      db.from("staff").select("name").eq("id", appointment.staff_id).maybeSingle(),
-    ]);
-    customer = customerResult.data;
-    staff = staffResult.data;
-  }
-  const canManage = ["owner","manager"].includes(membership.role);
+export default async function AppointmentPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  const {id}=await params;
+  const query=await searchParams;
+  const errorMessage=typeof query.error==="string"?query.error:null;
+  const {salon,membership}=await requireAppContext();
+  const db=createAdminSupabaseClient();
+  const result=await db.from("appointments").select("id,customer_id,staff_id,service_id,customer_name_snapshot,starts_at,service_ends_at,status,payment_status,service_name_snapshot,duration_minutes_snapshot,price_cents_snapshot,currency_snapshot,note").eq("id",id).eq("salon_id",salon.id).maybeSingle();
+  if(result.error)throw result.error;
+  const appointment=result.data;
 
-  return <>
-    <Link href="/app/calendar" className="text-sm text-[var(--muted)]">← Calendar</Link>
-    <header className="mt-5 flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-3xl font-semibold tracking-[-0.04em]">{customer?.name ?? appointment.customer_name_snapshot ?? "Afspraak"}</h1><p className="mt-1 text-sm text-[var(--muted)]">{appointment.service_name_snapshot} · {staff?.name ?? "Medewerker"}</p></div><span className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-medium capitalize">{appointment.status.replace("_"," ")}</span></header>
-    {errorMessage ? <p role="alert" className="mt-5 rounded-[11px] border border-[#f0cbc6] bg-[#fff6f5] p-3.5 text-sm text-[var(--danger)]">{errorMessage}</p> : null}
-    <div className="mt-7 max-w-2xl divide-y divide-[var(--border)] border-y border-[var(--border)]">
-      <div className="grid grid-cols-2 gap-5 py-5 sm:grid-cols-4"><div><p className="text-xs text-[var(--muted)]">Datum</p><p className="mt-1 text-sm font-semibold">{formatInTimeZone(new Date(appointment.starts_at),salon.timezone,"d MMM yyyy")}</p></div><div><p className="text-xs text-[var(--muted)]">Tijd</p><p className="mt-1 text-sm font-semibold">{formatInTimeZone(new Date(appointment.starts_at),salon.timezone,"HH:mm")}–{formatInTimeZone(new Date(appointment.service_ends_at),salon.timezone,"HH:mm")}</p></div><div><p className="text-xs text-[var(--muted)]">Prijs</p><p className="mt-1 text-sm font-semibold">{formatMoney(appointment.price_cents_snapshot,appointment.currency_snapshot)}</p></div><div><p className="text-xs text-[var(--muted)]">Betaling</p><p className="mt-1 text-sm font-semibold capitalize">{appointment.payment_status.replace("_"," ")}</p></div></div>
-      <div className="py-5"><p className="text-xs text-[var(--muted)]">Klant</p><p className="mt-1 font-semibold">{customer?.name ?? appointment.customer_name_snapshot ?? "—"}</p><p className="mt-1 text-sm text-[var(--muted)]">{[customer?.phone,customer?.email].filter(Boolean).join(" · ") || "Geen contactgegevens"}</p></div>
-      {appointment.note ? <div className="py-5"><p className="text-xs text-[var(--muted)]">Notitie</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{appointment.note}</p></div> : null}
+  let customer:{name:string;phone:string|null;email:string|null}|null=null;
+  let staff:{name:string}|null=null;
+  if(appointment){
+    const [customerResult,staffResult]=await Promise.all([
+      db.from("customers").select("name,phone,email").eq("id",appointment.customer_id).eq("salon_id",salon.id).maybeSingle(),
+      db.from("staff").select("name").eq("id",appointment.staff_id).eq("salon_id",salon.id).maybeSingle(),
+    ]);
+    if(customerResult.error)throw customerResult.error;
+    if(staffResult.error)throw staffResult.error;
+    customer=customerResult.data;
+    staff=staffResult.data;
+  }
+  if(!appointment)notFound();
+
+  const canManage=["owner","manager"].includes(membership.role);
+  const start=formatInTimeZone(new Date(appointment.starts_at),salon.timezone,"HH:mm");
+  const end=formatInTimeZone(new Date(appointment.service_ends_at),salon.timezone,"HH:mm");
+  const date=formatInTimeZone(new Date(appointment.starts_at),salon.timezone,"EEEE d MMMM yyyy");
+
+  return <div data-appointment-action-centre>
+    <Link href="/app/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--ink)]">← Calendar</Link>
+
+    <header className="mt-5 grid gap-5 rounded-[28px] bg-[var(--ink)] p-5 text-white sm:grid-cols-[.8fr_1.2fr] sm:items-end sm:p-7">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent-light)]">{date}</p>
+        <p className="mt-3 text-5xl font-semibold tracking-[-.06em] tabular-nums sm:text-6xl">{start}</p>
+        <p className="mt-1 text-sm text-white/55">tot {end} · {appointment.duration_minutes_snapshot} min</p>
+      </div>
+      <div className="min-w-0 sm:text-right">
+        <div className="sm:flex sm:justify-end"><StatusChip status={appointment.status}/></div>
+        <h1 className="mt-3 truncate text-2xl font-semibold tracking-[-.04em] sm:text-3xl">{customer?.name??appointment.customer_name_snapshot??"Afspraak"}</h1>
+        <p className="mt-1 truncate text-sm text-white/55">{appointment.service_name_snapshot} · {staff?.name??"Medewerker"}</p>
+      </div>
+    </header>
+
+    {errorMessage?<p role="alert" className="mt-5 rounded-[14px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{errorMessage}</p>:null}
+
+    {canManage&&![ "completed","cancelled","no_show" ].includes(appointment.status)?<section className="mt-5 flex flex-wrap items-center gap-2">
+      <Link href={`/app/appointments/${appointment.id}/reschedule`} className="inline-flex h-11 items-center justify-center rounded-[13px] bg-[var(--ink)] px-4 text-sm font-medium text-white">Verplaatsen</Link>
+      {(actions[appointment.status]??[]).map(action=><form key={action.status} action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value={action.status}/><Button variant={action.variant??"secondary"}>{action.label}</Button></form>)}
+      {appointment.status==="confirmed"?<form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="no_show"/><Button variant="ghost">No-show</Button></form>:null}
+      <form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="cancelled"/><Button variant="danger">Annuleren</Button></form>
+      <SelfServiceLinkButton appointmentId={appointment.id}/>
+    </section>:null}
+
+    <div className="mt-8 grid gap-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)]">
+      <section className="overflow-hidden rounded-[24px] border border-[var(--border)] bg-white">
+        <div className="grid grid-cols-2 gap-5 p-5 sm:grid-cols-3">
+          <div><p className="text-xs text-[var(--muted)]">Behandeling</p><p className="mt-1 text-sm font-semibold">{appointment.service_name_snapshot}</p></div>
+          <div><p className="text-xs text-[var(--muted)]">Prijs</p><p className="mt-1 text-sm font-semibold">{formatMoney(appointment.price_cents_snapshot,appointment.currency_snapshot)}</p></div>
+          <div><p className="text-xs text-[var(--muted)]">Betaling</p><p className="mt-1 text-sm font-semibold capitalize">{appointment.payment_status.replaceAll("_"," ")}</p></div>
+        </div>
+        <div className="border-t border-[var(--border)] p-5">
+          <p className="text-xs text-[var(--muted)]">Notitie</p>
+          {canManage?<form action={updateAppointmentNote} className="mt-2"><input type="hidden" name="appointmentId" value={appointment.id}/><textarea name="note" defaultValue={appointment.note??""} maxLength={1000} rows={4} className="w-full rounded-[13px] border border-[var(--border)] bg-[var(--background)] px-3.5 py-3 text-sm outline-none focus:border-[var(--accent-light)] focus:ring-4 focus:ring-[var(--primary-soft)]"/><Button variant="secondary" className="mt-2">Notitie opslaan</Button></form>:<p className="mt-2 whitespace-pre-wrap text-sm leading-6">{appointment.note||"Geen notitie."}</p>}
+        </div>
+      </section>
+
+      <aside className="rounded-[24px] border border-[var(--border)] bg-white p-5">
+        <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Klant</p>
+        <p className="mt-2 text-lg font-semibold">{customer?.name??appointment.customer_name_snapshot??"—"}</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{[customer?.phone,customer?.email].filter(Boolean).join(" · ")||"Geen contactgegevens"}</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {customer?.phone?<a href={`tel:${customer.phone}`} className="inline-flex min-h-10 items-center rounded-[12px] border border-[var(--border)] px-3 text-xs font-medium">Bellen</a>:null}
+          {canManage?<Link href={`/app/customers/${appointment.customer_id}`} className="inline-flex min-h-10 items-center rounded-[12px] border border-[var(--border)] px-3 text-xs font-medium">Open klant</Link>:null}
+        </div>
+      </aside>
     </div>
-    {canManage && !["completed","cancelled","no_show"].includes(appointment.status) ? <div className="mt-6 flex flex-wrap gap-2"><Link href={`/app/appointments/${appointment.id}/reschedule`} className="inline-flex h-11 items-center justify-center rounded-[11px] border border-[var(--border)] bg-white px-4 text-sm font-medium">Verplaatsen</Link>{(actions[appointment.status]??[]).map(action=><form key={action.status} action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value={action.status}/><Button variant={action.variant ?? "primary"}>{action.label}</Button></form>)}</div> : null}
-  </>;
+  </div>;
 }
