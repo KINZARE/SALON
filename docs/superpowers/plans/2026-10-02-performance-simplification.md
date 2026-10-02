@@ -29,3 +29,15 @@
 - Setup: isolated current-source snapshot matches every GitHub blob at ef4c5369117de1742845e219e16626ff9f278ce6. Existing unrelated staged workspace is untouched.
 - Production baseline is collected in GitHub Actions because the execution environment cannot reach GitHub/Vercel directly and the Vercel connector lacks project permission.
 - Marketing root already redirects to Today in main; removal still requires orphan/style/dependency audit.
+
+- Baseline completed before runtime changes; current-source query comparison validates Today 9→6 requests and month payload 12,328→2,052 bytes.
+- Network, data, rendering, cleanup implemented; preview functions independently inspected in fra1.
+- Independent review fixes: historical appointment bounds and malformed staff UUID; RED→GREEN.
+- Local 66 tests, typecheck, build pass; lint has zero errors and one unchanged PostCSS warning.
+- Initial fresh CI install issue repaired and validated with npm ci; temporary lock recovery artifact step removed.
+- Browser QA: 14 workspace paths across 320/360/375/390/430/768/1024/1280/1440, no runtime errors.
+- Database rollback integration and product regression pass; 15 concurrency races pass with fixture removed.
+- Remaining: final exact-head preview/measurement, report and release gate, safe merge, production verification and superseded PR cleanup.
+
+- Public booking/embed N+1 staff-per-service reads replaced by one batch query. Booking effect regression discovered by real form-flow test and corrected with step===3 availability guard.
+- First measured live preview: mobile Today LCP 1596→732ms, Day 2768→700ms, calendar JS 167407→148518 bytes. Mobile link navigation was nearly unchanged; targeted full Calendar prefetch added with data-saving/slow-network opt-out and existing invalidation retained.
