@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/format";
 import { transitionAppointmentStatus,updateAppointmentNote } from "./actions";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
+import { SelfServiceLinkButton } from "@/components/workspace/self-service-link-button";
 
 const actions:Record<string,Array<{label:string;status:string;variant?:"primary"|"secondary"|"danger"}>>={
   pending:[{label:"Bevestigen",status:"confirmed"}],
@@ -67,6 +68,7 @@ export default async function AppointmentPage({params,searchParams}:{params:Prom
       {(actions[appointment.status]??[]).map(action=><form key={action.status} action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value={action.status}/><Button variant={action.variant??"secondary"}>{action.label}</Button></form>)}
       {appointment.status==="confirmed"?<form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="no_show"/><Button variant="ghost">No-show</Button></form>:null}
       <form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="cancelled"/><Button variant="danger">Annuleren</Button></form>
+      <SelfServiceLinkButton appointmentId={appointment.id}/>
     </section>:null}
 
     <div className="mt-8 grid gap-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)]">
