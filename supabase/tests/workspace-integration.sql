@@ -67,6 +67,6 @@ begin
   if has_table_privilege('anon','public.smart_booking_links','SELECT') or has_table_privilege('authenticated','public.smart_booking_links','SELECT') then raise exception 'FAIL smart link direct access';end if;
   if has_table_privilege('anon','public.waitlist_entries','SELECT') or has_table_privilege('authenticated','public.waitlist_entries','SELECT') then raise exception 'FAIL waitlist direct access';end if;
   if (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('appointment_self_service_tokens','smart_booking_links','waitlist_entries') and c.relrowsecurity)<>3 then raise exception 'FAIL server-only table RLS';end if;
-end $;
+end $$;
 select 'PASS: owner/manager CRUD, tenant isolation, staff scope, overlap, snapshots, deposit policy, stale move, blocks, transitions, server-only public workflows' as result;
 rollback;
