@@ -6,10 +6,10 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants = {
-  primary: "bg-[var(--ink)] text-white hover:bg-[#24231f] border-transparent",
-  accent: "bg-[var(--accent)] text-white hover:bg-[var(--accent-dark)] border-transparent",
+  primary: "bg-[var(--primary)] text-[var(--ink)] hover:bg-[var(--primary-hover)] border-transparent",
+  accent: "bg-[var(--secondary)] text-[var(--ink)] hover:bg-[var(--secondary-hover)] border-transparent",
   secondary: "bg-white text-[var(--foreground)] border-[var(--border)] hover:bg-[var(--surface-soft)]",
-  ghost: "bg-transparent text-[var(--foreground)] border-transparent hover:bg-[var(--surface-soft)]",
+  ghost: "bg-transparent text-[var(--foreground)] border-transparent hover:bg-[var(--secondary-soft)]",
   danger: "bg-white text-[var(--danger)] border-[#e8c8c3] hover:bg-[#fbefed]",
 };
 

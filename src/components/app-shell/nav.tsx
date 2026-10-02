@@ -26,13 +26,13 @@ export function AppNav({ role }: { role: Role }) {
       <Link
         key={href}
         href={href}
-        className={`group flex min-h-11 items-center gap-3 rounded-[14px] px-3.5 text-sm font-medium transition-colors ${active ? "bg-[var(--ink)] text-white" : "text-[#57534d] hover:bg-white hover:text-[var(--ink)]"}`}
+        className={`group flex min-h-11 items-center gap-3 rounded-[14px] px-3.5 text-sm font-medium transition-colors ${active ? "bg-[var(--ink)] text-white" : "text-[var(--muted)] hover:bg-white hover:text-[var(--ink)]"}`}
       >
-        <span className={`grid h-8 w-8 place-items-center rounded-[11px] ${active ? "bg-white/10 text-[var(--accent-light)]" : "bg-white text-[var(--muted)] ring-1 ring-[var(--border)] group-hover:text-[var(--ink)]"}`}>
+        <span className={`grid h-8 w-8 place-items-center rounded-[11px] transition-colors ${active ? "bg-[var(--primary)] text-[var(--ink)]" : "bg-white text-[var(--muted)] ring-1 ring-[var(--border)] group-hover:bg-[var(--secondary-soft)] group-hover:text-[var(--ink)]"}`}>
           <WorkspaceIcon name={iconName} size={17} />
         </span>
         <span>{label}</span>
-        {active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent-light)]" aria-hidden /> : null}
+        {active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--secondary)]" aria-hidden /> : null}
       </Link>
     );
   };
@@ -42,7 +42,7 @@ export function AppNav({ role }: { role: Role }) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-[var(--border)] bg-[var(--surface-soft)] md:flex md:flex-col">
         <div className="flex h-[74px] items-center border-b border-[var(--border)] px-5">
           <Link href="/app/today" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--ink)] text-[11px] font-semibold tracking-[.08em] text-white">S</span>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--primary)] text-[11px] font-semibold tracking-[.08em] text-[var(--ink)]">S</span>
             <span>
               <span className="block text-[15px] font-semibold tracking-[-.03em]">SALON</span>
               <span className="mt-0.5 block text-[11px] text-[var(--muted)]">Workspace</span>
@@ -59,7 +59,7 @@ export function AppNav({ role }: { role: Role }) {
         </nav>
 
         <div className="border-t border-[var(--border)] p-4">
-          <Link href="/app/blocks" className="flex min-h-10 items-center gap-3 rounded-xl px-3 text-xs font-medium text-[var(--muted)] hover:bg-white hover:text-[var(--ink)]">
+          <Link href="/app/blocks" className="flex min-h-10 items-center gap-3 rounded-xl px-3 text-xs font-medium text-[var(--muted)] hover:bg-[var(--secondary-soft)] hover:text-[var(--ink)]">
             <WorkspaceIcon name="blocks" size={16} />
             Tijd blokkeren
           </Link>
@@ -68,7 +68,7 @@ export function AppNav({ role }: { role: Role }) {
       </aside>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(env(safe-area-inset-bottom),10px)] md:hidden" aria-label="Mobiele navigatie">
-        <div className={`grid ${primary.length === 3 ? "grid-cols-3" : "grid-cols-4"} rounded-[24px] border border-[var(--border)] bg-white/96 p-1.5 shadow-[0_18px_48px_rgba(39,32,24,.14)] backdrop-blur-xl`}>
+        <div className={`grid ${primary.length === 3 ? "grid-cols-3" : "grid-cols-4"} rounded-[24px] border border-[var(--border)] bg-white/96 p-1.5 shadow-[0_18px_48px_rgba(15,15,15,.14)] backdrop-blur-xl`}>
           {primary.map(([label, href, iconName]) => {
             const active = label === "More" ? moreIsActive : routeIsActive(href);
             return (
@@ -76,7 +76,7 @@ export function AppNav({ role }: { role: Role }) {
                 key={href}
                 href={href}
                 aria-label={label}
-                className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[18px] px-1 text-[11px] font-medium transition-colors ${active ? "bg-[var(--ink)] text-white" : "text-[var(--muted)]"}`}
+                className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[18px] px-1 text-[11px] font-medium transition-colors ${active ? "bg-[var(--primary)] text-[var(--ink)]" : "text-[var(--muted)]"}`}
               >
                 <WorkspaceIcon name={iconName} size={17} />
                 <span>{label}</span>

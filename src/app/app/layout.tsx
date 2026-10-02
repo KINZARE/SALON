@@ -12,13 +12,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[var(--background)] md:pl-64">
       <AppNav role={context.membership.role} />
-      <div className="sticky top-0 z-30 hidden h-[74px] items-center border-b border-[var(--border)] bg-[rgba(251,250,248,.9)] px-6 backdrop-blur-xl md:flex xl:px-8">
+      <div className="sticky top-0 z-30 hidden h-[74px] items-center border-b border-[var(--border)] bg-white/90 px-6 backdrop-blur-xl md:flex xl:px-8">
         <div className="flex min-w-0 flex-1 items-center">{canSearch ? <OperationalSearch /> : null}</div>
         <div className="ml-6 flex items-center gap-3 border-l border-[var(--border)] pl-5">
-          <div className="grid h-9 w-9 place-items-center rounded-full bg-[var(--primary-soft)] text-sm font-semibold text-[var(--accent-dark)]">{initial}</div>
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-[var(--secondary)] text-sm font-semibold text-[var(--ink)]">{initial}</div>
           <div className="hidden text-right lg:block">
             <p className="max-w-[220px] truncate text-sm font-semibold">{context.salon.name}</p>
-            <a href={`/book/${context.salon.slug}`} target="_blank" rel="noreferrer" className="text-xs text-[var(--muted)] hover:text-[var(--accent-dark)]">Online booking ↗</a>
+            <a href={`/book/${context.salon.slug}`} target="_blank" rel="noreferrer" className="text-xs text-[var(--muted)] hover:text-[var(--accent)]">Online booking ↗</a>
           </div>
         </div>
       </div>
