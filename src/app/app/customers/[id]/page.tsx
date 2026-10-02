@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { saveCustomer } from "./actions";
+import { getCustomerIntakeSummary } from "@/services/product-completion";
 
 type HistoryRow={id:string;starts_at:string;status:string;service_name_snapshot:string;price_cents_snapshot:number;currency_snapshot:string};
 
@@ -36,6 +37,7 @@ export default async function CustomerPage({params,searchParams}:{params:Promise
   const noShows=appointments.filter(item=>item.status==="no_show").length;
   const cancellations=appointments.filter(item=>item.status==="cancelled").length;
   const error=typeof query.error==="string"?query.error:null;
+  const intake=await getCustomerIntakeSummary(salon.id,customer.id);
 
   return <div data-customer-profile data-customer-action-centre>
     <Link href="/app/customers" className="text-sm text-[var(--muted)] hover:text-[var(--ink)]">← Customers</Link>
@@ -80,6 +82,8 @@ export default async function CustomerPage({params,searchParams}:{params:Promise
         <div className="sm:col-span-2"><Button variant="secondary">Klant opslaan</Button></div>
       </form>
     </section>
+
+    <section className="mt-9 rounded-[24px] border border-[var(--border)] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Intake & toestemming</p><h2 className="mt-1 text-lg font-semibold">Dossierstatus</h2></div><span className="text-xs text-[var(--muted)]">{intake.submissions.length} formulieren</span></div><div className="mt-4 grid gap-2">{intake.submissions.map(item=><Link key={item.id} href={`/app/intake/submissions/${item.id}`} className="flex items-center justify-between gap-3 rounded-[13px] bg-[var(--background)] px-3 py-3 text-sm"><span>Formulier v{item.form_version}</span><span className="text-xs text-[var(--muted)]">{formatInTimeZone(new Date(item.submitted_at),salon.timezone,"dd MMM yyyy · HH:mm")}</span></Link>)}{!intake.submissions.length?<p className="text-sm text-[var(--muted)]">Nog geen intake ontvangen.</p>:null}</div>{intake.consents.length?<p className="mt-4 text-xs text-[var(--muted)]">{intake.consents.length} toestemming{intake.consents.length===1?"":"en"} geregistreerd.</p>:null}</section>
 
     <section className="mt-9">
       <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Afspraakgeschiedenis</h2><span className="text-xs text-[var(--muted)]">{appointments.length} totaal</span></div>
