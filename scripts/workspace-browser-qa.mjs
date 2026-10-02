@@ -6,6 +6,8 @@ const base = process.env.QA_BASE_URL ?? "http://127.0.0.1:3000";
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
+page.setDefaultTimeout(15_000);
+page.setDefaultNavigationTimeout(25_000);
 const runtimeErrors = [];
 
 page.on("console", (message) => {
@@ -151,10 +153,11 @@ try {
   await page.goto(base + "/app/services", { waitUntil: "networkidle" });
   assert.ok(await page.locator("[data-service-editor]").count() > 0, "Services must use focused editor surfaces");
 
+  console.log("QA_STAGE calendar-drag");
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
-  await page.getByRole("link", { name: "Volgende periode" }).click();
-  await page.waitForLoadState("networkidle");
-  const dragCard = page.locator("[data-appointment-id]").filter({ hasText: "Nina Hendriks" }).first();
+  const dragCard = page.locator(
+    '[data-appointment-id]:has([aria-label="Bevestigd"]), [data-appointment-id]:has([aria-label="Ingecheckt"]), [data-appointment-id]:has([aria-label="In afwachting"])'
+  ).first();
   await dragCard.waitFor();
   await dragCard.scrollIntoViewIfNeeded();
   const beforeTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
@@ -178,7 +181,10 @@ try {
   await page.mouse.down();
   await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + Math.min(18, dragBox.height / 2) + 48, { steps: 8 });
   await page.mouse.up();
-  await moveRequestSeen;
+  await Promise.race([
+    moveRequestSeen,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Drag move request was not emitted within 10 seconds")), 10_000)),
+  ]);
   await page.waitForTimeout(80);
 
   const optimisticTop = await dragCard.evaluate((element) => Number.parseFloat(element.parentElement?.parentElement?.style.top ?? "0"));
@@ -255,6 +261,7 @@ try {
   await page.getByText("Knippen & stylen", { exact: true }).first().waitFor();
   await noBodyOverflow("booking embed");
 
+  console.log("QA_STAGE responsive-sweep");
   await fs.mkdir("qa-artifacts", { recursive: true });
   const widths = [320, 375, 390, 430, 768, 1024, 1440];
   for (const width of widths) {
