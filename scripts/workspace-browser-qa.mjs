@@ -54,6 +54,11 @@ try {
     await page.getByRole("link", { name: label, exact: true }).waitFor();
   }
 
+  await page.getByTestId("today-command-centre").waitFor();
+  await page.getByText("Vrije ruimte", { exact: true }).waitFor();
+  await page.getByRole("link", { name: /Afspraak/ }).first().waitFor();
+  await page.getByRole("link", { name: /Blokkeer tijd/ }).first().waitFor();
+
   const workspacePaths = [
     "/app/today",
     "/app/calendar",
@@ -76,6 +81,18 @@ try {
   await page.locator("[data-calendar-detail]").waitFor();
   assert.equal(await cards.first().getAttribute("aria-pressed"), "true", "Selected appointment must be reflected in the detail panel");
   assert.equal(await page.locator("[data-drop-staff]").count(), 4, "Calendar should expose one drop target per active staff member, not one per time slot");
+  assert.equal(await page.locator("[data-staff-identity]").count(), 4, "Calendar must show one clear staff identity per active staff column");
+  await page.locator("[data-current-time-line]").waitFor();
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
+  await page.locator("[data-mobile-calendar]").waitFor();
+  assert.equal(await page.locator("[data-mobile-calendar]").isVisible(), true, "390px must use the dedicated mobile calendar");
+  assert.equal(await page.locator("[data-desktop-calendar]").isVisible(), false, "Desktop staff columns must not be the primary mobile calendar");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
+  assert.equal(await page.locator("[data-desktop-calendar]").isVisible(), true, "Desktop calendar must remain visible on wide screens");
 
   await page.getByRole("link", { name: "Volgende dag" }).click();
   await page.waitForLoadState("networkidle");
