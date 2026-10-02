@@ -71,7 +71,7 @@ export function BookingFlow({ salon, services, staffByService }: Props) {
   const totalSteps = salon.allowStaffChoice ? 5 : 4;
 
   useEffect(() => {
-    if (!serviceId || step < 3) return;
+    if (!serviceId || step !== 3) return;
     const controller = new AbortController();
     setLoadingSlots(true);
     setSlotError(null);

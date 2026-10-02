@@ -283,6 +283,7 @@ try {
       const time = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }).format(new Date(payload.slots[0].start));
       await page.getByRole("button", { name: time, exact: true }).click();
       await page.getByRole("button", { name: "Verder", exact: true }).click();
+      await page.waitForLoadState("networkidle");
       await page.getByRole("heading", { name: "Je gegevens", exact: true }).waitFor();
       for (const label of ["Naam", "Telefoon", "E-mail"]) await page.getByLabel(label, { exact: true }).waitFor();
       await page.getByLabel("Naam", { exact: true }).focus();
