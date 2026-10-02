@@ -84,6 +84,16 @@ try {
   assert.equal(await page.locator("[data-drop-staff]").count(), 4, "Calendar should expose one drop target per active staff member, not one per time slot");
   assert.equal(await page.locator("[data-staff-identity]").count(), 4, "Calendar must show one clear staff identity per active staff column");
   await page.locator("[data-current-time-line]").waitFor();
+  const quickBlock = page.getByRole("link", { name: "Blokkeer tijd", exact: true });
+  await quickBlock.waitFor();
+  assert.match(await quickBlock.getAttribute("href") ?? "", /^\/app\/blocks\?date=\d{4}-\d{2}-\d{2}$/);
+
+  const appointmentHref = await page.locator("[data-calendar-detail]").getByRole("link", { name: "Open afspraak" }).getAttribute("href");
+  assert.ok(appointmentHref, "Calendar detail must expose the appointment action centre");
+  await page.goto(base + appointmentHref, { waitUntil: "networkidle" });
+  await page.locator("[data-appointment-action-centre]").waitFor();
+  await page.locator("[data-status-chip]").waitFor();
+  await page.getByRole("link", { name: "Verplaatsen", exact: true }).waitFor();
 
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
@@ -163,6 +173,26 @@ try {
   assert.equal(revertedTop, beforeTop, "Rejected move must roll back to the original position");
   const expectedConflictLog = runtimeErrors.findIndex((entry) => entry.includes("Failed to load resource") && entry.includes("409"));
   if (expectedConflictLog >= 0) runtimeErrors.splice(expectedConflictLog, 1);
+
+  await page.goto(base + "/app/customers", { waitUntil: "networkidle" });
+  const firstCustomer = page.locator("a[href^='/app/customers/']").first();
+  const customerHref = await firstCustomer.getAttribute("href");
+  assert.ok(customerHref, "Customer list must link to customer detail");
+  await page.goto(base + customerHref, { waitUntil: "networkidle" });
+  await page.locator("[data-customer-action-centre]").waitFor();
+  await page.getByText("Volgende afspraak", { exact: true }).waitFor();
+  const rebook = page.getByRole("link", { name: /Nieuwe afspraak/ }).first();
+  await rebook.waitFor();
+  assert.match(await rebook.getAttribute("href") ?? "", /^\/app\/calendar\/new\?customerId=/);
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(base + "/app/staff", { waitUntil: "networkidle" });
+  await page.locator("[data-staff-workspace]").waitFor();
+  await page.locator("[data-mobile-staff-schedule]").first().waitFor();
+  await noBodyOverflow("390px staff editor");
+
+  await page.goto(base + "/app/services", { waitUntil: "networkidle" });
+  await page.locator("[data-services-workspace]").waitFor();
 
   for (const authPath of ["/login", "/signup", "/onboarding"]) {
     await page.goto(base + authPath, { waitUntil: "networkidle" });
