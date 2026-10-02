@@ -12,6 +12,9 @@ export default async function MorePage(){
       ["Staff","Medewerkers, roosters en pauzes","/app/staff","staff"],
       ["Reports","Operationeel maandoverzicht","/app/reports","reports"],
       ["Waitlist","Vrijgekomen plekken opvolgen","/app/waitlist","customers"],
+      ["Intake","Formulieren en toestemming per behandeling","/app/intake","services"],
+      ["Afwijkende roosters","Feestdagen, vrije dagen en extra shifts","/app/settings/schedule","calendar"],
+      ["Booking widget","Booking op je eigen website plaatsen","/app/settings/widget","settings"],
       ["Settings","Salon, openingstijden en booking","/app/settings","settings"],
       ["Blocks","Komende vrije tijd en sluitingen","/app/blocks","blocks"],
     ];
