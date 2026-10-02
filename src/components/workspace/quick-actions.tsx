@@ -6,6 +6,7 @@ export function QuickActions({ canManage }: { canManage: boolean }) {
   const actions = [
     { label: "+ Afspraak", href: "/app/calendar/new", icon: "calendar" as const, primary: true },
     { label: "Blokkeer tijd", href: "/app/blocks", icon: "blocks" as const, primary: false },
+    { label: "Deel tijden", href: "/app/booking-links", icon: "calendar" as const, primary: false },
     { label: "Klant toevoegen", href: "/app/customers", icon: "customers" as const, primary: false },
   ];
   return <div className="flex flex-wrap gap-2" aria-label="Snelle acties">
