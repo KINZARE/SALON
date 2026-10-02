@@ -4,6 +4,7 @@ import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { computeStaffGaps, type CapacityInterval } from "@/domain/day-capacity";
 import { getAppointmentsForDate, getBlocks, getOpeningHours } from "@/services/app-data";
 import { getWorkspaceStaff } from "@/services/workspace-data";
+import { findWaitlistMatchesForGaps } from "@/services/waitlist";
 
 type Appointments = Awaited<ReturnType<typeof getAppointmentsForDate>>;
 export type TodayAppointment = Appointments[number];
@@ -17,7 +18,7 @@ export type TodayGap = {
 };
 
 export type TodayAttention = {
-  kind: "cancellation" | "no_show" | "capacity";
+  kind: "cancellation" | "no_show" | "capacity" | "waitlist";
   label: string;
   href: string;
 };
@@ -47,7 +48,7 @@ function intersect(a: CapacityInterval, b: CapacityInterval): CapacityInterval |
   return start < end ? { start, end } : null;
 }
 
-export async function getTodayWorkspace(salonId: string, timezone: string): Promise<TodayWorkspaceData> {
+export async function getTodayWorkspace(salonId: string, timezone: string, options: { includeWaitlist?: boolean } = {}): Promise<TodayWorkspaceData> {
   const now = new Date();
   const date = formatInTimeZone(now, timezone, "yyyy-MM-dd");
   const calendar = new Date(`${date}T12:00:00Z`);
@@ -115,6 +116,7 @@ export async function getTodayWorkspace(salonId: string, timezone: string): Prom
     .filter((gap) => gap.durationMinutes >= 90 && gap.end > now)
     .toSorted((a, b) => a.start.getTime() - b.start.getTime())[0];
 
+  const waitlistMatches = options.includeWaitlist ? await findWaitlistMatchesForGaps(salonId, date, gaps) : [];
   const attention: TodayAttention[] = [];
   if (cancelled) attention.push({ kind: "cancellation", label: `${cancelled} geannuleerde afspraak${cancelled === 1 ? "" : "en"} vandaag`, href: "/app/calendar" });
   if (noShows) attention.push({ kind: "no_show", label: `${noShows} no-show${noShows === 1 ? "" : "s"} vandaag`, href: "/app/calendar" });
@@ -122,6 +124,11 @@ export async function getTodayWorkspace(salonId: string, timezone: string): Prom
     kind: "capacity",
     label: `${largeGap.staffName} heeft ${largeGap.durationMinutes} min vrije ruimte vanaf ${formatInTimeZone(largeGap.start, timezone, "HH:mm")}`,
     href: "/app/calendar",
+  });
+  if (waitlistMatches.length) attention.push({
+    kind: "waitlist",
+    label: `${waitlistMatches.length} wachtlijstmatch${waitlistMatches.length===1?"":"es"} voor vrije ruimte vandaag`,
+    href: "/app/waitlist",
   });
 
   return {
