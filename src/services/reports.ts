@@ -51,6 +51,7 @@ export function buildReportSummary(rows:ReportAppointment[],returningBeforePerio
   const uniqueCustomers=[...new Set(rows.map(row=>row.customer_id))];
   const newCustomers=uniqueCustomers.filter(id=>!returningBeforePeriod.has(id)).length;
   const returningCustomers=uniqueCustomers.length-newCustomers;
+  const repeatRate=uniqueCustomers.length?Math.round((returningCustomers/uniqueCustomers.length)*100):0;
 
   const serviceMap=new Map<string,{name:string;appointments:number;completed:number;revenueCents:number}>();
   const staffMap=new Map<string,{name:string;appointments:number;completed:number;revenueCents:number}>();
@@ -76,6 +77,7 @@ export function buildReportSummary(rows:ReportAppointment[],returningBeforePerio
     noShows:rows.filter(row=>row.status==="no_show").length,
     newCustomers,
     returningCustomers,
+    repeatRate,
     services:[...serviceMap.values()].sort((a,b)=>b.revenueCents-a.revenueCents||b.appointments-a.appointments),
     staff:[...staffMap.values()].sort((a,b)=>b.revenueCents-a.revenueCents||b.appointments-a.appointments),
   };
