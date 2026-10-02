@@ -15,20 +15,20 @@ export default async function ServicesPage({searchParams}:{searchParams:Promise<
   const canManage=["owner","manager"].includes(membership.role);
   const groups=[...categoryData.categories.map(category=>({id:category.id,name:category.name,active:category.active,items:items.filter(item=>item.category_id===category.id)})),{id:"uncategorized",name:"Zonder categorie",active:true,items:items.filter(item=>!item.category_id)}].filter(group=>group.items.length>0);
 
-  return <div data-services-workspace>
+  return <div data-services-workspace className="min-w-0 max-w-full">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Services</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Behandelingen</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Behandelingen rustig gegroepeerd op categorie, met prijs, tijd en team op dezelfde plek.</p></div>
       <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[var(--muted)] ring-1 ring-[var(--border)]">{items.filter(item=>item.active).length} actief</span>
     </header>
     {error?<p role="alert" className="mt-5 rounded-[14px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
-    {canManage?<section className="mt-7 rounded-[22px] border border-[var(--border)] bg-white p-4 sm:p-5">
+    {canManage?<section className="mt-7 min-w-0 max-w-full rounded-[22px] border border-[var(--border)] bg-white p-4 sm:p-5">
       <div><h2 className="font-semibold">Categorieën</h2><p className="mt-1 text-xs text-[var(--muted)]">Gebruik alleen categorieën die de boekingskeuze sneller maken.</p></div>
       <div className="mt-4 grid gap-2">
-        {categoryData.categories.map(category=><form key={category.id} action={saveCategory} className="grid gap-2 rounded-[13px] bg-[var(--background)] p-2.5 sm:grid-cols-[1fr_90px_auto_auto] sm:items-center">
-          <input type="hidden" name="id" value={category.id}/><input aria-label="Categorienaam" name="name" defaultValue={category.name} required maxLength={80} className="h-10 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><input aria-label="Volgorde" name="sortOrder" type="number" min={0} max={10000} defaultValue={category.sort_order} className="h-10 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><label className="flex min-h-10 items-center gap-2 text-xs"><input type="checkbox" name="active" defaultChecked={category.active}/> Actief</label><button className="h-10 rounded-[11px] border border-[var(--border)] bg-white px-3 text-xs font-semibold hover:bg-[var(--surface-soft)]">Opslaan</button>
+        {categoryData.categories.map(category=><form key={category.id} action={saveCategory} className="grid gap-2 rounded-[13px] bg-[var(--background)] p-2.5 lg:grid-cols-[minmax(0,1fr)_90px_auto_auto] sm:items-center">
+          <input type="hidden" name="id" value={category.id}/><input aria-label="Categorienaam" name="name" defaultValue={category.name} required maxLength={80} className="h-10 w-full min-w-0 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><input aria-label="Volgorde" name="sortOrder" type="number" min={0} max={10000} defaultValue={category.sort_order} className="h-10 w-full min-w-0 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><label className="flex min-h-10 items-center gap-2 text-xs"><input type="checkbox" name="active" defaultChecked={category.active}/> Actief</label><button className="h-10 rounded-[11px] border border-[var(--border)] bg-white px-3 text-xs font-semibold hover:bg-[var(--surface-soft)]">Opslaan</button>
         </form>)}
-        <form action={saveCategory} className="grid gap-2 rounded-[13px] border border-dashed border-[var(--border-strong)] p-2.5 sm:grid-cols-[1fr_90px_auto_auto] sm:items-center">
-          <input name="name" required maxLength={80} placeholder="Nieuwe categorie" className="h-10 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><input aria-label="Volgorde" name="sortOrder" type="number" min={0} max={10000} defaultValue={categoryData.categories.length*10} className="h-10 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><label className="flex min-h-10 items-center gap-2 text-xs"><input type="checkbox" name="active" defaultChecked/> Actief</label><button className="h-10 rounded-[11px] bg-[var(--ink)] px-3 text-xs font-semibold text-white">Toevoegen</button>
+        <form action={saveCategory} className="grid gap-2 rounded-[13px] border border-dashed border-[var(--border-strong)] p-2.5 lg:grid-cols-[minmax(0,1fr)_90px_auto_auto] sm:items-center">
+          <input name="name" required maxLength={80} placeholder="Nieuwe categorie" className="h-10 w-full min-w-0 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><input aria-label="Volgorde" name="sortOrder" type="number" min={0} max={10000} defaultValue={categoryData.categories.length*10} className="h-10 w-full min-w-0 rounded-[11px] border border-[var(--border)] bg-white px-3 text-sm"/><label className="flex min-h-10 items-center gap-2 text-xs"><input type="checkbox" name="active" defaultChecked/> Actief</label><button className="h-10 rounded-[11px] bg-[var(--ink)] px-3 text-xs font-semibold text-white">Toevoegen</button>
         </form>
       </div>
     </section>:null}
@@ -46,7 +46,7 @@ export default async function ServicesPage({searchParams}:{searchParams:Promise<
       </section>)}
       {!items.length?<div className="rounded-[22px] border border-dashed border-[var(--border-strong)] bg-white p-8 text-center"><p className="font-semibold">Nog geen behandelingen</p><p className="mt-1 text-sm text-[var(--muted)]">Voeg de eerste behandeling hieronder toe.</p></div>:null}
     </div>
-    {canManage?<section className="mt-10 max-w-3xl"><div className="mb-4"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--muted)]">Nieuw</p><h2 className="mt-1 text-2xl font-semibold tracking-[-.04em]">Behandeling toevoegen</h2></div><ServiceEditor staff={staff} categories={categoryData.categories} action={saveService}/></section>:null}
+    {canManage?<section className="mt-10 min-w-0 max-w-3xl"><div className="mb-4"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--muted)]">Nieuw</p><h2 className="mt-1 text-2xl font-semibold tracking-[-.04em]">Behandeling toevoegen</h2></div><ServiceEditor staff={staff} categories={categoryData.categories} action={saveService}/></section>:null}
   </div>;
 }
 function AccessDenied(){return <div><h1 className="text-3xl font-semibold">Geen toegang</h1><p className="mt-2 text-sm text-[var(--muted)]">Services worden beheerd door owner of manager.</p></div>}
