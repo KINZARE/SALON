@@ -44,6 +44,16 @@ try {
   await page.getByRole("heading", { name: "Today" }).waitFor();
   await assertNoDemoOrLoginContent();
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(base + "/app/today", { waitUntil: "networkidle" });
+  assert.ok(await page.locator("[data-workspace-icon]").count() >= 4, "Desktop navigation must use semantic workspace icons instead of letter glyphs");
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(base + "/app/today", { waitUntil: "networkidle" });
+  for (const label of ["Today", "Calendar", "Customers", "More"]) {
+    await page.getByRole("link", { name: label, exact: true }).waitFor();
+  }
+
   const workspacePaths = [
     "/app/today",
     "/app/calendar",
