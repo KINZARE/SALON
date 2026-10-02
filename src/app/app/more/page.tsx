@@ -7,6 +7,7 @@ export default async function MorePage(){
   const items:readonly [string,string,string,WorkspaceIconName][] = membership.role === "staff"
     ? [["Settings","Account en voorkeuren","/app/settings","settings"]]
     : [
+      ["Booking links","Deel alleen relevante live beschikbare tijden","/app/booking-links","calendar"],
       ["Services","Behandelingen, duur en prijs","/app/services","services"],
       ["Staff","Medewerkers, roosters en pauzes","/app/staff","staff"],
       ["Reports","Operationeel maandoverzicht","/app/reports","reports"],
