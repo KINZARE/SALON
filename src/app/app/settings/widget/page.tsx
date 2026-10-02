@@ -1,17 +1,25 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { requireAppContext } from "@/lib/auth";
 import { getWidgetSettings } from "@/services/product-completion";
 import { saveWidgetSettings } from "./actions";
+import { WidgetCodeBlock } from "@/components/workspace/widget-code-block";
 
 export default async function WidgetSettingsPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const {salon,membership}=await requireAppContext();
   if(!["owner","manager"].includes(membership.role))return <div><h1 className="text-3xl font-semibold">Geen toegang</h1></div>;
-  const [settings,query]=await Promise.all([getWidgetSettings(salon.id),searchParams]);
+  const [settings,query,requestHeaders]=await Promise.all([getWidgetSettings(salon.id),searchParams,headers()]);
   const error=typeof query.error==="string"?query.error:null;
   const publicPath=`/book/${salon.slug}`;
   const embedPath=`/embed/${salon.slug}`;
-  const buttonCode=`<a href="${publicPath}" target="_blank" rel="noopener" style="display:inline-block;padding:12px 18px;border-radius:12px;background:${settings.accent_color};color:#fff;text-decoration:none;font:600 14px system-ui">${settings.button_label}</a>`;
-  const iframeCode=`<iframe src="${embedPath}" width="${settings.width}" height="${settings.height}" style="border:0;max-width:100%" loading="lazy" title="Online afspraak maken"></iframe>`;
+  const forwardedHost=(requestHeaders.get("x-forwarded-host")??requestHeaders.get("host")??"").split(",")[0].trim();
+  const forwardedProto=(requestHeaders.get("x-forwarded-proto")??(forwardedHost.startsWith("localhost")?"http":"https")).split(",")[0].trim();
+  const origin=forwardedHost?`${forwardedProto}://${forwardedHost}`:"";
+  const publicUrl=`${origin}${publicPath}`;
+  const embedUrl=`${origin}${embedPath}`;
+  const safeLabel=settings.button_label.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  const buttonCode=`<a href="${publicUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:12px 18px;border-radius:12px;background:${settings.accent_color};color:#fff;text-decoration:none;font:600 14px system-ui">${safeLabel}</a>`;
+  const iframeCode=`<iframe src="${embedUrl}" width="${settings.width}" height="${settings.height}" style="border:0;max-width:100%" loading="lazy" title="Online afspraak maken"></iframe>`;
 
   return <div data-widget-settings className="max-w-4xl">
     <header><Link href="/app/settings" className="text-xs font-semibold text-[var(--accent-dark)]">← Settings</Link><p className="mt-4 text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Booking widget</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em]">Boeken op je eigen website</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Gebruik dezelfde publieke bookingflow als SALON zelf. Alleen label, accent en formaat zijn aanpasbaar.</p></header>
@@ -25,10 +33,9 @@ export default async function WidgetSettingsPage({searchParams}:{searchParams:Pr
     </form>
 
     <div className="mt-6 grid gap-5 lg:grid-cols-2">
-      <CodeBlock title="Knop" value={buttonCode}/>
-      <CodeBlock title="Embed" value={iframeCode}/>
+      <WidgetCodeBlock title="Knop" value={buttonCode}/>
+      <WidgetCodeBlock title="Embed" value={iframeCode}/>
     </div>
     <div className="mt-5 flex flex-wrap gap-2"><a href={publicPath} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center rounded-[12px] border border-[var(--border)] bg-white px-3 text-xs font-semibold">Publieke booking ↗</a><a href={embedPath} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center rounded-[12px] border border-[var(--border)] bg-white px-3 text-xs font-semibold">Embed preview ↗</a></div>
   </div>;
 }
-function CodeBlock({title,value}:{title:string;value:string}){return <section className="rounded-[22px] border border-[var(--border)] bg-white p-4"><h2 className="text-sm font-semibold">{title}</h2><textarea readOnly value={value} rows={6} onFocus={undefined} className="mt-3 w-full resize-none rounded-[12px] bg-[var(--background)] p-3 font-mono text-[11px] leading-5 text-[var(--muted)]"/></section>}
