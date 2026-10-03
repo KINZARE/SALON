@@ -11,7 +11,7 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
   SALON_QA_SHA: "${{ github.sha }}"
-  TESTED_APP_SHA: "f2cf6e93e4ad1581976a4c7a9ddd79c61ee9d12c"
+  TESTED_APP_SHA: "e084d5a40dadec2e9abf9470cb6d17104092a9c1"
 
 jobs:
   verify-and-deploy-production:
@@ -137,6 +137,11 @@ jobs:
           QA_BASE_URL: "http://127.0.0.1:3000"
         run: node scripts/workspace-browser-qa.mjs
 
+      - name: ORSIRA responsive QA before production
+        env:
+          QA_BASE_URL: "http://127.0.0.1:3000"
+        run: node scripts/orsira-responsive-qa.mjs
+
       - name: Ensure and link Vercel project
         shell: bash
         run: |
@@ -166,7 +171,7 @@ jobs:
             --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### SALON Production" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ORSIRA Production" >> "$GITHUB_STEP_SUMMARY"
           echo "Main SHA: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Tested app SHA: $TESTED_APP_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "Deployment: $URL" >> "$GITHUB_STEP_SUMMARY"
@@ -229,17 +234,22 @@ jobs:
           test "$TODAY_CODE" = "200"
           echo "$ROOT_URL" | grep -Eqi '/app/today([?#].*)?$'
           echo "$TODAY_URL" | grep -Eqi '/app/today([?#].*)?$'
-          grep -qi "SALON" /tmp/prod-today.html
+          grep -qi "ORSIRA" /tmp/prod-today.html
           if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode|Baan Thai Wellness" /tmp/prod-root.html /tmp/prod-today.html; then
             echo "Unexpected login/demo/protection content detected in production"
             exit 1
           fi
-          echo "Public SALON production smoke checks passed."
+          echo "Public ORSIRA production smoke checks passed."
 
       - name: Full browser QA on deployed production
         env:
           QA_BASE_URL: "https://salon-gamma-steel.vercel.app"
         run: node scripts/workspace-browser-qa.mjs
+
+      - name: ORSIRA responsive QA on deployed production
+        env:
+          QA_BASE_URL: "https://salon-gamma-steel.vercel.app"
+        run: node scripts/orsira-responsive-qa.mjs
 
       - name: Production performance sanity check
         env:
