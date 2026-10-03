@@ -36,6 +36,19 @@ test("Today and Calendar use a light ORSIRA operational hierarchy", async () => 
 test("management surfaces use restrained ORSIRA rows and actions", async () => {
   const [customers, services, staff] = await Promise.all([read("src/app/app/customers/page.tsx"), read("src/app/app/services/page.tsx"), read("src/app/app/staff/page.tsx")]);
   assert.match(customers, />Klanten</); assert.match(customers, /bg-\[var\(--primary\)\][^\n"]*text-white/); assert.match(customers, /rounded-\[10px\]/);
-  assert.ok(!services.includes("rounded-[22px]"), "Services must avoid oversized card rounding"); assert.ok(!services.includes("bg-[var(--ink)]"), "Services primary actions must use ORSIRA burgundy"); assert.match(services, /bg-\[var\(--primary\)\]/);
-  assert.ok(!staff.includes("rounded-[22px]"), "Staff must avoid oversized card rounding"); assert.match(staff, /rounded-\[16px\]/); assert.match(staff, /text-\[var\(--primary\)\]/);
+  assert.ok(!services.includes("rounded-[22px]")); assert.ok(!services.includes("bg-[var(--ink)]")); assert.match(services, /bg-\[var\(--primary\)\]/);
+  assert.ok(!staff.includes("rounded-[22px]")); assert.match(staff, /rounded-\[16px\]/); assert.match(staff, /text-\[var\(--primary\)\]/);
+});
+
+test("customer-facing booking surfaces visibly carry ORSIRA without changing flow components", async () => {
+  const [bookingPage, smartPage, embedPage, errorPage] = await Promise.all([
+    read("src/app/book/[salonSlug]/page.tsx"),
+    read("src/app/book-link/[token]/page.tsx"),
+    read("src/app/embed/[salonSlug]/page.tsx"),
+    read("src/app/app/error.tsx"),
+  ]);
+  for (const source of [bookingPage, smartPage, embedPage]) assert.match(source, />ORSIRA</);
+  assert.match(bookingPage, /<BookingFlow/); assert.match(smartPage, /<SmartBookingFlow/); assert.match(embedPage, /<BookingFlow/);
+  assert.ok(!smartPage.includes(">SALON<")); assert.match(bookingPage, /rounded-\[16px\]/);
+  assert.match(errorPage, /<Button/); assert.match(errorPage, /font-display/);
 });
