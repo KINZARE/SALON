@@ -11,7 +11,7 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
   SALON_QA_SHA: "${{ github.sha }}"
-  TESTED_APP_SHA: "93113b58750f30b55e8088eb3a31ed84bd61d799"
+  TESTED_APP_SHA: "f2cf6e93e4ad1581976a4c7a9ddd79c61ee9d12c"
 
 jobs:
   verify-and-deploy-production:
@@ -258,5 +258,3 @@ jobs:
         with:
           name: production-qa-performance-${{ github.sha }}
           path: qa-artifacts
-          if-no-files-found: ignore
-          retention-days: 30
