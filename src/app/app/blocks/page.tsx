@@ -24,15 +24,15 @@ export default async function BlocksPage({searchParams}:{searchParams:Promise<Re
 
   return <div>
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--accent)]">Beschikbaarheid</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Tijd blokkeren</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Lunch, vakantie, administratie of sluiting — direct meegenomen in beschikbaarheid.</p></div>
-      <a href={`/app/calendar?date=${selectedDate}`} className="text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)]">← Terug naar Calendar</a>
+      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--primary)]">Beschikbaarheid</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Tijd blokkeren</h1><p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Lunch, vakantie, administratie of sluiting — direct meegenomen in beschikbaarheid.</p></div>
+      <a href={`/app/calendar?date=${selectedDate}`} className="text-sm font-medium text-[var(--muted)] hover:text-[var(--primary)]">← Terug naar Calendar</a>
     </header>
-    {error?<p role="alert" className="mt-5 rounded-[14px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
+    {error?<p role="alert" className="mt-5 rounded-[10px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
 
-    <section className="mt-7 max-w-2xl rounded-[24px] border border-[var(--border)] bg-white p-4 sm:p-6">
+    <section className="mt-7 max-w-2xl rounded-[16px] border border-[var(--border)] bg-white p-4 sm:p-6">
       <div><h2 className="text-lg font-semibold">Nieuw block</h2><p className="mt-1 text-xs text-[var(--muted)]">De gekozen datum uit Calendar staat alvast klaar.</p></div>
       <form action={createBlock} className="mt-5 grid min-w-0 gap-4">
-        <label className="grid min-w-0 gap-1.5 text-sm font-medium"><span>Voor wie?</span><select name="staffId" defaultValue={selectedStaff} className="h-11 min-w-0 w-full max-w-full rounded-[13px] border border-[var(--border)] bg-white px-3.5 outline-none focus:border-[var(--accent-light)] focus:ring-4 focus:ring-[var(--primary-soft)]"><option value="">Hele salon</option>{staff.filter(member=>member.active).map(member=><option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
+        <label className="grid min-w-0 gap-1.5 text-sm font-medium"><span>Voor wie?</span><select name="staffId" defaultValue={selectedStaff} className="h-11 min-w-0 w-full max-w-full rounded-[10px] border border-[var(--border)] bg-white px-3.5 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"><option value="">Hele salon</option>{staff.filter(member=>member.active).map(member=><option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
         <div className="grid min-w-0 gap-3 sm:grid-cols-2"><Field label="Van" name="startsAt" type="datetime-local" defaultValue={defaultStart} required/><Field label="Tot" name="endsAt" type="datetime-local" defaultValue={defaultEnd} required/></div>
         <Field label="Reden (optioneel)" name="reason" placeholder="Lunch, vakantie, privé…" maxLength={160}/>
         <div><Button size="lg">Tijd blokkeren</Button></div>
@@ -41,7 +41,7 @@ export default async function BlocksPage({searchParams}:{searchParams:Promise<Re
 
     <section className="mt-10">
       <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Komende blocks</h2><span className="text-xs text-[var(--muted)]">{blocks.length} gepland</span></div>
-      <div className="overflow-hidden rounded-[22px] border border-[var(--border)] bg-white">{blocks.map((block,index)=><div key={block.id} className={`flex items-start justify-between gap-4 px-4 py-4 sm:px-5 ${index?"border-t border-[var(--border)]":""}`}><div><p className="font-semibold">{block.staff_id?staffMap.get(block.staff_id)??"Medewerker":"Hele salon"}</p><p className="mt-1 text-sm text-[var(--muted)]">{formatInTimeZone(new Date(block.starts_at),salon.timezone,"dd-MM-yyyy HH:mm")} – {formatInTimeZone(new Date(block.ends_at),salon.timezone,"dd-MM-yyyy HH:mm")}{block.reason?` · ${block.reason}`:""}</p></div><form action={deleteBlock}><input type="hidden" name="id" value={block.id}/><button className="min-h-11 px-2 text-xs font-medium text-[var(--danger)]">Verwijderen</button></form></div>)}{!blocks.length?<p className="px-5 py-8 text-sm text-[var(--muted)]">Geen toekomstige blocks.</p>:null}</div>
+      <div className="overflow-hidden rounded-[16px] border border-[var(--border)] bg-white">{blocks.map((block,index)=><div key={block.id} className={`flex items-start justify-between gap-4 px-4 py-4 sm:px-5 ${index?"border-t border-[var(--border)]":""}`}><div className="min-w-0"><p className="font-semibold">{block.staff_id?staffMap.get(block.staff_id)??"Medewerker":"Hele salon"}</p><p className="mt-1 break-words text-sm text-[var(--muted)]">{formatInTimeZone(new Date(block.starts_at),salon.timezone,"dd-MM-yyyy HH:mm")} – {formatInTimeZone(new Date(block.ends_at),salon.timezone,"dd-MM-yyyy HH:mm")}{block.reason?` · ${block.reason}`:""}</p></div><form action={deleteBlock}><input type="hidden" name="id" value={block.id}/><button className="min-h-11 px-2 text-xs font-medium text-[var(--danger)]">Verwijderen</button></form></div>)}{!blocks.length?<p className="px-5 py-8 text-sm text-[var(--muted)]">Geen toekomstige blocks.</p>:null}</div>
     </section>
   </div>;
 }
