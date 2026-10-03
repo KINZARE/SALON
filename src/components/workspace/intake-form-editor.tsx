@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { IntakeEditorSchema, serializeIntakeFields, type IntakeEditorValues } from "@/domain/intake-editor";
 import { Button } from "@/components/ui/button";
 import { Field,TextAreaField } from "@/components/ui/field";
-import type { IntakeFieldType } from "@/domain/intake-form";
+import type { IntakeFieldType } from "@/domain/intake-types";
 
 type Service={id:string;name:string;active:boolean};
 type ExistingField={id:string;label:string;field_type:string;required:boolean;options:unknown;sort_order:number};

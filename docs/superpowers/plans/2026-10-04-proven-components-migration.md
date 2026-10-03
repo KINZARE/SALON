@@ -24,16 +24,16 @@
 
 ## Tasks
 - [ ] 0. Repair pre-existing incomplete npm lock; clean install, 80-test baseline, typecheck/lint/build, baseline bundles/live measurements.
-- [ ] 1. Add Zod; replace UUID/date and main action/API/intake input validators; regression malformed inputs, calendar dates, service numbers, deposit, contacts, report ranges.
-- [ ] 2. Migrate intake editor to useForm/useFieldArray/zodResolver; keep action payload, linking, consent and ordering; browser add/move/remove/save/error tests.
-- [ ] 3. Use official Resend SDK in one existing server adapter; mock configuration, success/failure, missing ID and idempotency; preserve notification state tests.
-- [ ] 4. Use csv-stringify server export with BOM, CRLF and formula escaping; test special characters, Unicode, empty cells and malicious formulas.
-- [ ] 5. Move existing workspace and responsive QA scenarios into Playwright Test fixtures/config, failure traces/screenshots/console/URL and CI reporters. Preserve existing scenario assertions and performance scripts.
-- [ ] 6. Map existing semantic workspace icons to tree-shakable Lucide; accessible SVG behavior, browser navigation and bundle check.
-- [ ] 7. Use date-fns with explicit UTC context for calendar/report date-only helpers; week/month/leap/year/DST and multiple host timezone regression.
-- [ ] 8. Inspect live tenant search datasets and query plans; additive pg_trgm only if evidence supports improvement; preserve bounded two-character UX.
-- [ ] 9. Evaluate live pgmq compatibility versus existing SKIP LOCKED job lifecycle; migrate only with reliable transition and measurable benefit.
-- [ ] 10. Evaluate native Temporal/runtime and server-only polyfill; DST tests and bundle impact determine GO/NO-GO.
+- [x] 1. Add Zod; replace UUID/date and main action/API/intake input validators; regression malformed inputs, calendar dates, service numbers, deposit, contacts, report ranges.
+- [x] 2. Migrate intake editor to useForm/useFieldArray/zodResolver; keep action payload, linking, consent and ordering; browser add/move/remove/save/error tests.
+- [x] 3. Use official Resend SDK in one existing server adapter; mock configuration, success/failure, missing ID and idempotency; preserve notification state tests.
+- [x] 4. Use csv-stringify server export with BOM, CRLF and formula escaping; test special characters, Unicode, empty cells and malicious formulas.
+- [x] 5. Move existing workspace and responsive QA scenarios into Playwright Test fixtures/config, failure traces/screenshots/console/URL and CI reporters. Preserve existing scenario assertions and performance scripts.
+- [x] 6. Map existing semantic workspace icons to tree-shakable Lucide; accessible SVG behavior, browser navigation and bundle check.
+- [x] 7. Use date-fns with explicit UTC context for calendar/report date-only helpers; week/month/leap/year/DST and multiple host timezone regression.
+- [x] 8. Inspect live tenant search datasets and query plans; additive pg_trgm only if evidence supports improvement; preserve bounded two-character UX.
+- [x] 9. Evaluate live pgmq compatibility versus existing SKIP LOCKED job lifecycle; migrate only with reliable transition and measurable benefit.
+- [x] 10. Evaluate native Temporal/runtime and server-only polyfill; DST tests and bundle impact determine GO/NO-GO.
 - [ ] 11. Full fresh install/unit/type/lint/build, Playwright/mobile/live preview, DB concurrency/integration/security and before/after performance; branch review, exact SHA PR merge and production smoke.
 
 ## Baseline findings

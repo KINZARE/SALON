@@ -24,8 +24,16 @@ Primary docs: https://zod.dev/api ; https://github.com/react-hook-form/resolvers
 ## Verification and limitations
 
 - Pre-existing incomplete package-lock prevented npm ci; platform dependencies repaired without upgrading application framework.
-- Per phase local tests/typecheck/lint/build run; initial suite 80, currently 95 tests. One existing postcss import/no-anonymous-default-export warning remains.
+- Per phase local tests/typecheck/lint/build run; initial suite 80, currently 98 tests. One existing postcss import/no-anonymous-default-export warning remains.
 - Live transactional workspace-integration.sql and product-regression.sql passed and rolled back; includes permissions/tenant scope/conflicts/snapshots/intake versions/consent/replay/self-service/outbox behavior.
 - Supabase security advisors returned no findings; all exposed public tables have RLS.
 - npm audit found one pre-existing underlying braces <=3.0.3 advisory propagated through Next ESLint tooling (five high entries). npm registry's current braces release is still 3.0.3. Audit suggests an incompatible Next lint downgrade; do not force downgrade. Tool consumes checked-in build patterns, not public application inputs. Runtime audit must be recorded separately at final gates.
 - Local browser download unavailable; real Chromium testing runs in GitHub Actions with existing secrets, never copied into the repository. Do not mark browser/preview/production complete until the exact final SHA passes.
+
+## Review and bundle verification
+
+Final independent review found no critical defect. Corrected calendar move null-body handling (400 before DB access), restored internal name truncation while retaining waitlist length rejection, and combined Playwright projects so reports cannot overwrite each other. A prior intake test used an exact accessible name that excluded the label hint; its selector is corrected.
+
+The intake client imports Zod Mini and shared field constants without server definition constructors. Same local production-build entry-manifest comparison: intake 16,696 → 47,858 gzip bytes (+31,162); all other workspace routes +1,525 gzip bytes from named Lucide icons; public booking unchanged at 11,550. Before Mini isolation, intake was 123,285 gzip bytes: the optimization removed 75,427 bytes. These are route entry unions including shared/error entries, not measured browser transfer; live resource/LCP/TTFB/navigation gates are still required. Provider, CSV and Temporal remain server-only.
+
+Concurrency coverage now includes booking/booking, block, break, closing exception, staff override, reschedule/booking, stale move, self-service reschedule/booking and cancel replay, three repetitions each in one random tenant; fixture cleanup is mandatory.

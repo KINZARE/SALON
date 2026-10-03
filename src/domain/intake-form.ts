@@ -1,7 +1,7 @@
 import { z } from "zod";
+import { INTAKE_FIELD_TYPES, type IntakeFieldType } from "./intake-types.ts";
 
-export const INTAKE_FIELD_TYPES=["short_text","long_text","yes_no","select","checkbox","date","consent"] as const;
-export type IntakeFieldType=typeof INTAKE_FIELD_TYPES[number];
+export { INTAKE_FIELD_TYPES, type IntakeFieldType } from "./intake-types.ts";
 export type IntakeFieldInput={label:string;type:IntakeFieldType;required:boolean;options?:string[]};
 export type IntakeDefinitionInput={title:string;description?:string;fields:IntakeFieldInput[]};
 

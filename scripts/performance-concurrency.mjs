@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
@@ -12,8 +12,8 @@ const checked = async query => { const result = await query; if (result.error) t
 const today = formatInTimeZone(new Date(), 'Europe/Amsterdam', 'yyyy-MM-dd');
 const day = offset => new Date(Date.parse(`${today}T12:00:00Z`) + offset * 86400000).toISOString().slice(0, 10);
 const at = (date, hour) => fromZonedTime(`${date}T${String(hour).padStart(2, '0')}:00:00`, 'Europe/Amsterdam').toISOString();
-const book = (date, hour) => db.rpc('create_appointment_atomic', {
-  p_salon_id: tenant, p_service_id: service, p_staff_id: staff, p_starts_at: at(date, hour),
+const book = (date, hour, staffId = staff) => db.rpc('create_appointment_atomic', {
+  p_salon_id: tenant, p_service_id: service, p_staff_id: staffId, p_starts_at: at(date, hour),
   p_customer_name: 'Isolated concurrency fixture', p_source: 'public_booking',
   // No contact details: these tests cannot send confirmation/reminder messages.
 });
@@ -34,7 +34,7 @@ try {
   await checked(db.from('opening_hours').insert(Array.from({ length: 7 }, (_, weekday) => ({ salon_id: tenant, weekday, is_open: true, start_time: '09:00', end_time: '20:00' }))));
   await checked(db.from('staff_schedules').insert(Array.from({ length: 7 }, (_, weekday) => ({ salon_id: tenant, staff_id: staff, weekday, is_working: true, start_time: '09:00', end_time: '20:00' }))));
   for (let repeat = 0; repeat < 3; repeat++) {
-    const base = 2 + repeat * 6;
+    const base = 2 + repeat * 9;
     await race('booking vs booking', book(day(base), 10), book(day(base), 10), ['23P01']);
     await race('booking vs block', book(day(base + 1), 10), db.rpc('save_workspace_entity', { p_salon_id: tenant, p_kind: 'block', p_payload: { staff_id: staff, starts_at: at(day(base + 1), 10), ends_at: at(day(base + 1), 12), reason: 'Isolated QA block' } }), ['TIME_BLOCKED', 'APPOINTMENTS_IN_BLOCK']);
     await race('booking vs schedule exception', book(day(base + 2), 10), db.rpc('save_opening_exception', { p_salon_id: tenant, p_date: day(base + 2), p_is_open: false }), ['SALON_CLOSED', 'APPOINTMENTS_IN_SCHEDULE']);
@@ -45,6 +45,23 @@ try {
     await race('stale drag/drop', stale(14), stale(16), ['STALE_APPOINTMENT']);
     const snapshot = await checked(db.from('appointments').select('duration_minutes_snapshot,buffer_minutes_snapshot,price_cents_snapshot').eq('id', staleAppointment).eq('salon_id', tenant).single());
     assert.deepEqual(snapshot, { duration_minutes_snapshot: 60, buffer_minutes_snapshot: 15, price_cents_snapshot: 6500 });
+    // A separate staff member keeps recurring break writes independent of earlier fixtures.
+    const breakStaff = randomUUID();
+    await checked(db.from('staff').insert({ id: breakStaff, salon_id: tenant, name: 'QA break staff' }));
+    await checked(db.from('staff_services').insert({ salon_id: tenant, staff_id: breakStaff, service_id: service }));
+    const schedules = Array.from({ length: 7 }, (_, weekday) => ({ weekday, is_working: true, start_time: '09:00', end_time: '20:00' }));
+    await checked(db.from('staff_schedules').insert(schedules.map(schedule => ({ ...schedule, salon_id: tenant, staff_id: breakStaff }))));
+    const breakDate = day(base + 5);
+    const weekday = new Date(`${breakDate}T12:00:00Z`).getUTCDay();
+    await race('booking vs break', book(breakDate, 10, breakStaff), db.rpc('save_workspace_entity', {
+      p_salon_id: tenant, p_kind: 'staff', p_payload: { id: breakStaff, name: 'QA break staff', role: 'staff', active: true, service_ids: [service], schedules, breaks: [{ weekday, start_time: '10:00', end_time: '12:00' }] },
+    }), ['STAFF_BREAK', 'APPOINTMENTS_IN_SCHEDULE']);
+    await race('booking vs staff override', book(day(base + 6), 10), db.rpc('save_staff_schedule_override', { p_salon_id: tenant, p_staff_id: staff, p_date: day(base + 6), p_is_working: false }), ['STAFF_NOT_WORKING', 'APPOINTMENTS_IN_SCHEDULE']);
+    const selfAppointment = await checked(book(day(base + 7), 10));
+    const tokenHash = randomBytes(32).toString('hex');
+    await checked(db.from('appointment_self_service_tokens').insert({ salon_id: tenant, appointment_id: selfAppointment, token_hash: tokenHash, expires_at: at(day(base + 8), 20) }));
+    await race('self-service reschedule vs booking', db.rpc('self_service_reschedule_appointment', { p_token_hash: tokenHash, p_staff_id: staff, p_starts_at: at(day(base + 7), 15) }), book(day(base + 7), 15), ['23P01']);
+    await race('self-service cancel replay', db.rpc('self_service_cancel_appointment', { p_token_hash: tokenHash }), db.rpc('self_service_cancel_appointment', { p_token_hash: tokenHash }), ['APPOINTMENT_NOT_CANCELLABLE']);
   }
 } finally {
   // Only the random tenant created by this process; never delete existing salon data.
