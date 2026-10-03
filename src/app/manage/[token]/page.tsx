@@ -19,10 +19,10 @@ export default async function ManageAppointmentPage({params}:{params:Promise<{to
 
   return <main className="min-h-screen bg-[var(--background)] px-4 py-8 sm:py-12">
     <div className="mx-auto max-w-2xl">
-      <header className="mb-7"><p className="text-xs font-semibold uppercase tracking-[.16em] text-[var(--accent)]">SALON</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em]">Je afspraak</h1><p className="mt-1 text-sm text-[var(--muted)]">{salon.name}</p></header>
-      <section className="overflow-hidden rounded-[28px] bg-[var(--ink)] p-5 text-white sm:p-7">
-        <div className="flex items-start justify-between gap-4"><div><p className="text-xs capitalize text-white/55">{date}</p><p className="mt-2 text-4xl font-semibold tracking-[-.05em] tabular-nums">{time}</p></div><StatusChip status={appointment.status}/></div>
-        <div className="mt-8"><p className="text-xl font-semibold">{appointment.customer_name_snapshot}</p><p className="mt-1 text-sm text-white/55">{appointment.service_name_snapshot} · {appointment.duration_minutes_snapshot} min</p><p className="mt-3 text-sm font-semibold">{formatMoney(appointment.price_cents_snapshot,appointment.currency_snapshot)}</p></div>
+      <header className="mb-7"><p className="text-xs font-semibold uppercase tracking-[.16em] text-[var(--primary)]">ORSIRA</p><h1 className="mt-2 font-display text-3xl tracking-[-.04em]">Je afspraak</h1><p className="mt-1 text-sm text-[var(--muted)]">{salon.name}</p></header>
+      <section className="overflow-hidden rounded-[16px] border border-[var(--border)] bg-white p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4"><div><p className="text-xs capitalize text-[var(--muted)]">{date}</p><p className="mt-2 text-4xl font-semibold tracking-[-.05em] tabular-nums">{time}</p></div><StatusChip status={appointment.status}/></div>
+        <div className="mt-8 border-t border-[var(--border)] pt-5"><p className="text-xl font-semibold">{appointment.customer_name_snapshot}</p><p className="mt-1 text-sm text-[var(--muted)]">{appointment.service_name_snapshot} · {appointment.duration_minutes_snapshot} min</p><p className="mt-3 text-sm font-semibold text-[var(--primary)]">{formatMoney(appointment.price_cents_snapshot,appointment.currency_snapshot)}</p></div>
       </section>
       <CustomerSelfServiceManager token={token} staff={context.staff} initialStaffId={appointment.staff_id} initialDate={initialDate} canChange={context.canChange} cutoffLabel={cutoffLabel}/>
       <p className="mt-6 text-center text-xs leading-5 text-[var(--muted)]">Deze persoonlijke link geeft alleen toegang tot deze afspraak. Deel hem niet openbaar.</p>
