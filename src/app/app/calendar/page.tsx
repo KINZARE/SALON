@@ -37,23 +37,23 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
   return <>
     <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-[var(--accent)]"><span className="h-2 w-2 rounded-full bg-[var(--accent)]"/>Teamagenda</div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Calendar</h1>
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-[var(--primary)]"><span className="h-2 w-2 rounded-full bg-[var(--primary)]"/>Teamagenda</div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-.045em] sm:text-[36px]">Calendar</h1>
         <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Dag voor detailplanning, week voor ritme en maand voor overzicht.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex h-11 rounded-[14px] border border-[var(--border)] bg-white p-1" aria-label="Kalenderweergave">
-          {(["day","week","month"] as const).map(item=><Link key={item} href={`/app/calendar?view=${item}&date=${date}`} className={`inline-flex items-center rounded-[10px] px-3 text-xs font-semibold transition ${view===item?"bg-[var(--ink)] text-white":"text-[var(--muted)] hover:bg-[var(--surface-soft)]"}`}>{item==="day"?"Dag":item==="week"?"Week":"Maand"}</Link>)}
+        <div className="inline-flex h-11 rounded-[10px] border border-[var(--border)] bg-white p-1" aria-label="Kalenderweergave">
+          {(["day","week","month"] as const).map(item=><Link key={item} href={`/app/calendar?view=${item}&date=${date}`} className={`inline-flex items-center rounded-[7px] px-3 text-xs font-semibold transition ${view===item?"bg-[var(--primary-soft)] text-[var(--primary)]":"text-[var(--muted)] hover:bg-[var(--surface-soft)]"}`}>{item==="day"?"Dag":item==="week"?"Week":"Maand"}</Link>)}
         </div>
-        <div className="flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white">
+        <div className="flex h-11 items-center rounded-[10px] border border-[var(--border)] bg-white">
           <Link aria-label="Vorige periode" href={nav(previousDate)} className="grid h-full w-10 place-items-center border-r border-[var(--border)] text-lg text-[var(--muted)] hover:bg-[var(--surface-soft)]">‹</Link>
           <div className="min-w-[170px] px-3 text-center text-sm font-semibold capitalize">{label}</div>
           <Link aria-label="Volgende periode" href={nav(nextDate)} className="grid h-full w-10 place-items-center border-l border-[var(--border)] text-lg text-[var(--muted)] hover:bg-[var(--surface-soft)]">›</Link>
         </div>
-        {date!==today?<Link href={`/app/calendar?view=${view}&date=${today}`} className="inline-flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-soft)]">Vandaag</Link>:null}
-        {canManage&&view==="day"?<Link data-calendar-block-action href={`/app/blocks?date=${date}`} className="inline-flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium hover:bg-[var(--surface-soft)]">Blokkeer tijd</Link>:null}
-        {canManage?<Link href="/app/settings/schedule" className="inline-flex h-11 items-center rounded-[14px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium hover:bg-[var(--surface-soft)]">Afwijkingen</Link>:null}
-        {canManage?<Link href="/app/calendar/new" className="inline-flex h-11 items-center gap-2 rounded-[14px] bg-[var(--ink)] px-4 text-sm font-semibold text-white hover:bg-[#24231f]"><span className="text-lg leading-none">＋</span>Nieuwe afspraak</Link>:null}
+        {date!==today?<Link href={`/app/calendar?view=${view}&date=${today}`} className="inline-flex h-11 items-center rounded-[10px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-soft)]">Vandaag</Link>:null}
+        {canManage&&view==="day"?<Link data-calendar-block-action href={`/app/blocks?date=${date}`} className="inline-flex h-11 items-center rounded-[10px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium hover:bg-[var(--surface-soft)]">Blokkeer tijd</Link>:null}
+        {canManage?<Link href="/app/settings/schedule" className="inline-flex h-11 items-center rounded-[10px] border border-[var(--border)] bg-white px-3.5 text-sm font-medium hover:bg-[var(--surface-soft)]">Afwijkingen</Link>:null}
+        {canManage?<Link href="/app/calendar/new" className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primary-hover)]"><span className="text-lg leading-none">＋</span>Nieuwe afspraak</Link>:null}
       </div>
     </header>
     {view==="day"
