@@ -16,7 +16,7 @@ export default async function BookingEmbedPage({params}:{params:Promise<{salonSl
   const style={"--primary":settings.accent_color,"--accent":settings.accent_color} as CSSProperties;
 
   return <main style={style} className="min-h-screen bg-white px-4 py-5">
-    <header className="mx-auto mb-6 max-w-xl border-b border-[var(--border)] pb-4"><p className="text-base font-semibold">{salon.name}</p><p className="mt-0.5 text-xs text-[var(--muted)]">Online afspraak maken</p></header>
+    <header className="mx-auto mb-6 max-w-xl border-b border-[var(--border)] pb-4"><p className="font-display text-[15px] font-medium tracking-[.1em] text-[var(--ink)]">ORSIRA</p><p className="mt-3 truncate text-base font-semibold">{salon.name}</p><p className="mt-0.5 text-xs text-[var(--muted)]">Online afspraak maken</p></header>
     {services.length?<BookingFlow salon={salon} services={services} staffByService={staffByService}/>:<p className="py-10 text-center text-sm text-[var(--muted)]">Geen behandelingen online boekbaar.</p>}
   </main>;
 }

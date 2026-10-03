@@ -14,11 +14,12 @@ export default async function BookingPage({ params }: { params: Promise<{ salonS
     : {};
 
   return (
-    <main className="min-h-screen bg-white sm:bg-[var(--background)]">
-      <div className="mx-auto min-h-screen max-w-2xl bg-white px-5 py-6 sm:my-8 sm:min-h-0 sm:rounded-[18px] sm:border sm:border-[var(--border)] sm:px-9 sm:py-8">
-        <header className="mb-8 flex items-center justify-between border-b border-[var(--border)] pb-5">
-          <div>
-            <p className="text-lg font-semibold tracking-[-0.02em]">{salon.name}</p>
+    <main className="min-h-screen bg-white sm:bg-[var(--surface-soft)]">
+      <div className="mx-auto min-h-screen max-w-2xl bg-white px-5 py-6 sm:my-8 sm:min-h-0 sm:rounded-[16px] sm:border sm:border-[var(--border)] sm:px-9 sm:py-8">
+        <header className="mb-8 flex items-end justify-between gap-4 border-b border-[var(--border)] pb-5">
+          <div className="min-w-0">
+            <p className="font-display text-[18px] font-medium tracking-[.1em] text-[var(--ink)]">ORSIRA</p>
+            <p className="mt-3 truncate text-lg font-semibold tracking-[-0.02em]">{salon.name}</p>
             <p className="mt-0.5 text-sm text-[var(--muted)]">Online afspraak maken</p>
           </div>
         </header>

@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 
-const control = "w-full rounded-[13px] border border-[var(--border)] bg-white text-[15px] outline-none transition placeholder:text-[var(--subtle)] focus:border-[var(--accent-light)] focus:ring-4 focus:ring-[var(--primary-soft)]";
+const control = "w-full rounded-[10px] border border-[var(--border)] bg-white text-[15px] outline-none transition placeholder:text-[var(--subtle)] focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]";
 
 export function Field({ label, hint, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string }) {
   return (

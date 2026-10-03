@@ -91,7 +91,9 @@ try {
   assert.equal(await cards.first().getAttribute("aria-pressed"), "true", "Selected appointment must be reflected in the detail panel");
   assert.equal(await page.locator("[data-drop-staff]").count(), 4, "Calendar should expose one drop target per active staff member, not one per time slot");
   assert.equal(await page.locator("[data-staff-identity]").count(), 4, "Calendar must show one clear staff identity per active staff column");
-  await page.locator("[data-current-time-line]").waitFor();
+  const currentTimeLine = page.locator("[data-current-time-line]");
+  assert.ok(await currentTimeLine.count() <= 1, "Calendar must render at most one current-time line");
+  if (await currentTimeLine.count()) assert.equal(await currentTimeLine.isVisible(), true, "Current-time line must be visible when current time is inside displayed hours");
   const quickBlock = page.getByRole("link", { name: "Blokkeer tijd", exact: true });
   await quickBlock.waitFor();
   assert.match(await quickBlock.getAttribute("href") ?? "", /^\/app\/blocks\?date=\d{4}-\d{2}-\d{2}$/);

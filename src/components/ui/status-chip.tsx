@@ -1,12 +1,12 @@
 import { getStatusMeta } from "@/lib/calendar-ui";
 
 const toneClass = {
-  info: "border-[#ccdde1] bg-[#e8f0f2] text-[#48676f]",
-  warning: "border-[#ead5a9] bg-[#f7ecd4] text-[#7a5a1f]",
-  success: "border-[#cbdccd] bg-[#e5eee7] text-[#42654e]",
-  complete: "border-[#d8d3cb] bg-[#ebe9e5] text-[#4b4945]",
-  danger: "border-[#e8c6c1] bg-[#f8e7e4] text-[#9b4338]",
-  muted: "border-[#dedbd5] bg-[#efeeeb] text-[#77736d]",
+  info: "border-[var(--border)] bg-[var(--surface-soft)] text-[#625d58]",
+  warning: "border-[#e6d6b5] bg-[#f7efdf] text-[#76561f]",
+  success: "border-[#ccd7c7] bg-[var(--secondary-soft)] text-[#52664d]",
+  complete: "border-[#d9d4cc] bg-[#f1efec] text-[#56514d]",
+  danger: "border-[#e5c6c2] bg-[#f8e9e7] text-[#8f3c35]",
+  muted: "border-[#ddd8d2] bg-[#f3f1ee] text-[#77716b]",
 } as const;
 
 export function StatusChip({ status }: { status: string }) {
