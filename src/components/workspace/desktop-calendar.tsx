@@ -6,7 +6,7 @@ import type { CalendarBoard as Board } from "@/components/workspace/calendar-boa
 
 const CalendarBoard = dynamic(() => import("./calendar-board").then(module => module.CalendarBoard), {
   ssr: false,
-  loading: () => <div role="status" aria-label="Agenda laden" className="mt-6 h-[600px] animate-pulse rounded-[18px] border border-[var(--border)] bg-[var(--surface-soft)]" />,
+  loading: () => <div role="status" aria-label="Agenda laden" className="mt-6 h-[600px] animate-pulse rounded-[12px] border border-[var(--border)] bg-[var(--surface-soft)]" />,
 });
 
 function subscribe(onChange: () => void) {
