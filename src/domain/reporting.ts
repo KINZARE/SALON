@@ -30,12 +30,3 @@ export function resolveReportRange(input:Input){
   if(span>366)throw new Error("RANGE_TOO_WIDE");
   return{from,to,toExclusive:add(to,1)};
 }
-
-export function escapeCsvCell(value:unknown){
-  const raw=value==null?"":String(value);
-  const firstChar=raw.charAt(0);
-  const safe=["=","+","-","@"].includes(firstChar)?"'"+raw:raw;
-  return safe.includes(",")||safe.includes('"')||safe.includes("\n")||safe.includes("\r")
-    ? '"'+safe.replaceAll('"','""')+'"'
-    : safe;
-}
