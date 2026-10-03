@@ -1,22 +1,29 @@
 import type { Metadata } from "next";
-import { Urbanist } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
-const urbanist = Urbanist({
+const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   display: "swap",
-  variable: "--font-urbanist",
+  variable: "--font-inter",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  display: "swap",
+  variable: "--font-playfair",
 });
 
 export const metadata: Metadata = {
-  title: { default: "SALON", template: "%s · SALON" },
-  description: "Rustige planning en salonbeheer voor kleine salons.",
+  title: { default: "ORSIRA", template: "%s · ORSIRA" },
+  description: "Rustige planning en salonbeheer voor moderne salons.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="nl" className={urbanist.variable}>
+    <html lang="nl" className={`${inter.variable} ${playfair.variable}`}>
       <body>{children}</body>
     </html>
   );
