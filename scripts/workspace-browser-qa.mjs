@@ -52,7 +52,7 @@ try {
 
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto(base + "/app/today", { waitUntil: "networkidle" });
-  for (const label of ["Today", "Calendar", "Customers", "More"]) {
+  for (const label of ["Vandaag", "Agenda", "Klanten", "Meer"]) {
     await page.getByRole("link", { name: label, exact: true }).waitFor();
   }
 
