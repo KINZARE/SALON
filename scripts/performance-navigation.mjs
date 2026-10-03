@@ -17,7 +17,7 @@ try {
     await page.getByTestId('today-command-centre').waitFor();
     const documentTimeOrigin = await page.evaluate(() => performance.timeOrigin);
     const started = performance.now();
-    await page.getByRole('link', { name: 'Calendar', exact: true }).click();
+    await page.getByRole('link', { name: /^(Calendar|Agenda)$/, exact: true }).click();
     await page.waitForURL('**/app/calendar**');
     await page.locator(width < 768 ? '[data-mobile-calendar]' : '[data-drop-staff]').first().waitFor({ state: 'visible', timeout: 30000 });
     const elapsedMs = performance.now() - started;
@@ -26,6 +26,6 @@ try {
     await context.close();
   }
   await mkdir('qa-artifacts/performance', { recursive: true });
-  await writeFile('qa-artifacts/performance/navigation.json', JSON.stringify({ measuredAt: new Date().toISOString(), sha: process.env.SALON_QA_SHA, conditions: 'Same CI runner; fresh browser context; Today settled before clicking visible Calendar Next Link; wait for usable mobile timeline or desktop drop column; lab navigation elapsed time, not field INP', results }, null, 2));
+  await writeFile('qa-artifacts/performance/navigation.json', JSON.stringify({ measuredAt: new Date().toISOString(), sha: process.env.SALON_QA_SHA, conditions: 'Same CI runner; fresh browser context; Today settled before clicking visible Calendar/Agenda Next Link; wait for usable mobile timeline or desktop drop column; lab navigation elapsed time, not field INP', results }, null, 2));
   console.log(JSON.stringify({ navigation: results }));
 } finally { await browser.close(); }
