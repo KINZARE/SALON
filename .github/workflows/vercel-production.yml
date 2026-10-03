@@ -11,7 +11,7 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
   SALON_QA_SHA: "${{ github.sha }}"
-  TESTED_APP_SHA: "f2cf6e93e4ad1581976a4c7a9ddd79c61ee9d12c"
+  TESTED_APP_SHA: "f6056b16be75117f3b9d8861353902f0f925fb51"
 
 jobs:
   verify-and-deploy-production:
@@ -115,7 +115,6 @@ jobs:
 
       - name: Install Chromium QA runtime
         run: |
-          npm install --no-save playwright
           npx playwright install --with-deps chromium
 
       - name: Start verified production server locally
@@ -135,7 +134,12 @@ jobs:
       - name: Full workspace browser QA before production
         env:
           QA_BASE_URL: "http://127.0.0.1:3000"
-        run: node scripts/workspace-browser-qa.mjs
+        run: npm run test:e2e
+
+      - name: Preserve pre-deployment browser reports
+        run: |
+          mkdir -p qa-artifacts/production-local
+          mv qa-artifacts/playwright-results qa-artifacts/playwright-report qa-artifacts/playwright.json qa-artifacts/production-local/
 
       - name: Ensure and link Vercel project
         shell: bash
@@ -229,7 +233,7 @@ jobs:
           test "$TODAY_CODE" = "200"
           echo "$ROOT_URL" | grep -Eqi '/app/today([?#].*)?$'
           echo "$TODAY_URL" | grep -Eqi '/app/today([?#].*)?$'
-          grep -qi "SALON" /tmp/prod-today.html
+          grep -qi "ORSIRA" /tmp/prod-today.html
           if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode|Baan Thai Wellness" /tmp/prod-root.html /tmp/prod-today.html; then
             echo "Unexpected login/demo/protection content detected in production"
             exit 1
@@ -239,7 +243,7 @@ jobs:
       - name: Full browser QA on deployed production
         env:
           QA_BASE_URL: "https://salon-gamma-steel.vercel.app"
-        run: node scripts/workspace-browser-qa.mjs
+        run: npm run test:e2e
 
       - name: Production performance sanity check
         env:
@@ -248,7 +252,7 @@ jobs:
 
       - name: Compare production navigation with immutable baseline
         env:
-          QA_BASELINE_URL: "https://salon-fcn8mz3nv-kwinphetmanee-2069.vercel.app"
+          QA_BASELINE_URL: "https://salon-7qp9srmha-kwinphetmanee-2069.vercel.app"
           QA_BASE_URL: "${{ steps.deploy.outputs.url }}"
         run: node scripts/performance-navigation.mjs
 
