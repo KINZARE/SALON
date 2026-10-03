@@ -131,7 +131,7 @@ try {
   const blockHref = await page.locator("[data-calendar-block-action]").getAttribute("href");
   assert.ok(blockHref?.includes("date="), "Calendar block action must prefill the selected date");
   await page.goto(base + blockHref, { waitUntil: "networkidle" });
-  assert.ok((await page.getByLabel("Van").inputValue()).startsWith(new URL(base + blockHref).searchParams.get("date") ?? ""), "Block form must use the calendar date");
+  assert.ok((await page.getByLabel("Van", { exact: true }).inputValue()).startsWith(new URL(base + blockHref).searchParams.get("date") ?? ""), "Block form must use the calendar date");
 
   await page.goto(base + "/app/calendar", { waitUntil: "networkidle" });
   const detailSeed = page.locator("[data-appointment-id]").first();
