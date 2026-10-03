@@ -56,6 +56,10 @@ jobs:
         env:
           QA_BASE_URL: "http://127.0.0.1:3000"
         run: node scripts/workspace-browser-qa.mjs
+      - name: ORSIRA responsive brand QA
+        env:
+          QA_BASE_URL: "http://127.0.0.1:3000"
+        run: node scripts/orsira-responsive-qa.mjs
       - name: Compare real database reads against unchanged baseline
         shell: bash
         run: |
@@ -127,7 +131,7 @@ jobs:
             --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### SALON real no-login app" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ORSIRA real no-login app" >> "$GITHUB_STEP_SUMMARY"
           echo "SHA: $SALON_QA_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
       - name: Verify Vercel deployment is READY
@@ -166,7 +170,7 @@ jobs:
           echo "$APP_URL" | grep -Eqi '/app/today([?#].*)?$'
           echo "$LOGIN_URL" | grep -Eqi '/app/today([?#].*)?$'
           grep -qi "Today" /tmp/app.html
-          grep -qi "SALON" /tmp/app.html
+          grep -qi "ORSIRA" /tmp/app.html
           grep -qi "Settings" /tmp/settings.html
 
           if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl|Welkom terug" /tmp/root.html /tmp/app.html /tmp/settings.html /tmp/login.html; then
@@ -174,7 +178,7 @@ jobs:
             exit 1
           fi
 
-          echo "Real no-login SALON smoke checks passed for $PREVIEW_URL"
+          echo "Real no-login ORSIRA smoke checks passed for $PREVIEW_URL"
 
       - name: Verify public URL needs no Vercel login
         shell: bash
@@ -189,6 +193,7 @@ jobs:
           test "$CODE" = "200"
           echo "$FINAL_URL" | grep -Eqi '/app/today([?#].*)?$'
           grep -qi "Today" /tmp/public.html
+          grep -qi "ORSIRA" /tmp/public.html
           if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode" /tmp/public.html; then
             echo "A login/protection screen is still present"
             exit 1
@@ -213,6 +218,10 @@ jobs:
         env:
           QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
         run: node scripts/workspace-browser-qa.mjs
+      - name: ORSIRA responsive QA on exact preview
+        env:
+          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+        run: node scripts/orsira-responsive-qa.mjs
       - name: Equivalent live performance measurements
         env:
           QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
