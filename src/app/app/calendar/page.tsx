@@ -1,28 +1,24 @@
 import Link from "next/link";
+import { isIsoDate } from "@/lib/validation";
 import { formatInTimeZone } from "date-fns-tz";
 import { requireAppContext } from "@/lib/auth";
-import { getWeekDates,shiftCalendarDate } from "@/domain/calendar-range";
+import { getWeekDates,shiftCalendarDate,shiftCalendarMonth } from "@/domain/calendar-range";
 import { CalendarDayView } from "@/components/workspace/calendar-day-view";
 import { CalendarPeriodView } from "@/components/workspace/calendar-period-view";
 
 type CalendarView="day"|"week"|"month";
 
-function monthShift(date:string,amount:number){
-  const current=new Date(`${date.slice(0,7)}-01T12:00:00Z`);
-  current.setUTCMonth(current.getUTCMonth()+amount);
-  return current.toISOString().slice(0,10);
-}
 
 export default async function CalendarPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const {salon,membership}=await requireAppContext();
   const params=await searchParams;
   const today=formatInTimeZone(new Date(),salon.timezone,"yyyy-MM-dd");
-  const date=typeof params.date==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(params.date)?params.date:today;
+  const date=typeof params.date==="string"&&isIsoDate(params.date)?params.date:today;
   const view:CalendarView=params.view==="week"||params.view==="month"?params.view:"day";
   const staffFilter=typeof params.staff==="string"?params.staff:null;
   const canManage=["owner","manager"].includes(membership.role);
-  const previousDate=view==="month"?monthShift(date,-1):shiftCalendarDate(date,view==="week"?-7:-1);
-  const nextDate=view==="month"?monthShift(date,1):shiftCalendarDate(date,view==="week"?7:1);
+  const previousDate=view==="month"?shiftCalendarMonth(date,-1):shiftCalendarDate(date,view==="week"?-7:-1);
+  const nextDate=view==="month"?shiftCalendarMonth(date,1):shiftCalendarDate(date,view==="week"?7:1);
 
   let label:string;
   if(view==="day")label=new Intl.DateTimeFormat("nl-NL",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${date}T12:00:00Z`));
