@@ -33,17 +33,17 @@ export function SmartBookingLinkCreator({services,staff,today}:{services:Service
     try{await navigator.clipboard.writeText(url);setMessage("Link gekopieerd.");}catch{}
   }
 
-  if(!services.length)return <p className="rounded-[20px] border border-dashed border-[var(--border-strong)] bg-white p-6 text-sm text-[var(--muted)]">Maak eerst een actieve online boekbare behandeling aan.</p>;
+  if(!services.length)return <p className="rounded-[16px] border border-dashed border-[var(--border-strong)] bg-white p-6 text-sm text-[var(--muted)]">Maak eerst een actieve online boekbare behandeling aan.</p>;
 
-  return <div className="rounded-[24px] border border-[var(--border)] bg-white p-4 sm:p-5">
-    <div className="grid gap-4 sm:grid-cols-2">
-      <label className="grid gap-1.5 text-sm font-medium sm:col-span-2"><span>Behandeling</span><select value={serviceId} onChange={event=>{setServiceId(event.target.value);setStaffId("");}} className="h-11 rounded-[13px] border border-[var(--border)] bg-white px-3.5">{services.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      <label className="grid gap-1.5 text-sm font-medium sm:col-span-2"><span>Medewerker</span><select value={staffId} onChange={event=>setStaffId(event.target.value)} className="h-11 rounded-[13px] border border-[var(--border)] bg-white px-3.5"><option value="">Geen voorkeur — kies automatisch</option>{eligible.map(member=><option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
-      <label className="grid gap-1.5 text-sm font-medium"><span>Vanaf</span><input type="date" min={today} value={startDate} onChange={event=>{setStartDate(event.target.value);if(event.target.value>endDate)setEndDate(event.target.value)}} className="h-11 rounded-[13px] border border-[var(--border)] bg-white px-3.5"/></label>
-      <label className="grid gap-1.5 text-sm font-medium"><span>Tot en met</span><input type="date" min={startDate} value={endDate} onChange={event=>setEndDate(event.target.value)} className="h-11 rounded-[13px] border border-[var(--border)] bg-white px-3.5"/></label>
+  return <div className="min-w-0 rounded-[16px] border border-[var(--border)] bg-white p-4 sm:p-5">
+    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+      <label className="grid min-w-0 gap-1.5 text-sm font-medium sm:col-span-2"><span>Behandeling</span><select value={serviceId} onChange={event=>{setServiceId(event.target.value);setStaffId("");}} className="h-11 w-full min-w-0 rounded-[10px] border border-[var(--border)] bg-white px-3.5">{services.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label className="grid min-w-0 gap-1.5 text-sm font-medium sm:col-span-2"><span>Medewerker</span><select value={staffId} onChange={event=>setStaffId(event.target.value)} className="h-11 w-full min-w-0 rounded-[10px] border border-[var(--border)] bg-white px-3.5"><option value="">Geen voorkeur — kies automatisch</option>{eligible.map(member=><option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
+      <label className="grid min-w-0 gap-1.5 text-sm font-medium"><span>Vanaf</span><input type="date" min={today} value={startDate} onChange={event=>{setStartDate(event.target.value);if(event.target.value>endDate)setEndDate(event.target.value)}} className="h-11 w-full min-w-0 rounded-[10px] border border-[var(--border)] bg-white px-3.5"/></label>
+      <label className="grid min-w-0 gap-1.5 text-sm font-medium"><span>Tot en met</span><input type="date" min={startDate} value={endDate} onChange={event=>setEndDate(event.target.value)} className="h-11 w-full min-w-0 rounded-[10px] border border-[var(--border)] bg-white px-3.5"/></label>
     </div>
-    <button type="button" onClick={create} disabled={busy||!serviceId} className="mt-5 min-h-11 rounded-[13px] bg-[var(--ink)] px-4 text-sm font-medium text-white disabled:opacity-40">{busy?"Link maken…":"Maak booking link"}</button>
-    {message?<p role="status" className="mt-3 text-sm text-[var(--muted)]">{message}</p>:null}
-    {url?<div className="mt-4 rounded-[16px] bg-[var(--surface-soft)] p-3"><input aria-label="Smart booking link" readOnly value={url} onFocus={event=>event.currentTarget.select()} className="w-full bg-transparent text-xs outline-none"/><div className="mt-3 flex gap-2"><button type="button" onClick={share} className="min-h-10 rounded-[12px] bg-white px-3 text-xs font-semibold ring-1 ring-[var(--border)]">Delen / WhatsApp</button></div></div>:null}
+    <button type="button" onClick={create} disabled={busy||!serviceId} className="mt-5 min-h-11 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-medium text-white hover:bg-[var(--primary-hover)] disabled:opacity-40">{busy?"Link maken…":"Maak booking link"}</button>
+    {message?<p role="status" className="mt-3 break-words text-sm text-[var(--muted)]">{message}</p>:null}
+    {url?<div className="mt-4 min-w-0 rounded-[12px] bg-[var(--surface-soft)] p-3"><input aria-label="Smart booking link" readOnly value={url} onFocus={event=>event.currentTarget.select()} className="w-full min-w-0 bg-transparent text-xs outline-none"/><div className="mt-3 flex min-w-0 flex-wrap gap-2"><button type="button" onClick={share} className="min-h-10 rounded-[10px] bg-white px-3 text-xs font-semibold ring-1 ring-[var(--border)]">Delen / WhatsApp</button></div></div>:null}
   </div>;
 }
