@@ -194,31 +194,31 @@
 - Produces: Vercel preview URL, exact tested SHA evidence, green CI and a PR to `main`.
 
 - [x] **Step 1: Record the candidate SHA**
-  - `TESTED_SHA=97bd3ec6df33ba44b20da1a4a61a8e4bde6c14e0`
+  - The immutable candidate SHA is recorded in PR #12 and its matching GitHub Actions runs; do not hardcode a moving branch HEAD in this tracked plan.
 - [x] **Step 2: Push branch and confirm GitHub quality checks**
-  - `quality` run #309: tests, typecheck, lint and production build all green on `TESTED_SHA`.
+  - Tests, typecheck, lint and production build must be green on the same exact PR head SHA.
 - [x] **Step 3: Create the Vercel Preview from the exact candidate SHA**
-  - Preview: `https://salon-hb3wgdu08-kwinphetmanee-2069.vercel.app`
+  - The exact preview URL is recorded in PR #12 after deployment so the plan itself does not create SHA churn.
 - [x] **Step 4: Smoke-test the preview**
   - Real no-login smoke passed.
-  - Full browser QA passed across 14 workspace paths and 9 viewport widths with `runtimeErrors=0`.
-  - ORSIRA responsive QA passed 28 route/viewport checks.
-  - Live performance measurements completed for 390px and 1440px representative routes.
-  - Today → Calendar navigation comparison completed.
+  - Full browser QA covers 14 workspace paths and 9 viewport widths with runtime errors required to remain at zero.
+  - ORSIRA responsive QA covers 28 route/viewport checks.
+  - Live performance measurements cover representative 390px and 1440px routes.
+  - Today → Calendar navigation comparison is included in the release workflow.
 - [x] **Step 5: Re-check branch HEAD equality**
-  - PR #12 head remains exactly `97bd3ec6df33ba44b20da1a4a61a8e4bde6c14e0`.
+  - Before integration, PR #12 head must exactly equal the SHA that produced the green quality and preview runs.
 - [x] **Step 6: Open PR to `main`**
   - PR #12: `Rebrand SALON app to ORSIRA`.
 - [x] **Step 7: Do not merge until review/QA is green**
-  - Exact-SHA CI and live preview gates are green.
-  - `main` remains `ae0b530a7e142f546609e20a06c81a5cb2b22b34`; branch is 66 commits ahead, 0 behind.
-  - Final integration/merge remains a deliberate release decision; no merge performed by this plan update.
+  - Exact-SHA CI and live preview gates must be green.
+  - `main` must still match the branch base or be explicitly revalidated if it moves.
+  - Final integration/merge remains a deliberate release decision.
 
 ## Final verification evidence
 
-Candidate: `97bd3ec6df33ba44b20da1a4a61a8e4bde6c14e0`
+The authoritative exact candidate SHA, preview URL and matching CI run IDs are stored in PR #12, because recording a branch HEAD directly inside this tracked file would itself change that HEAD.
 
-Preview: `https://salon-hb3wgdu08-kwinphetmanee-2069.vercel.app`
+Required gates:
 
 - Tests: PASS
 - Typecheck: PASS
