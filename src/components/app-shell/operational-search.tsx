@@ -23,8 +23,8 @@ export function OperationalSearch(){
     <label className="sr-only" htmlFor="operational-search">Zoeken</label>
     <div className="relative">
       <span aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">⌕</span>
-      <input ref={ref} id="operational-search" value={value} onChange={event=>setValue(event.target.value)} placeholder="Zoek klanten, afspraken of behandelingen…" className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] pl-9 pr-12 text-sm outline-none transition focus:border-[var(--secondary)] focus:bg-white focus:ring-4 focus:ring-[var(--secondary-soft)]"/>
-      <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-[var(--border)] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[var(--muted)]">/</span>
+      <input ref={ref} id="operational-search" value={value} onChange={event=>setValue(event.target.value)} placeholder="Zoek klanten, afspraken of behandelingen…" className="h-10 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface-soft)] pl-9 pr-12 text-sm outline-none transition focus:border-[var(--primary)] focus:bg-white focus:ring-4 focus:ring-[var(--primary-soft)]"/>
+      <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-[6px] border border-[var(--border)] bg-white px-1.5 py-0.5 text-[9px] font-semibold text-[var(--muted)]">/</span>
     </div>
   </form>;
 }
