@@ -33,6 +33,22 @@ test("Today and Calendar use a light ORSIRA operational hierarchy", async () => 
   assert.match(summary, /rounded-\[16px\]/); assert.ok(!summary.includes("rounded-[24px]")); assert.match(calendar, /bg-\[var\(--primary-soft\)\] text-\[var\(--primary\)\]/); assert.match(calendar, /bg-\[var\(--primary\)\][^\n"]*text-white/); assert.ok(!calendar.includes("bg-[var(--ink)] text-white"));
 });
 
+test("Today supporting surfaces and day controls use restrained ORSIRA styling", async () => {
+  const [timeline, attention, quickActions, dayView] = await Promise.all([
+    read("src/components/workspace/today-timeline.tsx"),
+    read("src/components/workspace/attention-list.tsx"),
+    read("src/components/workspace/quick-actions.tsx"),
+    read("src/components/workspace/calendar-day-view.tsx"),
+  ]);
+  assert.ok(!timeline.includes("rounded-[24px]"));
+  assert.ok(!timeline.includes("rounded-[22px]"));
+  assert.ok(!attention.includes("rounded-[20px]"));
+  assert.match(quickActions, /bg-\[var\(--primary\)\][^\n"]*text-white/);
+  assert.ok(!quickActions.includes("bg-[var(--ink)] text-white"));
+  assert.match(dayView, /bg-\[var\(--primary\)\][^\n"]*text-white/);
+  assert.ok(!dayView.includes("bg-[var(--ink)]"));
+});
+
 test("management surfaces use restrained ORSIRA rows and actions", async () => {
   const [customers, services, staff] = await Promise.all([read("src/app/app/customers/page.tsx"), read("src/app/app/services/page.tsx"), read("src/app/app/staff/page.tsx")]);
   assert.match(customers, />Klanten</); assert.match(customers, /bg-\[var\(--primary\)\][^\n"]*text-white/); assert.match(customers, /rounded-\[10px\]/);
@@ -40,15 +56,38 @@ test("management surfaces use restrained ORSIRA rows and actions", async () => {
   assert.ok(!staff.includes("rounded-[22px]")); assert.match(staff, /rounded-\[16px\]/); assert.match(staff, /text-\[var\(--primary\)\]/);
 });
 
+test("Reports and settings use ORSIRA hierarchy instead of charcoal primary controls", async () => {
+  const [reports, settings] = await Promise.all([read("src/app/app/reports/page.tsx"), read("src/app/app/settings/page.tsx")]);
+  assert.ok(!reports.includes("bg-[var(--ink)]"));
+  assert.ok(!reports.includes("rounded-[22px]"));
+  assert.match(reports, /bg-\[var\(--primary\)\][^\n"]*text-white/);
+  assert.ok(!settings.includes("rounded-[24px]"));
+  assert.ok(!settings.includes("rounded-[22px]"));
+  assert.match(settings, /rounded-\[16px\]/);
+});
+
+test("appointment action centre is light ORSIRA and preserves existing operations", async () => {
+  const appointment = await read("src/app/app/appointments/[id]/page.tsx");
+  assert.match(appointment, /data-appointment-action-centre/);
+  assert.ok(!appointment.includes("rounded-[28px] bg-[var(--ink)]"));
+  assert.ok(!appointment.includes("bg-[var(--ink)] px-4 text-sm font-medium text-white"));
+  assert.match(appointment, /bg-\[var\(--primary\)\][^\n"]*text-white/);
+  assert.match(appointment, /transitionAppointmentStatus/);
+  assert.match(appointment, /updateAppointmentNote/);
+});
+
 test("customer-facing booking surfaces visibly carry ORSIRA without changing flow components", async () => {
-  const [bookingPage, smartPage, embedPage, errorPage] = await Promise.all([
+  const [bookingPage, smartPage, embedPage, errorPage, bookingFlow] = await Promise.all([
     read("src/app/book/[salonSlug]/page.tsx"),
     read("src/app/book-link/[token]/page.tsx"),
     read("src/app/embed/[salonSlug]/page.tsx"),
     read("src/app/app/error.tsx"),
+    read("src/components/booking/booking-flow.tsx"),
   ]);
   for (const source of [bookingPage, smartPage, embedPage]) assert.match(source, />ORSIRA</);
   assert.match(bookingPage, /<BookingFlow/); assert.match(smartPage, /<SmartBookingFlow/); assert.match(embedPage, /<BookingFlow/);
   assert.ok(!smartPage.includes(">SALON<")); assert.match(bookingPage, /rounded-\[16px\]/);
   assert.match(errorPage, /<Button/); assert.match(errorPage, /font-display/);
+  assert.match(bookingFlow, /bg-\[var\(--primary\)\]/);
+  assert.ok(!bookingFlow.includes("bg-[var(--ink)]"));
 });
