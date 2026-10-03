@@ -10,18 +10,25 @@ type NavItem = readonly [string, string, WorkspaceIconName];
 export function AppNav({ role }: { role: Role }) {
   const pathname = usePathname();
   const primary: readonly NavItem[] = role === "staff"
-    ? [["Today", "/app/today", "today"], ["Calendar", "/app/calendar", "calendar"], ["More", "/app/more", "more"]]
-    : [["Today", "/app/today", "today"], ["Calendar", "/app/calendar", "calendar"], ["Customers", "/app/customers", "customers"], ["More", "/app/more", "more"]];
+    ? [["Vandaag", "/app/today", "today"], ["Agenda", "/app/calendar", "calendar"], ["Meer", "/app/more", "more"]]
+    : [["Vandaag", "/app/today", "today"], ["Agenda", "/app/calendar", "calendar"], ["Klanten", "/app/customers", "customers"], ["Meer", "/app/more", "more"]];
 
   const secondary: readonly NavItem[] = role === "staff"
-    ? [["Settings", "/app/settings", "settings"]]
-    : [["Services", "/app/services", "services"], ["Staff", "/app/staff", "staff"], ["Reports", "/app/reports", "reports"], ["Settings", "/app/settings", "settings"]];
+    ? [["Instellingen", "/app/settings", "settings"]]
+    : [["Behandelingen", "/app/services", "services"], ["Team", "/app/staff", "staff"], ["Rapporten", "/app/reports", "reports"], ["Instellingen", "/app/settings", "settings"]];
 
   const routeIsActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const moreIsActive = routeIsActive("/app/more") || routeIsActive("/app/blocks") || secondary.some(([, href]) => routeIsActive(href));
+  const moreRoutes = ["/app/more", "/app/blocks", "/app/booking-links", "/app/waitlist", "/app/intake", "/app/settings/schedule", "/app/settings/widget"];
+  const moreIsActive = moreRoutes.some((href) => routeIsActive(href));
+  const desktopPrimary = primary.filter(([label]) => label !== "Meer");
 
   const desktopLink = ([label, href, iconName]: NavItem) => {
-    const active = label === "More" ? moreIsActive : routeIsActive(href);
+    const active = label === "Meer"
+      ? moreIsActive
+      : href === "/app/settings"
+        ? pathname === href
+        : routeIsActive(href);
+
     return (
       <Link
         key={href}
@@ -52,10 +59,13 @@ export function AppNav({ role }: { role: Role }) {
 
         <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Hoofdnavigatie">
           <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--subtle)]">Dagelijks</p>
-          <div className="grid gap-1">{primary.map(desktopLink)}</div>
+          <div className="grid gap-1">{desktopPrimary.map(desktopLink)}</div>
+
           <div className="my-5 border-t border-[var(--border)]" />
           <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--subtle)]">Beheer</p>
           <div className="grid gap-1">{secondary.map(desktopLink)}</div>
+
+          <div className="mt-2 grid gap-1">{desktopLink(["Meer", "/app/more", "more"])}</div>
         </nav>
 
         <div className="border-t border-[var(--border)] p-4">
@@ -70,7 +80,7 @@ export function AppNav({ role }: { role: Role }) {
       <nav className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(env(safe-area-inset-bottom),10px)] md:hidden" aria-label="Mobiele navigatie">
         <div className={`grid ${primary.length === 3 ? "grid-cols-3" : "grid-cols-4"} rounded-[24px] border border-[var(--border)] bg-white/96 p-1.5 shadow-[0_18px_48px_rgba(15,15,15,.14)] backdrop-blur-xl`}>
           {primary.map(([label, href, iconName]) => {
-            const active = label === "More" ? moreIsActive : routeIsActive(href);
+            const active = label === "Meer" ? moreIsActive : routeIsActive(href);
             return (
               <Link
                 key={href}
