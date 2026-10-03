@@ -3,39 +3,38 @@
 :root {
   --background: #ffffff;
   --surface: #ffffff;
-  --surface-soft: #f7f7f4;
-  --foreground: #0f0f0f;
-  --ink: #0f0f0f;
-  --muted: #666660;
-  --subtle: #9a9a94;
-  --border: #e7e7e1;
-  --border-strong: #d8d8d0;
+  --surface-soft: #faf7f2;
+  --foreground: #2b2b2b;
+  --ink: #2b2b2b;
+  --muted: #706b66;
+  --subtle: #9b948d;
+  --border: #e8e2db;
+  --border-strong: #d9d4cc;
 
-  /* Brand system from the supplied SALON reference */
-  --primary: #e7fe55;
-  --primary-hover: #d9f247;
-  --primary-soft: #f4ffb7;
-  --secondary: #bfe8ec;
-  --secondary-hover: #afe0e5;
-  --secondary-soft: #e8f8fa;
+  /* ORSIRA brand system */
+  --primary: #7b3f46;
+  --primary-hover: #68353b;
+  --primary-soft: #f4eaeb;
+  --secondary: #a7b89f;
+  --secondary-hover: #96aa8d;
+  --secondary-soft: #eef2ec;
 
-  /* Readable interaction tones derived from the brand palette */
-  --accent: #586600;
-  --accent-light: #bfe8ec;
-  --accent-dark: #0f0f0f;
+  --accent: #7b3f46;
+  --accent-light: #c8a8ac;
+  --accent-dark: #5e3036;
 
-  --warning: #8d6a27;
-  --danger: #a4473d;
-  --status-pending: #9a762e;
-  --status-confirmed: #557663;
-  --status-checked-in: #52777d;
-  --status-completed: #555550;
-  --status-cancelled: #a7655e;
-  --status-no-show: #9f3f37;
+  --warning: #8a6728;
+  --danger: #9f3f37;
+  --status-pending: #8a6728;
+  --status-confirmed: #61775b;
+  --status-checked-in: #5f7374;
+  --status-completed: #5f5b57;
+  --status-cancelled: #9b5b55;
+  --status-no-show: #8f3933;
 
-  --radius: 14px;
-  --radius-card: 24px;
-  --shadow-soft: 0 14px 40px rgba(15, 15, 15, .07);
+  --radius: 10px;
+  --radius-card: 16px;
+  --shadow-soft: 0 10px 28px rgba(43, 43, 43, .06);
 }
 
 * { box-sizing: border-box; }
@@ -47,15 +46,16 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 96% 0%, rgba(231, 254, 85, .13), transparent 25rem),
-    radial-gradient(circle at 0% 10%, rgba(191, 232, 236, .16), transparent 24rem),
-    var(--background);
+  background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-urbanist), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+.font-display {
+  font-family: var(--font-playfair), Georgia, "Times New Roman", serif;
 }
 
 button, input, textarea, select { font: inherit; }
@@ -63,23 +63,23 @@ button, a { -webkit-tap-highlight-color: transparent; }
 a { text-decoration: none; }
 
 :focus-visible {
-  outline: 2px solid var(--secondary);
+  outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
 
 ::selection {
-  background: var(--primary);
+  background: var(--primary-soft);
   color: var(--ink);
 }
 
 .calendar-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--secondary) transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 .calendar-scroll::-webkit-scrollbar { height: 10px; width: 10px; }
 .calendar-scroll::-webkit-scrollbar-thumb {
-  background: var(--secondary);
+  background: var(--border-strong);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: padding-box;
