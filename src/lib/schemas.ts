@@ -16,6 +16,8 @@ const publicCustomer = z.object({
   note: optionalText(1000),
 });
 export const CustomerSchema = z.object({ name: optionalText(160).pipe(z.string().min(1)), phone: optionalText(40), email: optionalText(254).pipe(EmailSchema.nullable()), note: optionalText(1000) });
+// Profile editing keeps its existing 60-character phone and free-text email contract.
+export const CustomerProfileSchema = z.object({ id: UuidSchema, name, phone: z.string().max(60), email: z.string().max(254), notes: z.string().max(3000) });
 export const PublicBookingSchema = z.object({ serviceId: UuidSchema, staffId: OptionalUuidSchema, startsAt: InstantSchema, customer: publicCustomer });
 export const AppointmentInputSchema = PublicBookingSchema.extend({ staffId: UuidSchema, customerId: OptionalUuidSchema, customer: CustomerSchema });
 export const RescheduleInputSchema = z.object({ appointmentId: UuidSchema, staffId: UuidSchema, startsAt: InstantSchema });

@@ -11,7 +11,7 @@ test("UUID validation preserves supported versions and variants", () => {
   for (const value of ["invalid", "123e4567-e89b-72d3-a456-426614174000", "123e4567-e89b-12d3-0456-426614174000", null]) assert.equal(isUuid(value), false);
 });
 
-import { PublicBookingSchema, WaitlistSchema, ServiceSchema, CustomerSchema, ReportRangeSchema, MoneyInputSchema, BookingLinkSchema, CalendarMoveSchema } from "../src/lib/schemas.ts";
+import { PublicBookingSchema, WaitlistSchema, ServiceSchema, CustomerSchema, CustomerProfileSchema, ReportRangeSchema, MoneyInputSchema, BookingLinkSchema, CalendarMoveSchema } from "../src/lib/schemas.ts";
 import { validateIntakeDefinition, validateIntakeAnswers } from "../src/domain/intake-form.ts";
 const id="123e4567-e89b-12d3-a456-426614174000";
 const customer={name:"Klant",phone:"+31 6 12345678",email:"test@example.com"};
@@ -36,6 +36,11 @@ test("service numeric shape rejects invalid duration price buffer and deposit",(
   for(const change of [{duration:4},{duration:5.5},{duration:721},{buffer:-1},{priceCents:-1},{priceCents:NaN},{depositCents:-1},{staffIds:["invalid"]}])assert.equal(ServiceSchema.safeParse({...service,...change}).success,false);
   assert.equal(MoneyInputSchema.parse("45,50"),4550);
   for(const value of ["NaN","Infinity","-1"])assert.equal(MoneyInputSchema.safeParse(value).success,false);
+});
+test("customer profile retains distinct length limits and free-text contact rules",()=>{
+  const profile={id,name:"Klant",phone:"1".repeat(60),email:"existing free text",notes:""};
+  assert.equal(CustomerProfileSchema.safeParse(profile).success,true);
+  for(const change of [{id:"invalid"},{name:""},{name:"X".repeat(161)},{phone:"1".repeat(61)},{email:"X".repeat(255)},{notes:"X".repeat(3001)}])assert.equal(CustomerProfileSchema.safeParse({...profile,...change}).success,false);
 });
 test("waitlist and booking links reject malformed dates and payloads",()=>{
   assert.equal(WaitlistSchema.safeParse({serviceId:id,date:"2026-10-04",customer:{name:"X",email:"x@example.com"}}).success,true);
