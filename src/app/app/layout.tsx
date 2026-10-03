@@ -10,21 +10,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[var(--background)] md:pl-64">
       <AppNav role={context.membership.role} />
-      <div className="sticky top-0 z-30 hidden h-[74px] items-center border-b border-[var(--border)] bg-white/90 px-6 backdrop-blur-xl md:flex xl:px-8">
+      <div className="sticky top-0 z-30 hidden h-[74px] items-center border-b border-[var(--border)] bg-white px-6 md:flex xl:px-8">
         <div className="flex min-w-0 flex-1 items-center">{canSearch ? <OperationalSearch /> : null}</div>
         <div className="ml-6 flex items-center gap-3 border-l border-[var(--border)] pl-5">
-          <div className="grid h-9 w-9 place-items-center rounded-full bg-[var(--secondary)] text-sm font-semibold text-[var(--ink)]">{initial}</div>
-          <div className="hidden text-right lg:block">
+          <div className="grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-soft)] text-sm font-semibold text-[var(--ink)]">{initial}</div>
+          <div className="hidden min-w-0 text-right lg:block">
             <p className="max-w-[220px] truncate text-sm font-semibold">{context.salon.name}</p>
-            <a href={`/book/${context.salon.slug}`} target="_blank" rel="noreferrer" className="text-xs text-[var(--muted)] hover:text-[var(--accent)]">Online booking ↗</a>
+            <a href={`/book/${context.salon.slug}`} target="_blank" rel="noreferrer" className="text-xs text-[var(--muted)] hover:text-[var(--primary)]">Online booking ↗</a>
           </div>
         </div>
       </div>
       <main className="mx-auto w-full max-w-[1760px] px-4 pb-28 pt-5 sm:px-6 md:pb-12 md:pt-7 xl:px-8">
-        <div className="mb-6 flex items-center justify-between gap-3 md:hidden">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-[var(--accent)]">SALON</p>
-            <p className="mt-0.5 max-w-[220px] truncate text-sm font-semibold">{context.salon.name}</p>
+        <div className="mb-6 flex min-w-0 items-center justify-between gap-3 md:hidden">
+          <div className="min-w-0">
+            <p className="font-display text-[18px] font-medium tracking-[.1em] text-[var(--ink)]">ORSIRA</p>
+            <p className="mt-0.5 max-w-[220px] truncate text-sm font-medium text-[var(--muted)]">{context.salon.name}</p>
           </div>
           {canSearch ? <OperationalSearch /> : null}
         </div>
