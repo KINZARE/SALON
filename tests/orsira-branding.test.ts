@@ -25,3 +25,33 @@ test("ORSIRA global brand tokens and fonts replace the legacy SALON foundation",
   assert.match(layout, /default:\s*"ORSIRA"/);
   assert.ok(!layout.includes('default: "SALON"'));
 });
+
+test("shared UI primitives use the restrained ORSIRA control language without API changes", async () => {
+  const [button, field, emptyState, statusChip] = await Promise.all([
+    read("src/components/ui/button.tsx"),
+    read("src/components/ui/field.tsx"),
+    read("src/components/ui/empty-state.tsx"),
+    read("src/components/ui/status-chip.tsx"),
+  ]);
+
+  assert.match(button, /variant\?:\s*"primary"\s*\|\s*"secondary"\s*\|\s*"ghost"\s*\|\s*"danger"\s*\|\s*"accent"/);
+  assert.match(button, /export function Button/);
+  assert.match(button, /primary:\s*"[^"]*bg-\[var\(--primary\)\][^"]*text-white/);
+  assert.match(button, /rounded-\[10px\]/);
+  assert.match(button, /disabled:opacity-50/);
+
+  assert.match(field, /export function Field/);
+  assert.match(field, /export function TextAreaField/);
+  assert.match(field, /rounded-\[10px\]/);
+  assert.match(field, /focus:border-\[var\(--primary\)\]/);
+  assert.match(field, /focus:ring-\[var\(--primary-soft\)\]/);
+
+  assert.match(emptyState, /export function EmptyState/);
+  assert.match(emptyState, /rounded-\[10px\]/);
+  assert.match(statusChip, /export function StatusChip/);
+
+  for (const source of [button, field, emptyState, statusChip]) {
+    assert.ok(!source.toLowerCase().includes("#e7fe55"));
+    assert.ok(!source.toLowerCase().includes("#bfe8ec"));
+  }
+});
