@@ -13,10 +13,11 @@ export async function CalendarPeriodView({salonId,timezone,date,view,staffFilter
     ]);
     const staff=allStaff.filter(member=>member.active);
     const appointments=items;
+    const filterClass=(active:boolean)=>`rounded-[10px] border px-3 py-1.5 text-xs font-medium ${active?"border-[var(--primary)] bg-[var(--primary)] text-white":"border-[var(--border)] bg-white hover:bg-[var(--surface-soft)]"}`;
     return <>
       <div className="calendar-scroll mt-5 flex gap-2 overflow-x-auto pb-1">
-        <Link href={`/app/calendar?view=week&date=${date}`} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${!staffFilter?"border-[var(--ink)] bg-[var(--ink)] text-white":"border-[var(--border)] bg-white"}`}>Iedereen</Link>
-        {staff.map(member=><Link key={member.id} href={`/app/calendar?view=week&date=${date}&staff=${member.id}`} className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium ${staffFilter===member.id?"border-[var(--ink)] bg-[var(--ink)] text-white":"border-[var(--border)] bg-white"}`}>{member.name}</Link>)}
+        <Link href={`/app/calendar?view=week&date=${date}`} className={filterClass(!staffFilter)}>Iedereen</Link>
+        {staff.map(member=><Link key={member.id} href={`/app/calendar?view=week&date=${date}&staff=${member.id}`} className={`whitespace-nowrap ${filterClass(staffFilter===member.id)}`}>{member.name}</Link>)}
       </div>
       <WeekCalendarOverview dates={dates} appointments={appointments} timezone={timezone}/>
     </>;
