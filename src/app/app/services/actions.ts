@@ -3,10 +3,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAppContext } from "@/lib/auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { ServiceSchema, CategorySchema, MoneyInputSchema } from "@/lib/schemas";
 import { normalizePaymentPolicy } from "@/domain/payment-policy";
 import { saveWorkspaceService } from "@/services/workspace-mutations";
 
-const cents=(value:string)=>{const amount=Number(value.trim().replace(",","."));return Number.isFinite(amount)&&amount>=0?Math.round(amount*100):null};
+const cents=(value:string)=>{const result=MoneyInputSchema.safeParse(value);return result.success?result.data:null};
 
 export async function saveService(formData:FormData){
   const {salon,membership}=await requireAppContext();
@@ -22,7 +23,7 @@ export async function saveService(formData:FormData){
   const depositCents=rawDeposit?cents(rawDeposit):null;
   const paymentMode=String(formData.get("paymentMode")??"pay_in_salon");
   const staffIds=formData.getAll("staffIds").map(String);
-  if(!name||name.length>120||!Number.isInteger(duration)||duration<5||duration>720||!Number.isInteger(buffer)||buffer<0||buffer>180||priceCents===null)redirect("/app/services?error=Controleer+naam,+duur,+buffer+en+prijs.");
+  if(priceCents===null||!ServiceSchema.safeParse({id,name,categoryId,duration,buffer,priceCents,depositCents,staffIds,paymentMode}).success)redirect("/app/services?error=Controleer+naam,+duur,+buffer+en+prijs.");
   let policy;try{policy=normalizePaymentPolicy({mode:paymentMode,depositCents,priceCents})}catch{redirect("/app/services?error=Controleer+de+betaalregel+en+aanbetaling.")}
   try{
     await saveWorkspaceService(salon.id,{id:id||undefined,name,description,category_id:categoryId||null,duration_minutes:duration,buffer_minutes:buffer,price_cents:priceCents,active:formData.get("active")==="on",online_bookable:formData.get("onlineBookable")==="on",staff_ids:staffIds,payment_mode:policy.mode,deposit_cents:policy.depositCents});
@@ -37,7 +38,7 @@ export async function saveCategory(formData:FormData){
   const name=String(formData.get("name")??"").trim();
   const sortOrder=Number(formData.get("sortOrder")??0);
   const active=formData.get("active")==="on";
-  if(!name||name.length>80||!Number.isInteger(sortOrder)||sortOrder<0||sortOrder>10000)redirect("/app/services?error=Controleer+de+categorie.");
+  if(!CategorySchema.safeParse({id,name,sortOrder}).success)redirect("/app/services?error=Controleer+de+categorie.");
   const db=createAdminSupabaseClient();
   const result=id
     ?await db.from("service_categories").update({name,sort_order:sortOrder,active,updated_at:new Date().toISOString()}).eq("salon_id",salon.id).eq("id",id)

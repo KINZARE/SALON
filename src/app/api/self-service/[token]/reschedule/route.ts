@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { isUuid } from "@/lib/validation";
+import { SelfServiceRescheduleSchema } from "@/lib/schemas";
 import { rescheduleCustomerSelfService } from "@/services/customer-self-service";
 
 export async function POST(request:Request,{params}:{params:Promise<{token:string}>}) {
   const {token}=await params;
   let body:Record<string,unknown>;
   try{body=await request.json() as Record<string,unknown>}catch{return NextResponse.json({error:"Ongeldige aanvraag."},{status:400})}
-  const staffId=typeof body.staffId==="string"?body.staffId:"";
-  const startsAt=typeof body.startsAt==="string"?body.startsAt:"";
-  if(!isUuid(staffId)||Number.isNaN(Date.parse(startsAt))) return NextResponse.json({error:"Ongeldige aanvraag."},{status:400});
+  const parsed=SelfServiceRescheduleSchema.safeParse(body);
+  if(!parsed.success)return NextResponse.json({error:"Ongeldige aanvraag. Controleer de gegevens."},{status:400});
+  const {staffId,startsAt}=parsed.data;
   try{
     await rescheduleCustomerSelfService(token,staffId,startsAt);
     return NextResponse.json({ok:true});

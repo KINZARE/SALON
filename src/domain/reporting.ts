@@ -1,3 +1,4 @@
+import { ReportRangeSchema } from "../lib/schemas.ts";
 type Preset="this_week"|"this_month"|"previous_month"|"last30"|"custom";
 type Input={preset:Preset;today:string;from?:string;to?:string};
 
@@ -15,6 +16,7 @@ function first(value:string){return value.slice(0,7)+"-01"}
 function nextMonth(value:string){const result=date(first(value));result.setUTCMonth(result.getUTCMonth()+1);return iso(result)}
 
 export function resolveReportRange(input:Input){
+  if(!ReportRangeSchema.safeParse(input).success)throw new Error("INVALID_DATE");
   date(input.today);
   let from:string;
   let to:string;

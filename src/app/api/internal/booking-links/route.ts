@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAppContext } from "@/lib/auth";
-import { isUuid } from "@/lib/validation";
+import { BookingLinkSchema } from "@/lib/schemas";
 import { createSmartBookingLink } from "@/services/smart-booking-links";
 
 export async function POST(request:Request){
@@ -8,11 +8,10 @@ export async function POST(request:Request){
   if(!["owner","manager"].includes(membership.role))return NextResponse.json({error:"Geen toegang."},{status:403});
   let body:Record<string,unknown>;
   try{body=await request.json() as Record<string,unknown>}catch{return NextResponse.json({error:"Ongeldige aanvraag."},{status:400})}
-  const serviceId=typeof body.serviceId==="string"?body.serviceId:"";
-  const staffId=typeof body.staffId==="string"&&body.staffId?body.staffId:null;
-  const startDate=typeof body.startDate==="string"?body.startDate:"";
-  const endDate=typeof body.endDate==="string"?body.endDate:"";
-  if(!isUuid(serviceId)||(staffId&&!isUuid(staffId)))return NextResponse.json({error:"Ongeldige selectie."},{status:400});
+  const parsed=BookingLinkSchema.safeParse(body);
+  if(!parsed.success)return NextResponse.json({error:"Ongeldige selectie of datumbereik."},{status:400});
+  const {serviceId,staffId,startDate,endDate}=parsed.data;
+
   try{
     const result=await createSmartBookingLink(salon.id,{serviceId,staffId,startDate,endDate});
     return NextResponse.json({path:`/book-link/${result.token}`,expiresAt:result.expiresAt});
