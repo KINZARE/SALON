@@ -258,3 +258,5 @@ jobs:
         with:
           name: production-qa-performance-${{ github.sha }}
           path: qa-artifacts
+          if-no-files-found: ignore
+          retention-days: 30
