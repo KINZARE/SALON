@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { isUuid } from "@/lib/validation";
+import { CalendarMoveSchema } from "@/lib/schemas";
 import { parseUnambiguousLocalDateTime } from "@/domain/local-time";
 import { moveWorkspaceAppointment } from "@/services/workspace-mutations";
 
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
-  try { body = await request.json() as Record<string, unknown>; } catch { return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 }); }
-  const appointmentId = typeof body.appointmentId === "string" ? body.appointmentId : "";
-  const staffId = typeof body.staffId === "string" ? body.staffId : "";
-  const localStart = typeof body.localStart === "string" ? body.localStart : "";
-  const expectedStartsAt = typeof body.expectedStartsAt === "string" ? body.expectedStartsAt : null;
-  const expectedStaffId = typeof body.expectedStaffId === "string" ? body.expectedStaffId : null;
-  if (!isUuid(appointmentId) || !isUuid(staffId)) return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
+  let body: unknown;
+  try { body = await request.json(); } catch { return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 }); }
+  const parsed = CalendarMoveSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
+  const { appointmentId, staffId, localStart, expectedStartsAt, expectedStaffId } = parsed.data;
 
   const db = createAdminSupabaseClient();
   const salon = await db.from("salons").select("id,timezone").eq("slug","salon").single();

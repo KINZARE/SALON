@@ -54,20 +54,23 @@ jobs:
       - name: Browser QA for real no-login mode
         env:
           QA_BASE_URL: "http://127.0.0.1:3000"
-        run: npm run test:e2e -- --project=workspace --project=migration-320 --project=migration-390 --project=migration-768 --project=migration-1440
-      - name: ORSIRA responsive brand QA
-        env:
-          QA_BASE_URL: "http://127.0.0.1:3000"
-        run: npm run test:e2e -- --project=responsive
+        run: npm run test:e2e
       - name: Compare real database reads against unchanged baseline
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin ef4c5369117de1742845e219e16626ff9f278ce6 --depth=1
-          git worktree add --detach /tmp/salon-performance-before ef4c5369117de1742845e219e16626ff9f278ce6
+          git fetch origin fd56cf66bc7ec1df84ad15f1fb1cdf6b92a94d6f --depth=1
+          git worktree add --detach /tmp/salon-performance-before fd56cf66bc7ec1df84ad15f1fb1cdf6b92a94d6f
           ln -s "$PWD/node_modules" /tmp/salon-performance-before/node_modules
           SALON_SOURCE_ROOT=/tmp/salon-performance-before QA_PROFILE_LABEL=before node --experimental-strip-types scripts/performance-queries.mjs
           QA_PROFILE_LABEL=after node --experimental-strip-types scripts/performance-queries.mjs
+      - name: Compare route bundles with pre-migration production build
+        shell: bash
+        run: |
+          set -euo pipefail
+          QA_PROFILE_LABEL=after node scripts/bundle-metrics.mjs
+          (cd /tmp/salon-performance-before && npm run build)
+          SALON_SOURCE_ROOT=/tmp/salon-performance-before QA_PROFILE_LABEL=before node scripts/bundle-metrics.mjs
       - name: Real database concurrency regression in isolated fixture
         run: node scripts/performance-concurrency.mjs
       - name: Upload QA evidence
@@ -215,15 +218,18 @@ jobs:
       - name: Full browser QA on exact preview
         env:
           QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
-        run: npm run test:e2e -- --project=workspace --project=migration-320 --project=migration-390 --project=migration-768 --project=migration-1440
-      - name: ORSIRA responsive QA on exact preview
+        run: npm run test:e2e
+      - name: Baseline live performance measurements
         env:
-          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
-        run: npm run test:e2e -- --project=responsive
+          QA_BASE_URL: https://salon-7qp9srmha-kwinphetmanee-2069.vercel.app
+          QA_PROFILE_LABEL: before
+        run: node scripts/performance-measure.mjs
       - name: Equivalent live performance measurements
         env:
           QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
         run: node scripts/performance-measure.mjs
+      - name: Summarize migration performance
+        run: node scripts/performance-compare.mjs
       - name: Compare actual Today to Calendar navigation
         env:
           QA_BASELINE_URL: https://salon-7qp9srmha-kwinphetmanee-2069.vercel.app

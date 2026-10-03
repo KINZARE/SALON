@@ -2,7 +2,7 @@ import {randomUUID} from "node:crypto";
 import {test,expect,qaDatabase} from "./fixtures.mjs";
 
 test("malformed API bodies are rejected before mutations",async({request})=>{
-  const paths=["/api/public/salon/book","/api/public/salon/waitlist","/api/internal/book","/api/internal/reschedule","/api/internal/booking-links","/api/book-link/invalid/book","/api/self-service/invalid/reschedule"];
+  const paths=["/api/public/salon/book","/api/public/salon/waitlist","/api/internal/book","/api/internal/reschedule","/api/internal/move","/api/internal/booking-links","/api/book-link/invalid/book","/api/self-service/invalid/reschedule"];
   for(const path of paths)for(const payload of [null,[],{}]) {
     const response=await request.post(path,{data:JSON.stringify(payload),headers:{"content-type":"application/json"}});
     expect(response.status(),`${path}: ${JSON.stringify(payload)}`).toBe(400);
@@ -39,7 +39,7 @@ test("intake arrays preserve edits through move remove validation save and refre
     await form.getByRole("button",{name:"+ Veld",exact:true}).click();
     await form.getByLabel("Label veld 2",{exact:true}).fill("Akkoord");
     await form.getByLabel("Type veld 2",{exact:true}).selectOption("consent");
-    await form.getByLabel("Toestemmingstekst (optioneel)",{exact:true}).fill("QA toestemming");
+    await form.getByLabel(/^Toestemmingstekst \(optioneel\)/).fill("QA toestemming");
     await form.locator('input[name="serviceIds"]').first().check();
     await form.getByRole("button",{name:"Formulier toevoegen",exact:true}).click();
     await page.waitForURL(/\/app\/intake\?saved=1$/);

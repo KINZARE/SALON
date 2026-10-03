@@ -15,10 +15,12 @@ const publicCustomer = z.object({
   email: optionalText(254).pipe(EmailSchema),
   note: optionalText(1000),
 });
-export const CustomerSchema = z.object({ name, phone: optionalText(40), email: optionalText(254).pipe(EmailSchema.nullable()), note: optionalText(1000) });
+export const CustomerSchema = z.object({ name: optionalText(160).pipe(z.string().min(1)), phone: optionalText(40), email: optionalText(254).pipe(EmailSchema.nullable()), note: optionalText(1000) });
 export const PublicBookingSchema = z.object({ serviceId: UuidSchema, staffId: OptionalUuidSchema, startsAt: InstantSchema, customer: publicCustomer });
 export const AppointmentInputSchema = PublicBookingSchema.extend({ staffId: UuidSchema, customerId: OptionalUuidSchema, customer: CustomerSchema });
 export const RescheduleInputSchema = z.object({ appointmentId: UuidSchema, staffId: UuidSchema, startsAt: InstantSchema });
+const optionalString = z.unknown().optional().transform(value => typeof value === "string" ? value : null);
+export const CalendarMoveSchema = z.object({ appointmentId: UuidSchema, staffId: UuidSchema, localStart: optionalString.transform(value => value ?? ""), expectedStartsAt: optionalString, expectedStaffId: optionalString });
 export const SelfServiceRescheduleSchema = RescheduleInputSchema.omit({ appointmentId: true });
 export const WaitlistSchema = z.object({
   serviceId: UuidSchema, staffId: OptionalUuidSchema, date: IsoDateSchema,
