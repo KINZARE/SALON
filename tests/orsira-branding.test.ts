@@ -49,11 +49,69 @@ test("Today supporting surfaces and day controls use restrained ORSIRA styling",
   assert.ok(!dayView.includes("bg-[var(--ink)]"));
 });
 
+test("Calendar presentation is ORSIRA while drag and rollback contracts remain intact", async () => {
+  const [board, period, overviews, mobile] = await Promise.all([
+    read("src/components/workspace/calendar-board.tsx"),
+    read("src/components/workspace/calendar-period-view.tsx"),
+    read("src/components/workspace/calendar-overviews.tsx"),
+    read("src/components/workspace/mobile-calendar-timeline.tsx"),
+  ]);
+  assert.match(board, /data-appointment-id/);
+  assert.match(board, /data-drop-staff/);
+  assert.match(board, /data-staff-identity/);
+  assert.match(board, /data-current-time-line/);
+  assert.match(board, /\/api\/internal\/move/);
+  assert.match(board, /setLocalAppointments/);
+  assert.match(board, /router\.refresh\(\)/);
+  assert.match(board, /bg-\[var\(--primary\)\][^\n"]*text-white/);
+  assert.ok(!board.includes("bg-[var(--ink)]"));
+  assert.ok(!period.includes("bg-[var(--ink)]"));
+  assert.ok(!overviews.includes("rounded-[18px]"));
+  assert.match(mobile, /data-mobile-calendar/);
+});
+
 test("management surfaces use restrained ORSIRA rows and actions", async () => {
   const [customers, services, staff] = await Promise.all([read("src/app/app/customers/page.tsx"), read("src/app/app/services/page.tsx"), read("src/app/app/staff/page.tsx")]);
   assert.match(customers, />Klanten</); assert.match(customers, /bg-\[var\(--primary\)\][^\n"]*text-white/); assert.match(customers, /rounded-\[10px\]/);
   assert.ok(!services.includes("rounded-[22px]")); assert.ok(!services.includes("bg-[var(--ink)]")); assert.match(services, /bg-\[var\(--primary\)\]/);
   assert.ok(!staff.includes("rounded-[22px]")); assert.match(staff, /rounded-\[16px\]/); assert.match(staff, /text-\[var\(--primary\)\]/);
+});
+
+test("secondary management surfaces are compact and use ORSIRA primary actions", async () => {
+  const [detail, blocks, waitlist, intake, schedule, widget, bookingLinks, more, search] = await Promise.all([
+    read("src/app/app/customers/[id]/page.tsx"),
+    read("src/app/app/blocks/page.tsx"),
+    read("src/app/app/waitlist/page.tsx"),
+    read("src/app/app/intake/page.tsx"),
+    read("src/app/app/settings/schedule/page.tsx"),
+    read("src/app/app/settings/widget/page.tsx"),
+    read("src/app/app/booking-links/page.tsx"),
+    read("src/app/app/more/page.tsx"),
+    read("src/app/app/search/page.tsx"),
+  ]);
+  for (const source of [detail, blocks, waitlist, intake, schedule, widget, bookingLinks, more, search]) {
+    assert.ok(!source.includes("bg-[var(--ink)]"));
+    assert.ok(!source.includes("rounded-[24px]"));
+    assert.ok(!source.includes("rounded-[22px]"));
+  }
+  for (const source of [detail, waitlist, schedule, widget]) assert.match(source, /bg-\[var\(--primary\)\]/);
+  assert.match(widget, /ORSIRA zelf/);
+});
+
+test("management editors use the same restrained ORSIRA primitives", async () => {
+  const [serviceEditor, staffEditor, intakeEditor, widgetCode] = await Promise.all([
+    read("src/components/workspace/service-editor.tsx"),
+    read("src/components/workspace/staff-editor.tsx"),
+    read("src/components/workspace/intake-form-editor.tsx"),
+    read("src/components/workspace/widget-code-block.tsx"),
+  ]);
+  for (const source of [serviceEditor, staffEditor, intakeEditor, widgetCode]) {
+    assert.ok(!source.includes("rounded-[22px]"));
+    assert.ok(!source.includes("bg-[var(--ink)]"));
+    assert.match(source, /rounded-\[16px\]/);
+  }
+  assert.match(serviceEditor, /data-service-editor/);
+  assert.match(staffEditor, /data-staff-editor/);
 });
 
 test("Reports and settings use ORSIRA hierarchy instead of charcoal primary controls", async () => {
@@ -77,17 +135,23 @@ test("appointment action centre is light ORSIRA and preserves existing operation
 });
 
 test("customer-facing booking surfaces visibly carry ORSIRA without changing flow components", async () => {
-  const [bookingPage, smartPage, embedPage, errorPage, bookingFlow] = await Promise.all([
+  const [bookingPage, smartPage, embedPage, errorPage, bookingFlow, smartFlow, selfService, managePage, publicIntake] = await Promise.all([
     read("src/app/book/[salonSlug]/page.tsx"),
     read("src/app/book-link/[token]/page.tsx"),
     read("src/app/embed/[salonSlug]/page.tsx"),
     read("src/app/app/error.tsx"),
     read("src/components/booking/booking-flow.tsx"),
+    read("src/components/booking/smart-booking-flow.tsx"),
+    read("src/components/booking/customer-self-service-manager.tsx"),
+    read("src/app/manage/[token]/page.tsx"),
+    read("src/app/intake/[token]/page.tsx"),
   ]);
-  for (const source of [bookingPage, smartPage, embedPage]) assert.match(source, />ORSIRA</);
+  for (const source of [bookingPage, smartPage, embedPage, managePage, publicIntake]) assert.match(source, /ORSIRA/);
   assert.match(bookingPage, /<BookingFlow/); assert.match(smartPage, /<SmartBookingFlow/); assert.match(embedPage, /<BookingFlow/);
-  assert.ok(!smartPage.includes(">SALON<")); assert.match(bookingPage, /rounded-\[16px\]/);
+  assert.ok(!smartPage.includes(">SALON<")); assert.ok(!managePage.includes(">SALON<")); assert.match(bookingPage, /rounded-\[16px\]/);
   assert.match(errorPage, /<Button/); assert.match(errorPage, /font-display/);
-  assert.match(bookingFlow, /bg-\[var\(--primary\)\]/);
-  assert.ok(!bookingFlow.includes("bg-[var(--ink)]"));
+  for (const source of [bookingFlow, smartFlow, selfService]) {
+    assert.match(source, /bg-\[var\(--primary\)\]/);
+    assert.ok(!source.includes("bg-[var(--ink)]"));
+  }
 });
