@@ -86,7 +86,7 @@ function AppointmentVisual({ item, timezone, selected=false, overlay=false }: { 
   const status = getStatusMeta(item.status);
   const terminal = ["cancelled", "no_show", "completed"].includes(item.status);
 
-  return <div className={`h-full w-full overflow-hidden rounded-[10px] border border-[var(--border)] border-l-[4px] ${railClasses[visual.railTone]} bg-[#fffdf9] px-2.5 py-2 pr-8 text-left shadow-[0_1px_2px_rgba(39,32,24,.04)] ${terminal ? "opacity-70" : ""} ${selected ? "ring-2 ring-[var(--primary-soft)] ring-offset-1 ring-offset-white" : ""} ${overlay ? "min-h-[58px] w-[200px] rotate-[1deg] shadow-xl" : ""}`}>
+  return <div className={`h-full w-full overflow-hidden rounded-[10px] border border-[var(--border)] border-l-[4px] ${railClasses[visual.railTone]} bg-white px-2.5 py-2 pr-8 text-left ${terminal ? "opacity-70" : ""} ${selected ? "ring-2 ring-[var(--primary-soft)] ring-offset-1 ring-offset-white" : ""} ${overlay ? "min-h-[58px] w-[200px] rotate-[1deg] shadow-lg" : ""}`}>
     <div className="flex min-w-0 items-center gap-2">
       <span className="block shrink-0 text-[10px] font-semibold tabular-nums text-[var(--muted)]">{start}–{end}</span>
       <span className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full ${status.tone === "danger" ? "bg-[var(--status-no-show)]" : status.tone === "warning" ? "bg-[var(--status-pending)]" : status.tone === "success" ? "bg-[var(--status-confirmed)]" : status.tone === "info" ? "bg-[var(--status-checked-in)]" : "bg-[var(--status-completed)]"}`} aria-label={status.label} />
@@ -112,11 +112,11 @@ function AppointmentCard({ item, timezone, canManage, selected, onSelect }: { it
       {...attributes}
       {...listeners}
       aria-pressed={selected}
-      className={`block h-full w-full cursor-pointer select-none text-left transition hover:-translate-y-px hover:shadow-md ${canManage && active ? "sm:cursor-grab sm:active:cursor-grabbing" : ""}`}
+      className={`block h-full w-full cursor-pointer select-none text-left transition hover:-translate-y-px ${canManage && active ? "sm:cursor-grab sm:active:cursor-grabbing" : ""}`}
     >
       <AppointmentVisual item={item} timezone={timezone} selected={selected}/>
     </button>
-    {canManage && active ? <span aria-hidden className="pointer-events-none absolute right-2 top-2 text-[11px] font-bold text-[#7c899b]">⋮⋮</span> : null}
+    {canManage && active ? <span aria-hidden className="pointer-events-none absolute right-2 top-2 text-[11px] font-bold text-[var(--muted)]">⋮⋮</span> : null}
   </div>;
 }
 
@@ -133,15 +133,15 @@ function StaffDropColumn({ member, disabled, children, height }: { member: Staff
     className={`relative border-l border-[var(--border)] transition-colors ${isOver ? "bg-[var(--primary-soft)]" : "bg-white"}`}
     style={{
       height,
-      backgroundImage: "linear-gradient(to bottom, transparent calc(100% - 1px), #edf0f5 calc(100% - 1px))",
+      backgroundImage: "linear-gradient(to bottom, transparent calc(100% - 1px), #ece8e2 calc(100% - 1px))",
       backgroundSize: `100% ${slotMinutes*pxPerMinute}px`,
     }}
   >{children}</div>;
 }
 
 function AppointmentPanel({ item, timezone }: { item: Appointment | null; timezone: string }) {
-  if(!item) return <aside className="rounded-2xl border border-[var(--border)] bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,.04)]">
-    <div className="grid min-h-[260px] place-items-center text-center"><div><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#f3f6fb] text-lg text-[#8290a5]">↗</div><p className="mt-3 text-sm font-semibold">Selecteer een afspraak</p><p className="mt-1 max-w-[220px] text-xs leading-5 text-[var(--muted)]">Klik op een kaart in de agenda om details te bekijken.</p></div></div>
+  if(!item) return <aside className="rounded-[16px] border border-[var(--border)] bg-white p-5">
+    <div className="grid min-h-[260px] place-items-center text-center"><div><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[var(--primary-soft)] text-lg text-[var(--primary)]">↗</div><p className="mt-3 text-sm font-semibold">Selecteer een afspraak</p><p className="mt-1 max-w-[220px] text-xs leading-5 text-[var(--muted)]">Klik op een kaart in de agenda om details te bekijken.</p></div></div>
   </aside>;
 
   const status=getStatusMeta(item.status);
@@ -150,20 +150,20 @@ function AppointmentPanel({ item, timezone }: { item: Appointment | null; timezo
   const dateLabel=new Intl.DateTimeFormat("nl-NL",{weekday:"short",day:"numeric",month:"short",year:"numeric",timeZone:timezone}).format(new Date(item.starts_at));
   const customerName=item.customer?.name ?? item.customer_name_snapshot;
 
-  return <aside data-calendar-detail className="rounded-2xl border border-[var(--border)] bg-white shadow-[0_8px_30px_rgba(15,23,42,.04)]">
+  return <aside data-calendar-detail className="rounded-[16px] border border-[var(--border)] bg-white">
     <div className="border-b border-[var(--border)] p-5">
       <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusClasses[status.tone]}`}>{status.label}</span>
       <h2 className="mt-3 text-xl font-semibold tracking-[-0.03em]">{customerName}</h2>
       <p className="mt-1 text-sm font-medium text-[var(--muted)]">{item.service_name_snapshot}</p>
-      <div className="mt-4 flex items-center gap-2 text-xs text-[#53627a]"><span aria-hidden>◷</span><span>{dateLabel} · {start}–{end}</span></div>
-      <Link href={`/app/appointments/${item.id}`} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[var(--ink)] px-4 text-sm font-semibold text-white hover:bg-[#24231f]">Open afspraak</Link>
+      <div className="mt-4 flex items-center gap-2 text-xs text-[var(--muted)]"><span aria-hidden>◷</span><span>{dateLabel} · {start}–{end}</span></div>
+      <Link href={`/app/appointments/${item.id}`} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primary-dark)]">Open afspraak</Link>
     </div>
     <div className="divide-y divide-[var(--border)] px-5">
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#9aa5b5]">Klant</p><p className="mt-1.5 text-sm font-semibold">{customerName}</p></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#9aa5b5]">Behandeling</p><div className="mt-1.5 flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{item.service_name_snapshot}</p><p className="mt-1 text-xs text-[var(--muted)]">{item.duration_minutes_snapshot} min</p></div><p className="text-sm font-semibold">{formatMoney(item.price_cents_snapshot,item.currency_snapshot)}</p></div></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#9aa5b5]">Medewerker</p><p className="mt-1.5 text-sm font-semibold">{item.staff?.name ?? "Medewerker"}</p></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#9aa5b5]">Betaling</p><p className="mt-1.5 text-sm font-semibold capitalize">{item.payment_status.replaceAll("_"," ")}</p></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#9aa5b5]">Notitie</p><p className="mt-1.5 whitespace-pre-wrap text-sm leading-5 text-[#52627a]">{item.note || "Geen notitie."}</p></div>
+      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Klant</p><p className="mt-1.5 text-sm font-semibold">{customerName}</p></div>
+      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Behandeling</p><div className="mt-1.5 flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{item.service_name_snapshot}</p><p className="mt-1 text-xs text-[var(--muted)]">{item.duration_minutes_snapshot} min</p></div><p className="text-sm font-semibold">{formatMoney(item.price_cents_snapshot,item.currency_snapshot)}</p></div></div>
+      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Medewerker</p><p className="mt-1.5 text-sm font-semibold">{item.staff?.name ?? "Medewerker"}</p></div>
+      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Betaling</p><p className="mt-1.5 text-sm font-semibold capitalize">{item.payment_status.replaceAll("_"," ")}</p></div>
+      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Notitie</p><p className="mt-1.5 whitespace-pre-wrap text-sm leading-5 text-[var(--muted)]">{item.note || "Geen notitie."}</p></div>
     </div>
   </aside>;
 }
@@ -356,18 +356,18 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
     }finally{setBusy(false);}
   }
 
-  if(!staff.length) return <p className="mt-6 rounded-xl border border-[var(--border)] bg-white p-5 text-sm text-[var(--muted)]">Voeg eerst een actieve medewerker toe.</p>;
+  if(!staff.length) return <p className="mt-6 rounded-[12px] border border-[var(--border)] bg-white p-5 text-sm text-[var(--muted)]">Voeg eerst een actieve medewerker toe.</p>;
 
   return <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_318px] xl:items-start">
     <div className="min-w-0">
       <div className="mb-2.5 flex min-h-9 items-center justify-between gap-3">
         <p role="status" className="text-xs text-[var(--muted)]">{message??(canManage?"Sleep een afspraak direct naar de gewenste tijd of medewerker.":"Dagplanning")}</p>
-        {undo?<button type="button" onClick={undoMove} disabled={busy} className="h-9 rounded-[9px] border border-[var(--border)] bg-white px-3 text-xs font-semibold disabled:opacity-50">Undo</button>:null}
+        {undo?<button type="button" onClick={undoMove} disabled={busy} className="h-9 rounded-[9px] border border-[var(--border)] bg-white px-3 text-xs font-semibold hover:bg-[var(--surface-soft)] disabled:opacity-50">Undo</button>:null}
       </div>
-      <div className="calendar-scroll overflow-x-auto rounded-2xl border border-[var(--border)] bg-white shadow-[0_8px_30px_rgba(15,23,42,.035)]">
+      <div className="calendar-scroll overflow-x-auto rounded-[16px] border border-[var(--border)] bg-white">
         <div className="min-w-[850px]">
-          <div className="grid border-b border-[var(--border)] bg-[#fbfcfe]" style={{gridTemplateColumns:`70px repeat(${staff.length},minmax(170px,1fr))`}}>
-            <div className="flex items-center justify-center text-[10px] font-semibold uppercase tracking-[.1em] text-[#9aa5b5]">Tijd</div>
+          <div className="grid border-b border-[var(--border)] bg-[var(--surface-soft)]" style={{gridTemplateColumns:`70px repeat(${staff.length},minmax(170px,1fr))`}}>
+            <div className="flex items-center justify-center text-[10px] font-semibold uppercase tracking-[.1em] text-[var(--muted)]">Tijd</div>
             {staff.map(member=>{
               const identity=getStaffIdentity(member.id,member.name);
               const avatarClass:Record<StaffTone,string>={clay:"bg-[#f4e4da] text-[#8a4a25]",sage:"bg-[#e4ece6] text-[#4f6c57]",sand:"bg-[#f2eadc] text-[#80683f]",sky:"bg-[#e4ecef] text-[#4f7078]",lilac:"bg-[#ece6ef] text-[#6e5d78]"};
@@ -379,14 +379,14 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
           </div>
           <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragCancel={onDragCancel} onDragEnd={onDragEnd}>
             <div className="relative grid" style={{gridTemplateColumns:`70px repeat(${staff.length},minmax(170px,1fr))`}}>
-              {isToday && nowMinute>=startMinute && nowMinute<=endMinute ? <div data-current-time-line className="pointer-events-none absolute left-[70px] right-0 z-40 border-t border-[var(--accent)]" style={{top:(nowMinute-startMinute)*pxPerMinute}}><span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-[var(--accent)]" /></div> : null}
-              <div className="relative bg-[#fbfcfe]" style={{height}}>{hourRows.map(minute=><span key={minute} className="absolute right-3 -translate-y-2 text-[10px] font-medium text-[#8d99aa]" style={{top:(minute-startMinute)*pxPerMinute}}>{minuteLabel(minute)}</span>)}</div>
+              {isToday && nowMinute>=startMinute && nowMinute<=endMinute ? <div data-current-time-line className="pointer-events-none absolute left-[70px] right-0 z-40 border-t border-[var(--primary)]" style={{top:(nowMinute-startMinute)*pxPerMinute}}><span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-[var(--primary)]" /></div> : null}
+              <div className="relative bg-[var(--surface-soft)]" style={{height}}>{hourRows.map(minute=><span key={minute} className="absolute right-3 -translate-y-2 text-[10px] font-medium text-[var(--muted)]" style={{top:(minute-startMinute)*pxPerMinute}}>{minuteLabel(minute)}</span>)}</div>
               {staff.map(member=>{
                 const memberAppointments=appointmentsByStaff.get(member.id)??[];
                 const memberBlocks=blocksByStaff.get(member.id)??[];
                 const memberBreaks=breaksByStaff.get(member.id)??[];
                 return <StaffDropColumn key={member.id} member={member} disabled={!canManage||busy} height={height}>
-                  {memberBreaks.map((item,index)=>{const from=toMinute(item.start_time),to=toMinute(item.end_time);return <div key={index} className="pointer-events-none absolute inset-x-1.5 z-10 overflow-hidden rounded-[7px] border border-dashed border-[#d3d9e3] bg-[repeating-linear-gradient(135deg,#f8f9fb,#f8f9fb_6px,#eef1f5_6px,#eef1f5_12px)] px-2 py-1 text-[10px] font-medium text-[#7b8799]" style={{top:(from-startMinute)*pxPerMinute,height:Math.max(18,(to-from)*pxPerMinute)}}>Pauze</div>})}
+                  {memberBreaks.map((item,index)=>{const from=toMinute(item.start_time),to=toMinute(item.end_time);return <div key={index} className="pointer-events-none absolute inset-x-1.5 z-10 overflow-hidden rounded-[7px] border border-dashed border-[var(--border-strong)] bg-[var(--surface-soft)] px-2 py-1 text-[10px] font-medium text-[var(--muted)]" style={{top:(from-startMinute)*pxPerMinute,height:Math.max(18,(to-from)*pxPerMinute)}}>Pauze</div>})}
                   {memberBlocks.map(block=>{const start=localParts(block.starts_at,timezone),end=localParts(block.ends_at,timezone);if(start.date!==date)return null;const from=toMinute(start.time),to=end.date===date?toMinute(end.time):endMinute;return <div key={block.id} className="pointer-events-none absolute inset-x-1.5 z-10 overflow-hidden rounded-[7px] border border-[#e6d9ca] bg-[#faf5ee] px-2 py-1 text-[10px] font-medium text-[#82664c]" style={{top:(from-startMinute)*pxPerMinute,height:Math.max(18,(to-from)*pxPerMinute)}}>{block.reason||"Geblokkeerd"}</div>})}
                   {memberAppointments.map(item=>{const start=localParts(item.starts_at,timezone);if(start.date!==date)return null;const top=(toMinute(start.time)-startMinute)*pxPerMinute;const duration=Math.max(30,(new Date(item.service_ends_at).getTime()-new Date(item.starts_at).getTime())/60_000);return <div key={item.id} className="absolute inset-x-1.5" style={{top,height:Math.max(44,duration*pxPerMinute)}}><AppointmentCard item={item} timezone={timezone} canManage={canManage} selected={selectedId===item.id} onSelect={()=>setSelectedId(item.id)}/></div>})}
                 </StaffDropColumn>;
