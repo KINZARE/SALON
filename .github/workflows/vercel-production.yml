@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           git fetch origin "$TESTED_APP_SHA" --depth=1 || true
-          CHANGED="$(git diff --name-only "$TESTED_APP_SHA" HEAD | grep -Ev '^(\.github/workflows/vercel-production\.yml|scripts/workspace-browser-qa\.mjs)$' || true)"
+          CHANGED="$(git diff --name-only "$TESTED_APP_SHA" HEAD | grep -Ev '^(\.github/workflows/vercel-(production|preview)\.yml|scripts/workspace-browser-qa\.mjs)$' || true)"
           if [ -n "$CHANGED" ]; then
             echo "Unexpected application/runtime files changed since tested app SHA:"
             echo "$CHANGED"
