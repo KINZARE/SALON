@@ -61,7 +61,7 @@ jobs:
           set -euo pipefail
           git fetch origin fd56cf66bc7ec1df84ad15f1fb1cdf6b92a94d6f --depth=1
           git worktree add --detach /tmp/salon-performance-before fd56cf66bc7ec1df84ad15f1fb1cdf6b92a94d6f
-          ln -s "$PWD/node_modules" /tmp/salon-performance-before/node_modules
+          cp -a "$PWD/node_modules" /tmp/salon-performance-before/node_modules
           SALON_SOURCE_ROOT=/tmp/salon-performance-before QA_PROFILE_LABEL=before node --experimental-strip-types scripts/performance-queries.mjs
           QA_PROFILE_LABEL=after node --experimental-strip-types scripts/performance-queries.mjs
       - name: Compare route bundles with pre-migration production build
