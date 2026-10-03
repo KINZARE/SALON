@@ -55,3 +55,34 @@ test("shared UI primitives use the restrained ORSIRA control language without AP
     assert.ok(!source.toLowerCase().includes("#bfe8ec"));
   }
 });
+
+test("app shell shows ORSIRA while preserving role-aware navigation routes", async () => {
+  const [nav, appLayout, search] = await Promise.all([
+    read("src/components/app-shell/nav.tsx"),
+    read("src/app/app/layout.tsx"),
+    read("src/components/app-shell/operational-search.tsx"),
+  ]);
+
+  assert.match(nav, />ORSIRA</);
+  assert.ok(!nav.includes(">SALON<"), "visible legacy SALON wordmark must be removed from app nav");
+  assert.match(appLayout, />ORSIRA</);
+
+  for (const route of [
+    "/app/today",
+    "/app/calendar",
+    "/app/customers",
+    "/app/services",
+    "/app/staff",
+    "/app/reports",
+    "/app/settings",
+    "/app/more",
+  ]) {
+    assert.ok(nav.includes(route), `navigation route must remain: ${route}`);
+  }
+  assert.match(nav, /role === "staff"/);
+  assert.match(nav, /bg-\[var\(--primary-soft\)\]/);
+  assert.match(nav, /text-\[var\(--primary\)\]/);
+  assert.ok(!nav.includes("bg-[var(--ink)] text-white"), "active navigation must not use the old dark pill treatment");
+  assert.match(search, /rounded-\[10px\]/);
+  assert.match(search, /focus:border-\[var\(--primary\)\]/);
+});
