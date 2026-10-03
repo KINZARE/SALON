@@ -27,14 +27,27 @@ async function noBodyOverflow(label) {
   return size;
 }
 
+async function assertVisibleBrand() {
+  const brands = page.getByText("ORSIRA", { exact: true });
+  const count = await brands.count();
+  assert.ok(count > 0, "ORSIRA brand must be present in the app shell");
+  let visible = false;
+  for (let index = 0; index < count; index += 1) {
+    if (await brands.nth(index).isVisible()) {
+      visible = true;
+      break;
+    }
+  }
+  assert.equal(visible, true, "ORSIRA brand must be visible in the active responsive shell");
+}
+
 async function open(path, width) {
   await page.setViewportSize({ width, height: 900 });
   const response = await page.goto(base + path, { waitUntil: "networkidle" });
   assert.ok(response, `${path} at ${width}px must return a response`);
   assert.equal(response.status(), 200, `${path} at ${width}px must return 200`);
   await page.locator("main").waitFor({ state: "visible" });
-  const brand = page.getByText("ORSIRA", { exact: true }).first();
-  await brand.waitFor({ state: "visible" });
+  await assertVisibleBrand();
   const size = await noBodyOverflow(`${width}px ${path}`);
   evidence.push({ width, path, ...size });
 }
