@@ -13,11 +13,11 @@ const statusClass = {
 } as const;
 
 export function TodayTimeline({ appointments, timezone }: { appointments: TodayAppointment[]; timezone: string }) {
-  if (!appointments.length) return <div className="rounded-[22px] border border-dashed border-[var(--border-strong)] bg-white px-5 py-9 text-center"><p className="font-semibold">Nog geen afspraken vandaag</p><p className="mt-1 text-sm text-[var(--muted)]">Nieuwe afspraken verschijnen hier direct in de dagplanning.</p></div>;
-  return <div className="overflow-hidden rounded-[24px] border border-[var(--border)] bg-white">
+  if (!appointments.length) return <div className="rounded-[12px] border border-dashed border-[var(--border-strong)] bg-white px-5 py-8 text-center"><p className="font-semibold">Nog geen afspraken vandaag</p><p className="mt-1 text-sm text-[var(--muted)]">Nieuwe afspraken verschijnen hier direct in de dagplanning.</p></div>;
+  return <div className="overflow-hidden rounded-[12px] border border-[var(--border)] bg-white">
     {appointments.map((item,index)=>{
       const status=getStatusMeta(item.status);
-      return <Link key={item.id} href={`/app/appointments/${item.id}`} className={`grid min-h-[78px] grid-cols-[56px_minmax(0,1fr)] items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--surface-soft)] sm:grid-cols-[68px_minmax(0,1fr)_auto] sm:px-5 ${index ? "border-t border-[var(--border)]" : ""}`}>
+      return <Link key={item.id} href={`/app/appointments/${item.id}`} className={`grid min-h-[76px] grid-cols-[56px_minmax(0,1fr)] items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--surface-soft)] sm:grid-cols-[68px_minmax(0,1fr)_auto] sm:px-5 ${index ? "border-t border-[var(--border)]" : ""}`}>
         <time className="text-sm font-semibold tabular-nums">{formatInTimeZone(new Date(item.starts_at),timezone,"HH:mm")}</time>
         <div className="min-w-0"><p className="truncate text-[15px] font-semibold">{item.customer?.name??item.customer_name_snapshot??"Klant"}</p><p className="mt-1 truncate text-sm text-[var(--muted)]">{item.service_name_snapshot}{item.staff?.name?` · ${item.staff.name}`:""}</p></div>
         <span className={`hidden shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold sm:inline-flex ${statusClass[status.tone]}`}>{status.label}</span>
