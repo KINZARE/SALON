@@ -18,7 +18,7 @@ export async function GET(request:Request){
     return NextResponse.json({error:"Ongeldige rapportageperiode."},{status:400});
   }
   const rows=await getReportAppointments({salonId:salon.id,timezone:salon.timezone,from:range.from,toExclusive:range.toExclusive});
-  const header=["Afspraak ID","Datum","Tijd","Klant","Behandeling","Medewerker","Status","Omzet","Valuta"];
+  const header=["Afspraak ID","Datum","Tijd","Klant","Behandeling","Medewerker","Status","Afgeronde behandelwaarde","Valuta"];
   const records=[header,...rows.map(row=>[
     row.id,
     formatInTimeZone(new Date(row.starts_at),salon.timezone,"yyyy-MM-dd"),
