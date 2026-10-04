@@ -69,7 +69,7 @@ async function noBodyOverflow(label) {
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + calendarPath, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Calendar" }).waitFor();
+  await page.getByRole("heading", { name: "Agenda" }).waitFor();
   await page.getByText("Teamagenda", { exact: true }).waitFor();
   await page.getByRole("link", { name: /Nieuwe afspraak/ }).waitFor();
   const cards = page.locator("[data-appointment-id]");

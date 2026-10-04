@@ -23,7 +23,7 @@ export default async function TodayPage() {
       <QuickActions canManage={canManage}/>
     </header>
 
-    <div className="mt-7"><TodaySummary appointmentCount={data.activeAppointments.length} plannedRevenueCents={data.plannedRevenueCents} completedCount={data.completedCount} workingStaffCount={data.workingStaffCount} currency={salon.currency} staffRole={membership.role==="staff"}/></div>
+    <div className="mt-7"><TodaySummary appointmentCount={data.appointmentCount} plannedValueCents={data.plannedValueCents} occupancyPercent={data.occupancyPercent} bookableMinutes={data.bookableMinutes} freeCapacityMinutes={data.freeCapacityMinutes} attentionCount={data.attention.length} currency={salon.currency} staffRole={membership.role==="staff"}/></div>
 
     <section data-orsira-next-appointment className="mt-5 overflow-hidden rounded-[16px] border border-[var(--border)] bg-white">
       {data.nextAppointment ? <Link href={`/app/appointments/${data.nextAppointment.id}`} className="grid gap-5 p-5 sm:grid-cols-[.7fr_1.3fr] sm:items-end sm:p-7">
