@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
+import { ConditionalIntakeFields } from "@/components/intake/conditional-intake-fields";
 import { getPublicIntakeContext } from "@/services/intake";
 import { submitIntakeAction } from "./actions";
 
@@ -19,19 +20,10 @@ export default async function IntakePublicPage({params,searchParams}:{params:Pro
       {error?<p role="alert" className="mt-5 rounded-[10px] border border-[#e8c8c3] bg-[#fbefed] p-3 text-sm text-[var(--danger)]">{error}</p>:null}
       <form action={action} className="mt-6 grid gap-5">
         <label className="grid gap-1.5 text-sm font-medium"><span>Naam</span><input name="customerName" defaultValue={context.appointment.customer_name_snapshot??""} required maxLength={160} className="h-11 rounded-[10px] border border-[var(--border)] bg-white px-3.5 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"/></label>
-        {context.snapshot.fields.map(field=><FieldControl key={field.id} field={field}/>)}
+        <ConditionalIntakeFields fields={context.snapshot.fields}/>
         {context.snapshot.consentStatement?<label className="flex items-start gap-3 rounded-[10px] bg-[var(--surface-soft)] p-4 text-sm leading-6"><input className="mt-1" type="checkbox" name="__consent" required/><span>{context.snapshot.consentStatement}</span></label>:null}
         <button className="h-12 rounded-[10px] bg-[var(--primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--primary-dark)]">Versturen</button>
       </form>
     </div>
   </main>;
-}
-
-function FieldControl({field}:{field:{id:string;label:string;type:string;required:boolean;options:string[]}}){
-  const name=`field:${field.id}`;const common="h-11 rounded-[10px] border border-[var(--border)] bg-white px-3.5 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]";
-  if(field.type==="long_text")return <label className="grid gap-1.5 text-sm font-medium"><span>{field.label}</span><textarea name={name} required={field.required} rows={4} maxLength={4000} className="rounded-[10px] border border-[var(--border)] bg-white px-3.5 py-3 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"/></label>;
-  if(field.type==="yes_no")return <label className="grid gap-1.5 text-sm font-medium"><span>{field.label}</span><select name={name} required={field.required} className={common}><option value="">Kies</option><option value="yes">Ja</option><option value="no">Nee</option></select></label>;
-  if(field.type==="select")return <label className="grid gap-1.5 text-sm font-medium"><span>{field.label}</span><select name={name} required={field.required} className={common}><option value="">Kies</option>{field.options.map(option=><option key={option} value={option}>{option}</option>)}</select></label>;
-  if(field.type==="checkbox"||field.type==="consent")return <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" name={name} required={field.required}/><span>{field.label}</span></label>;
-  return <label className="grid gap-1.5 text-sm font-medium"><span>{field.label}</span><input name={name} type={field.type==="date"?"date":"text"} required={field.required} maxLength={field.type==="short_text"?500:undefined} className={common}/></label>;
 }
