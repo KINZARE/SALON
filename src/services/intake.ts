@@ -124,15 +124,24 @@ export async function submitPublicIntake(rawToken:string,customerName:string,ans
   const normalized=validateIntakeAnswers(context.snapshot.fields.map(field=>({id:field.id,type:field.type,required:field.required,options:field.options,sortOrder:field.sortOrder,condition:field.condition})),answers);
   const signature=context.snapshot.consentStatement?normalizeIntakeSignature(signatureName??""):null;
   const db=createAdminSupabaseClient();
-  const {data,error}=await db.rpc("submit_intake_form",{
+  const upgradedSubmissionResult=await db.rpc("submit_intake_form",{
     p_token_hash:context.tokenHash,
     p_customer_name:customerName,
     p_answers:normalized,
     p_consent_accepted:consentAccepted,
     p_signature_name:signature,
   });
-  if(error)throw new Error(error.message);
-  return data as string;
+  if(!upgradedSubmissionResult.error)return upgradedSubmissionResult.data as string;
+  if(!isMissingSchemaFeatureError(upgradedSubmissionResult.error,["submit_intake_form","p_signature_name"]))throw new Error(upgradedSubmissionResult.error.message);
+
+  const legacySubmissionResult=await db.rpc("submit_intake_form",{
+    p_token_hash:context.tokenHash,
+    p_customer_name:customerName,
+    p_answers:normalized,
+    p_consent_accepted:consentAccepted
+  });
+  if(legacySubmissionResult.error)throw new Error(legacySubmissionResult.error.message);
+  return legacySubmissionResult.data as string;
 }
 
 export async function getIntakeSubmissionDetail(salonId:string,submissionId:string){
