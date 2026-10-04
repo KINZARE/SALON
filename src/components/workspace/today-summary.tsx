@@ -1,22 +1,39 @@
 import { formatMoney } from "@/lib/format";
 
-export function TodaySummary({ appointmentCount, plannedRevenueCents, completedCount, workingStaffCount, currency, staffRole }: {
+function formatMinutes(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder} min`;
+  if (!remainder) return `${hours}u`;
+  return `${hours}u ${remainder}m`;
+}
+
+export function TodaySummary({ appointmentCount, plannedValueCents, occupancyPercent, bookableMinutes, freeCapacityMinutes, attentionCount, currency, staffRole }: {
   appointmentCount: number;
-  plannedRevenueCents: number;
-  completedCount: number;
-  workingStaffCount: number;
+  plannedValueCents: number;
+  occupancyPercent: number;
+  bookableMinutes: number;
+  freeCapacityMinutes: number;
+  attentionCount: number;
   currency: string;
   staffRole: boolean;
 }) {
+  const occupiedMinutes = Math.max(0, bookableMinutes - freeCapacityMinutes);
   const items = [
-    { label: "afspraken", value: String(appointmentCount) },
-    { label: staffRole ? "afgerond" : "gepland", value: staffRole ? String(completedCount) : formatMoney(plannedRevenueCents, currency) },
-    { label: "team vandaag", value: String(workingStaffCount) },
+    { label: "Afspraken", value: String(appointmentCount), context: "niet geannuleerd" },
+    ...(!staffRole ? [{ label: "Geplande waarde", value: formatMoney(plannedValueCents, currency), context: "afspraakwaarde vandaag" }] : []),
+    { label: "Bezetting", value: `${occupancyPercent}%`, context: `${formatMinutes(occupiedMinutes)} van ${formatMinutes(bookableMinutes)} boekbaar` },
+    { label: "Vrije capaciteit", value: formatMinutes(freeCapacityMinutes), context: "na pauzes en blokkades" },
+    { label: "Aandacht nodig", value: String(attentionCount), context: attentionCount ? "bekijk de aandachtspunten" : "geen open punten" },
   ];
-  return <section aria-label="Vandaag samengevat" className="grid grid-cols-3 overflow-hidden rounded-[16px] border border-[var(--border)] bg-white">
-    {items.map((item,index)=><div key={item.label} className={`min-w-0 px-4 py-4 sm:px-6 ${index ? "border-l border-[var(--border)]" : ""}`}>
-      <p className="truncate text-xl font-semibold tracking-[-.04em] text-[var(--ink)] tabular-nums sm:text-2xl">{item.value}</p>
-      <p className="mt-1 text-[11px] text-[var(--muted)] sm:text-xs">{item.label}</p>
-    </div>)}
+
+  return <section aria-label="Vandaag samengevat" className="overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--border)]">
+    <div className={`grid gap-px ${staffRole ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-2 lg:grid-cols-5"}`}>
+      {items.map((item)=><div key={item.label} className="min-w-0 bg-white px-4 py-4 sm:px-5">
+        <p className="text-[11px] font-medium text-[var(--muted)] sm:text-xs">{item.label}</p>
+        <p className="mt-2 truncate text-xl font-semibold tracking-[-.04em] text-[var(--ink)] tabular-nums sm:text-2xl">{item.value}</p>
+        <p className="mt-1 truncate text-[10px] leading-4 text-[var(--muted)] sm:text-[11px]">{item.context}</p>
+      </div>)}
+    </div>
   </section>;
 }
