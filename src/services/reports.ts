@@ -1,6 +1,6 @@
 import "server-only";
 import { fromZonedTime } from "date-fns-tz";
-import { calculateAppointmentKpis } from "@/domain/reporting";
+import { calculateAppointmentKpis, calculateCustomerMix, validCustomerHistoryStatuses } from "@/domain/reporting";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type ReportAppointment={
@@ -16,9 +16,6 @@ export type ReportAppointment={
   currency_snapshot:string;
   staff:{name:string}|null;
 };
-
-const validCustomerStatuses=new Set(["pending","confirmed","checked_in","completed"]);
-const validCustomerStatusList=["pending","confirmed","checked_in","completed"];
 
 export async function getReportAppointments(args:{salonId:string;timezone:string;from:string;toExclusive:string}){
   const db=createAdminSupabaseClient();
@@ -42,7 +39,7 @@ export async function getReturningCustomerIds(args:{salonId:string;timezone:stri
     .select("customer_id")
     .eq("salon_id",args.salonId)
     .lt("starts_at",beforeIso)
-    .in("status",validCustomerStatusList)
+    .in("status",[...validCustomerHistoryStatuses])
     .in("customer_id",args.customerIds)
     .limit(5000);
   if(error)throw error;
@@ -51,10 +48,7 @@ export async function getReturningCustomerIds(args:{salonId:string;timezone:stri
 
 export function buildReportSummary(rows:ReportAppointment[],returningBeforePeriod:Set<string>){
   const kpis=calculateAppointmentKpis(rows);
-  const validCustomerRows=rows.filter(row=>validCustomerStatuses.has(row.status));
-  const uniqueCustomers=[...new Set(validCustomerRows.map(row=>row.customer_id))];
-  const newCustomers=uniqueCustomers.filter(id=>!returningBeforePeriod.has(id)).length;
-  const returningCustomers=uniqueCustomers.length-newCustomers;
+  const customerMix=calculateCustomerMix(rows,returningBeforePeriod);
 
   const serviceMap=new Map<string,{name:string;appointments:number;completed:number;completedValueCents:number}>();
   const staffMap=new Map<string,{name:string;appointments:number;completed:number;completedValueCents:number}>();
@@ -82,8 +76,8 @@ export function buildReportSummary(rows:ReportAppointment[],returningBeforePerio
     cancellationRate:kpis.cancellationRate,
     noShows:kpis.noShows,
     noShowRate:kpis.noShowRate,
-    newCustomers,
-    returningCustomers,
+    newCustomers:customerMix.newCustomers,
+    returningCustomers:customerMix.returningCustomers,
     services:[...serviceMap.values()].sort((a,b)=>b.completedValueCents-a.completedValueCents||b.appointments-a.appointments),
     staff:[...staffMap.values()].sort((a,b)=>b.completedValueCents-a.completedValueCents||b.appointments-a.appointments),
   };
