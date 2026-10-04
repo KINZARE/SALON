@@ -7,6 +7,21 @@ alter table public.intake_form_fields
   add constraint intake_form_fields_condition_object
   check (condition is null or jsonb_typeof(condition)='object');
 
+alter table public.appointment_consents
+  add column if not exists signature_name text,
+  add column if not exists signature_method text;
+
+alter table public.appointment_consents
+  drop constraint if exists appointment_consents_signature_name_valid;
+alter table public.appointment_consents
+  add constraint appointment_consents_signature_name_valid
+  check (signature_name is null or (char_length(trim(signature_name)) between 1 and 160));
+alter table public.appointment_consents
+  drop constraint if exists appointment_consents_signature_method_valid;
+alter table public.appointment_consents
+  add constraint appointment_consents_signature_method_valid
+  check (signature_method is null or signature_method in ('typed'));
+
 create or replace function public.save_intake_form(
   p_salon_id uuid,
   p_form_id uuid,
@@ -84,3 +99,51 @@ begin
 end $$;
 revoke all on function public.save_intake_form(uuid,uuid,text,text,boolean,text,jsonb,uuid[]) from public,anon;
 grant execute on function public.save_intake_form(uuid,uuid,text,text,boolean,text,jsonb,uuid[]) to authenticated,service_role;
+
+create or replace function public.submit_intake_form(
+  p_token_hash text,
+  p_customer_name text,
+  p_answers jsonb,
+  p_consent_accepted boolean,
+  p_signature_name text
+) returns uuid
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_link public.appointment_intake_links%rowtype;
+  v_appointment public.appointments%rowtype;
+  v_statement text;
+  v_submission_id uuid;
+  v_signature text;
+begin
+  select * into v_link from public.appointment_intake_links
+  where token_hash=p_token_hash for update;
+  if not found or v_link.completed_at is not null or v_link.expires_at<=now() then raise exception 'FORM_LINK_INVALID'; end if;
+  select * into v_appointment from public.appointments where id=v_link.appointment_id and salon_id=v_link.salon_id;
+  if not found then raise exception 'APPOINTMENT_NOT_FOUND'; end if;
+  if jsonb_typeof(p_answers)<>'object' then raise exception 'INVALID_ANSWERS'; end if;
+  v_statement:=nullif(trim(v_link.form_snapshot->>'consentStatement'),'');
+  if v_statement is not null and not p_consent_accepted then raise exception 'CONSENT_REQUIRED'; end if;
+  if v_statement is not null then
+    v_signature:=nullif(trim(coalesce(p_signature_name,'')),'');
+    if v_signature is null then raise exception 'SIGNATURE_REQUIRED'; end if;
+    if char_length(v_signature)>160 then raise exception 'INVALID_SIGNATURE'; end if;
+  end if;
+
+  insert into public.intake_submissions(salon_id,appointment_id,customer_id,form_id,form_version,answers)
+  values(v_link.salon_id,v_link.appointment_id,v_appointment.customer_id,v_link.form_id,v_link.form_version,p_answers)
+  returning id into v_submission_id;
+
+  if v_statement is not null then
+    if nullif(trim(p_customer_name),'') is null then raise exception 'CUSTOMER_NAME_REQUIRED'; end if;
+    insert into public.appointment_consents(salon_id,appointment_id,customer_id,form_id,statement,statement_version,customer_name,signature_name,signature_method)
+    values(v_link.salon_id,v_link.appointment_id,v_appointment.customer_id,v_link.form_id,v_statement,v_link.form_version,trim(p_customer_name),v_signature,'typed');
+  end if;
+
+  update public.appointment_intake_links set completed_at=now() where id=v_link.id;
+  return v_submission_id;
+end $$;
+revoke all on function public.submit_intake_form(text,text,jsonb,boolean,text) from public,anon,authenticated;
+grant execute on function public.submit_intake_form(text,text,jsonb,boolean,text) to service_role;
