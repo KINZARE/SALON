@@ -4,6 +4,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { validateWaitlistOffer } from "@/domain/waitlist-offer";
 import { waitlistEntryMatchesGap } from "@/domain/waitlist";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isMissingSchemaFeatureError } from "@/lib/supabase/schema-compat";
 import { getAvailableSlotsForDate, getPublicSalon, getPublicStaffForService } from "@/services/public-booking";
 
 export type WaitlistGap = {
@@ -75,17 +76,32 @@ export async function joinPublicWaitlist(args:{
 
 export async function getWaitlistEntries(salonId:string){
   const db=createAdminSupabaseClient();
-  await db.from("waitlist_offers").update({status:"expired",updated_at:new Date().toISOString()})
+  const offersUpdate=db.from("waitlist_offers").update({status:"expired",updated_at:new Date().toISOString()})
     .eq("salon_id",salonId).eq("status","offered").lte("expires_at",new Date().toISOString());
-  const [entriesResult,servicesResult,staffResult,offersResult]=await Promise.all([
+  const [entriesResult,servicesResult,staffResult,offersResult,expireResult]=await Promise.all([
     db.from("waitlist_entries").select("id,service_id,preferred_staff_id,customer_name,phone,email,requested_from,requested_to,status,created_at").eq("salon_id",salonId).in("status",["waiting","contacted"]).order("requested_from").order("created_at").limit(200),
     db.from("services").select("id,name,duration_minutes,buffer_minutes").eq("salon_id",salonId),
     db.from("staff").select("id,name").eq("salon_id",salonId),
     db.from("waitlist_offers").select("id,waitlist_entry_id,staff_id,starts_at,ends_at,expires_at,status,created_at").eq("salon_id",salonId).order("created_at",{ascending:false}).limit(400),
+    offersUpdate,
   ]);
-  for(const result of [entriesResult,servicesResult,staffResult,offersResult])if(result.error)throw result.error;
+  for(const result of [entriesResult,servicesResult,staffResult])if(result.error)throw result.error;
+  const offersUnavailable=(offersResult.error&&isMissingSchemaFeatureError(offersResult.error,["waitlist_offers"]))
+    ||(expireResult.error&&isMissingSchemaFeatureError(expireResult.error,["waitlist_offers"]));
+  if(offersResult.error&&!offersUnavailable)throw offersResult.error;
+  if(expireResult.error&&!offersUnavailable)throw expireResult.error;
+
   const services=new Map((servicesResult.data??[]).map(item=>[item.id,item]));
   const staff=new Map((staffResult.data??[]).map(item=>[item.id,item]));
+  if(offersUnavailable){
+    return (entriesResult.data??[]).map(item=>({
+      ...item,
+      service:services.get(item.service_id)??null,
+      preferredStaff:item.preferred_staff_id?staff.get(item.preferred_staff_id)??null:null,
+      offer:null,
+    }));
+  }
+
   const latestOffer=new Map<string,NonNullable<typeof offersResult.data>[number]>();
   for(const offer of offersResult.data??[])if(!latestOffer.has(offer.waitlist_entry_id))latestOffer.set(offer.waitlist_entry_id,offer);
   return (entriesResult.data??[]).map(item=>({
@@ -99,8 +115,12 @@ export async function getWaitlistEntries(salonId:string){
 export async function createNextWaitlistOffer(salonId:string,entryId:string){
   const db=createAdminSupabaseClient();
   const now=new Date();
-  await db.from("waitlist_offers").update({status:"expired",updated_at:now.toISOString()})
+  const expireResult=await db.from("waitlist_offers").update({status:"expired",updated_at:now.toISOString()})
     .eq("salon_id",salonId).eq("waitlist_entry_id",entryId).eq("status","offered").lte("expires_at",now.toISOString());
+  if(expireResult.error){
+    if(isMissingSchemaFeatureError(expireResult.error,["waitlist_offers"]))throw new Error("WAITLIST_OFFERS_NOT_AVAILABLE");
+    throw expireResult.error;
+  }
 
   const {data:activeOffer,error:activeOfferError}=await db.from("waitlist_offers")
     .select("id,waitlist_entry_id,service_id,staff_id,starts_at,ends_at,expires_at,status")
