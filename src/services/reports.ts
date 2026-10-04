@@ -1,5 +1,6 @@
 import "server-only";
 import { fromZonedTime } from "date-fns-tz";
+import { calculateAppointmentKpis } from "@/domain/reporting";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type ReportAppointment={
@@ -15,6 +16,9 @@ export type ReportAppointment={
   currency_snapshot:string;
   staff:{name:string}|null;
 };
+
+const validCustomerStatuses=new Set(["pending","confirmed","checked_in","completed"]);
+const validCustomerStatusList=["pending","confirmed","checked_in","completed"];
 
 export async function getReportAppointments(args:{salonId:string;timezone:string;from:string;toExclusive:string}){
   const db=createAdminSupabaseClient();
@@ -38,6 +42,7 @@ export async function getReturningCustomerIds(args:{salonId:string;timezone:stri
     .select("customer_id")
     .eq("salon_id",args.salonId)
     .lt("starts_at",beforeIso)
+    .in("status",validCustomerStatusList)
     .in("customer_id",args.customerIds)
     .limit(5000);
   if(error)throw error;
@@ -45,40 +50,41 @@ export async function getReturningCustomerIds(args:{salonId:string;timezone:stri
 }
 
 export function buildReportSummary(rows:ReportAppointment[],returningBeforePeriod:Set<string>){
-  const completed=rows.filter(row=>row.status==="completed");
-  const revenueCents=completed.reduce((sum,row)=>sum+row.price_cents_snapshot,0);
-  const averageCents=completed.length?Math.round(revenueCents/completed.length):0;
-  const uniqueCustomers=[...new Set(rows.map(row=>row.customer_id))];
+  const kpis=calculateAppointmentKpis(rows);
+  const validCustomerRows=rows.filter(row=>validCustomerStatuses.has(row.status));
+  const uniqueCustomers=[...new Set(validCustomerRows.map(row=>row.customer_id))];
   const newCustomers=uniqueCustomers.filter(id=>!returningBeforePeriod.has(id)).length;
   const returningCustomers=uniqueCustomers.length-newCustomers;
-  const repeatRate=uniqueCustomers.length?Math.round((returningCustomers/uniqueCustomers.length)*100):0;
 
-  const serviceMap=new Map<string,{name:string;appointments:number;completed:number;revenueCents:number}>();
-  const staffMap=new Map<string,{name:string;appointments:number;completed:number;revenueCents:number}>();
+  const serviceMap=new Map<string,{name:string;appointments:number;completed:number;completedValueCents:number}>();
+  const staffMap=new Map<string,{name:string;appointments:number;completed:number;completedValueCents:number}>();
   for(const row of rows){
+    if(row.status==="cancelled")continue;
     const serviceKey=row.service_id??`snapshot:${row.service_name_snapshot}`;
-    const service=serviceMap.get(serviceKey)??{name:row.service_name_snapshot,appointments:0,completed:0,revenueCents:0};
+    const service=serviceMap.get(serviceKey)??{name:row.service_name_snapshot,appointments:0,completed:0,completedValueCents:0};
     service.appointments+=1;
-    if(row.status==="completed"){service.completed+=1;service.revenueCents+=row.price_cents_snapshot}
+    if(row.status==="completed"){service.completed+=1;service.completedValueCents+=row.price_cents_snapshot}
     serviceMap.set(serviceKey,service);
 
-    const staff=staffMap.get(row.staff_id)??{name:row.staff?.name??"Medewerker",appointments:0,completed:0,revenueCents:0};
+    const staff=staffMap.get(row.staff_id)??{name:row.staff?.name??"Medewerker",appointments:0,completed:0,completedValueCents:0};
     staff.appointments+=1;
-    if(row.status==="completed"){staff.completed+=1;staff.revenueCents+=row.price_cents_snapshot}
+    if(row.status==="completed"){staff.completed+=1;staff.completedValueCents+=row.price_cents_snapshot}
     staffMap.set(row.staff_id,staff);
   }
 
   return{
-    revenueCents,
-    appointments:rows.length,
-    completed:completed.length,
-    averageCents,
-    cancellations:rows.filter(row=>row.status==="cancelled").length,
-    noShows:rows.filter(row=>row.status==="no_show").length,
+    plannedValueCents:kpis.plannedValueCents,
+    completedValueCents:kpis.completedValueCents,
+    appointments:kpis.appointments,
+    completed:kpis.completed,
+    averageCompletedValueCents:kpis.averageCompletedValueCents,
+    cancellations:kpis.cancellations,
+    cancellationRate:kpis.cancellationRate,
+    noShows:kpis.noShows,
+    noShowRate:kpis.noShowRate,
     newCustomers,
     returningCustomers,
-    repeatRate,
-    services:[...serviceMap.values()].sort((a,b)=>b.revenueCents-a.revenueCents||b.appointments-a.appointments),
-    staff:[...staffMap.values()].sort((a,b)=>b.revenueCents-a.revenueCents||b.appointments-a.appointments),
+    services:[...serviceMap.values()].sort((a,b)=>b.completedValueCents-a.completedValueCents||b.appointments-a.appointments),
+    staff:[...staffMap.values()].sort((a,b)=>b.completedValueCents-a.completedValueCents||b.appointments-a.appointments),
   };
 }
