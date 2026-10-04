@@ -1,4 +1,4 @@
-export type NotificationKind = "booking_confirmation" | "appointment_reminder";
+export type NotificationKind = "booking_confirmation" | "appointment_reminder" | "feedback_request" | "rebook_reminder";
 
 type NotificationInput = {
   kind: NotificationKind;
@@ -33,6 +33,33 @@ export function buildNotificationMessage(input: NotificationInput) {
         `${input.serviceName} · ${date} om ${time}`,
         "",
         "Tot snel!",
+      ].join("\n"),
+    };
+  }
+
+  if (input.kind === "feedback_request") {
+    return {
+      subject: `Hoe was je bezoek aan ${input.salonName}?`,
+      text: [
+        `Hoi ${input.customerName},`,
+        "",
+        `Bedankt voor je bezoek aan ${input.salonName}.`,
+        `We horen graag hoe je ${input.serviceName} hebt ervaren.`,
+        "",
+        "Je feedback helpt de salon om de service steeds beter te maken.",
+      ].join("\n"),
+    };
+  }
+
+  if (input.kind === "rebook_reminder") {
+    return {
+      subject: `Tijd voor je volgende ${input.serviceName}?`,
+      text: [
+        `Hoi ${input.customerName},`,
+        "",
+        `Misschien is het weer tijd om je volgende ${input.serviceName} bij ${input.salonName} te plannen.`,
+        "",
+        `Neem contact op met ${input.salonName} of boek via de bekende boekingslink wanneer het jou uitkomt.`,
       ].join("\n"),
     };
   }
