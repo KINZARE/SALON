@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 
 export async function runResponsiveQa({page,base,runtimeErrors}) {
-const widths = [320, 375, 390, 430, 768, 1440];
-const representativePaths = ["/app/today", "/app/calendar", "/app/customers"];
+const widths = [320, 360, 375, 390, 430, 768, 1024, 1280, 1440];
+const representativePaths = ["/app/today", "/app/calendar", "/app/customers", "/app/reports"];
 const evidence=[];
 
 async function noBodyOverflow(label) {
@@ -62,7 +62,7 @@ async function open(path, width) {
   }
 
   for (const width of [390, 1440]) {
-    for (const path of ["/app/services", "/app/staff", "/app/reports", "/app/settings", "/app/more"]) await open(path, width);
+    for (const path of ["/app/services", "/app/staff", "/app/settings", "/app/more"]) await open(path, width);
   }
 
   assert.deepEqual(runtimeErrors, [], `runtime errors detected:\n${runtimeErrors.join("\n")}`);
