@@ -13,5 +13,7 @@ test("PR A services keep legacy schema readable until additive migrations are ac
   assert.match(workspace,/rebook_after_days:null/);
   assert.match(product,/condition:null/);
   assert.match(intake,/condition:undefined/);
+  assert.match(intake,/legacySubmissionResult/);
+  assert.match(intake,/p_consent_accepted:consentAccepted\s*\}\);/);
   assert.match(waitlist,/offer:null/);
 });
