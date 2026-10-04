@@ -21,3 +21,12 @@ test("official resolver preserves Mini schema normalization and field errors",as
   const invalid=await resolver({title:"Test",fields:[{...fields[0],options:" , "}]},{},options);
   assert.ok(invalid.errors.fields?.[0]?.options);
 });
+
+test("intake editor serializes an earlier-field condition without inventing parallel ids",()=>{
+  const fields=[
+    {label:"Allergie?",type:"yes_no" as const,required:true,options:"",conditionSource:"",conditionOperator:"equals" as const,conditionValue:""},
+    {label:"Welke?",type:"short_text" as const,required:true,options:"",conditionSource:"0",conditionOperator:"equals" as const,conditionValue:"yes"},
+  ];
+  assert.equal(IntakeEditorSchema.safeParse({title:"Test",fields}).success,true);
+  assert.deepEqual(JSON.parse(serializeIntakeFields(fields))[1].condition,{sourceSortOrder:0,operator:"equals",value:"yes"});
+});
