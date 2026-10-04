@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import { validateWaitlistOffer } from "../src/domain/waitlist-offer.ts";
 
 const base={
@@ -21,4 +22,10 @@ test("waitlist offer rejects invalid slot and expiry ranges",()=>{
   assert.throws(()=>validateWaitlistOffer({...base,endsAt:base.startsAt},"2026-10-04T12:00:00.000Z"),/INVALID_OFFER_RANGE/);
   assert.throws(()=>validateWaitlistOffer({...base,expiresAt:"2026-10-04T11:59:00.000Z"},"2026-10-04T12:00:00.000Z"),/INVALID_OFFER_EXPIRY/);
   assert.throws(()=>validateWaitlistOffer({...base,expiresAt:"2026-10-08T10:01:00.000Z"},"2026-10-04T12:00:00.000Z"),/INVALID_OFFER_EXPIRY/);
+});
+
+test("waitlist offer migration enforces tenant integrity for the referenced entry",async()=>{
+  const sql=await fs.readFile("supabase/migrations/20261004172000_waitlist_offers.sql","utf8");
+  assert.match(sql,/unique\s*\(salon_id\s*,\s*id\)/i);
+  assert.match(sql,/foreign key\s*\(salon_id\s*,\s*waitlist_entry_id\)\s*references\s+public\.waitlist_entries\s*\(salon_id\s*,\s*id\)/i);
 });
