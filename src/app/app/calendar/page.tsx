@@ -8,7 +8,6 @@ import { CalendarPeriodView } from "@/components/workspace/calendar-period-view"
 
 type CalendarView="day"|"week"|"month";
 
-
 export default async function CalendarPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const {salon,membership}=await requireAppContext();
   const params=await searchParams;
@@ -34,7 +33,7 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
     <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-[var(--primary)]"><span className="h-2 w-2 rounded-full bg-[var(--primary)]"/>Teamagenda</div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-.045em] sm:text-[36px]">Calendar</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-.045em] sm:text-[36px]">Agenda</h1>
         <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">Dag voor detailplanning, week voor ritme en maand voor overzicht.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
