@@ -1,6 +1,6 @@
 type SchemaError={code?:string|null;message?:string|null;details?:string|null;hint?:string|null};
 
-const missingSchemaCodes=new Set(["42703","42P01","PGRST204","PGRST205"]);
+const missingSchemaCodes=new Set(["42703","42P01","PGRST202","PGRST204","PGRST205"]);
 
 export function isMissingSchemaFeatureError(error:SchemaError|null|undefined,featureNames:string[]){
   if(!error||!missingSchemaCodes.has(error.code??""))return false;
