@@ -177,3 +177,46 @@ export async function updateWaitlistEntryStatus(salonId:string,id:string,status:
   const {error}=await db.from("waitlist_entries").update({status,updated_at:new Date().toISOString()}).eq("id",id).eq("salon_id",salonId);
   if(error)throw error;
 }
+
+export async function findWaitlistMatchesForGaps(salonId:string,date:string,gaps:WaitlistGap[]){
+  if(!gaps.length)return [];
+  const db=createAdminSupabaseClient();
+  const {data:entries,error}=await db.from("waitlist_entries")
+    .select("id,service_id,preferred_staff_id,customer_name,phone,email,requested_from,requested_to")
+    .eq("salon_id",salonId).eq("status","waiting").lte("requested_from",date).gte("requested_to",date).limit(200);
+  if(error)throw error;
+  if(!entries?.length)return [];
+
+  const serviceIds=[...new Set(entries.map(item=>item.service_id))];
+  const [servicesResult,linksResult]=await Promise.all([
+    db.from("services").select("id,name,duration_minutes,buffer_minutes").eq("salon_id",salonId).in("id",serviceIds),
+    db.from("staff_services").select("service_id,staff_id").eq("salon_id",salonId).in("service_id",serviceIds),
+  ]);
+  if(servicesResult.error)throw servicesResult.error;
+  if(linksResult.error)throw linksResult.error;
+  const services=new Map((servicesResult.data??[]).map(item=>[item.id,item]));
+
+  const matches=[];
+  for(const entry of entries){
+    const service=services.get(entry.service_id);
+    if(!service)continue;
+    const eligibleStaffIds=(linksResult.data??[]).filter(link=>link.service_id===entry.service_id).map(link=>link.staff_id);
+    for(const gap of gaps){
+      if(waitlistEntryMatchesGap({
+        gapDate:date,
+        gapStaffId:gap.staffId,
+        gapDurationMinutes:gap.durationMinutes,
+        windowStart:entry.requested_from,
+        windowEnd:entry.requested_to,
+        preferredStaffId:entry.preferred_staff_id,
+        eligibleStaffIds,
+        serviceDurationMinutes:service.duration_minutes,
+        bufferMinutes:service.buffer_minutes,
+      })){
+        matches.push({entryId:entry.id,customerName:entry.customer_name,serviceName:service.name,gap});
+        break;
+      }
+    }
+  }
+  return matches;
+}
