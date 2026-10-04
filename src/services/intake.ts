@@ -3,6 +3,7 @@ import { generateSecureToken,hashSecureToken } from "@/domain/secure-token";
 import { validateIntakeAnswers,type IntakeCondition,type IntakeFieldType } from "@/domain/intake-form";
 import { buildIntakePublicPath,normalizeIntakeSignature } from "@/domain/intake-signature";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isMissingSchemaFeatureError } from "@/lib/supabase/schema-compat";
 
 type SnapshotField={
   id:string;
@@ -41,12 +42,23 @@ export async function issueAppointmentIntakeToken(args:{salonId:string;appointme
   if(appointmentResult.error)throw appointmentResult.error;
   const appointment=appointmentResult.data;
   if(!appointment?.service_id)throw new Error("INTAKE_FORM_NOT_AVAILABLE");
-  const [formResult,fieldsResult,linkResult]=await Promise.all([
-    db.from("intake_forms").select("id,title,description,active,version,consent_statement").eq("salon_id",args.salonId).eq("id",args.formId).eq("active",true).maybeSingle(),
-    db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order,condition").eq("salon_id",args.salonId).eq("form_id",args.formId).order("sort_order"),
-    db.from("intake_form_services").select("form_id,service_id").eq("salon_id",args.salonId).eq("form_id",args.formId).eq("service_id",appointment.service_id).maybeSingle(),
-  ]);
-  if(formResult.error)throw formResult.error;if(fieldsResult.error)throw fieldsResult.error;if(linkResult.error)throw linkResult.error;
+
+  const formPromise=db.from("intake_forms").select("id,title,description,active,version,consent_statement").eq("salon_id",args.salonId).eq("id",args.formId).eq("active",true).maybeSingle();
+  const linkPromise=db.from("intake_form_services").select("form_id,service_id").eq("salon_id",args.salonId).eq("form_id",args.formId).eq("service_id",appointment.service_id).maybeSingle();
+  const fieldsResult=await db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order,condition").eq("salon_id",args.salonId).eq("form_id",args.formId).order("sort_order");
+  const [formResult,linkResult]=await Promise.all([formPromise,linkPromise]);
+  if(formResult.error)throw formResult.error;if(linkResult.error)throw linkResult.error;
+
+  let fieldRows;
+  if(fieldsResult.error){
+    if(!isMissingSchemaFeatureError(fieldsResult.error,["condition"]))throw fieldsResult.error;
+    const legacy=await db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order").eq("salon_id",args.salonId).eq("form_id",args.formId).order("sort_order");
+    if(legacy.error)throw legacy.error;
+    fieldRows=(legacy.data??[]).map(field=>({...field,condition:undefined}));
+  }else{
+    fieldRows=fieldsResult.data??[];
+  }
+
   const form=formResult.data;const formLink=linkResult.data;
   if(!form||!formLink)throw new Error("INTAKE_FORM_NOT_AVAILABLE");
   if(!eligibleStatuses.has(appointment.status)||new Date(appointment.starts_at)<=new Date())throw new Error("APPOINTMENT_NOT_INTAKE_ELIGIBLE");
@@ -55,7 +67,7 @@ export async function issueAppointmentIntakeToken(args:{salonId:string;appointme
     title:form.title,
     description:form.description??"",
     consentStatement:form.consent_statement??"",
-    fields:(fieldsResult.data??[]).map(field=>({
+    fields:fieldRows.map(field=>({
       id:field.id,label:field.label,type:field.field_type as IntakeFieldType,required:field.required,
       options:Array.isArray(field.options)?field.options.filter((value):value is string=>typeof value==="string"):[],
       sortOrder:field.sort_order,
