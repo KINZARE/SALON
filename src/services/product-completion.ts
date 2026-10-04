@@ -1,6 +1,7 @@
 import "server-only";
 import { fromZonedTime } from "date-fns-tz";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isMissingSchemaFeatureError } from "@/lib/supabase/schema-compat";
 import { isUuid } from "@/lib/validation";
 
 export async function getAppointmentsForRange(salonId:string,timezone:string,fromDate:string,toDateExclusive:string,staffId?:string|null){
@@ -49,13 +50,23 @@ export async function getStaffScheduleOverrides(salonId:string,fromDate:string){
 
 export async function getIntakeForms(salonId:string){
   const db=createAdminSupabaseClient();
-  const [forms,fields,links]=await Promise.all([
-    db.from("intake_forms").select("id,title,description,active,version,consent_statement,updated_at").eq("salon_id",salonId).order("updated_at",{ascending:false}),
-    db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order,condition").eq("salon_id",salonId).order("sort_order"),
-    db.from("intake_form_services").select("form_id,service_id").eq("salon_id",salonId),
-  ]);
-  if(forms.error)throw forms.error;if(fields.error)throw fields.error;if(links.error)throw links.error;
-  return(forms.data??[]).map(form=>({...form,fields:(fields.data??[]).filter(field=>field.form_id===form.id),service_ids:(links.data??[]).filter(link=>link.form_id===form.id).map(link=>link.service_id)}));
+  const formsPromise=db.from("intake_forms").select("id,title,description,active,version,consent_statement,updated_at").eq("salon_id",salonId).order("updated_at",{ascending:false});
+  const linksPromise=db.from("intake_form_services").select("form_id,service_id").eq("salon_id",salonId);
+  const fieldsResult=await db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order,condition").eq("salon_id",salonId).order("sort_order");
+  const [forms,links]=await Promise.all([formsPromise,linksPromise]);
+  if(forms.error)throw forms.error;if(links.error)throw links.error;
+
+  let fieldRows;
+  if(fieldsResult.error){
+    if(!isMissingSchemaFeatureError(fieldsResult.error,["condition"]))throw fieldsResult.error;
+    const legacy=await db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order").eq("salon_id",salonId).order("sort_order");
+    if(legacy.error)throw legacy.error;
+    fieldRows=(legacy.data??[]).map(field=>({...field,condition:null}));
+  }else{
+    fieldRows=fieldsResult.data??[];
+  }
+
+  return(forms.data??[]).map(form=>({...form,fields:fieldRows.filter(field=>field.form_id===form.id),service_ids:(links.data??[]).filter(link=>link.form_id===form.id).map(link=>link.service_id)}));
 }
 
 export async function getWidgetSettings(salonId:string){
