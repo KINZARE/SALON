@@ -11,7 +11,7 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
   SALON_QA_SHA: "${{ github.sha }}"
-  TESTED_APP_SHA: "f6056b16be75117f3b9d8861353902f0f925fb51"
+  TESTED_APP_SHA: "6ce11ece9a97338164df1f89134ddae177bf91c0"
 
 jobs:
   verify-and-deploy-production:
