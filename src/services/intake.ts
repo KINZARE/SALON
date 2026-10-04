@@ -60,7 +60,7 @@ export async function issueAppointmentIntakeToken(args:{salonId:string;appointme
     consentStatement:form.consent_statement??"",
     fields:(fieldsResult.data??[]).map(field=>({
       id:field.id,label:field.label,type:field.field_type as IntakeFieldType,required:field.required,
-      options:Array.isArray(field.options)?field.options.filter((value):value is string=>typeof value==="string"):[],
+      options:Array.isArray(field.options)?field.options.filter((value:unknown):value is string=>typeof value==="string"):[],
       sortOrder:field.sort_order,
       condition:(field.condition??undefined) as IntakeCondition|undefined,
     })),
