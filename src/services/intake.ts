@@ -1,6 +1,7 @@
 import "server-only";
 import { generateSecureToken,hashSecureToken } from "@/domain/secure-token";
 import { validateIntakeAnswers,type IntakeCondition,type IntakeFieldType } from "@/domain/intake-form";
+import { buildIntakePublicPath,normalizeIntakeSignature } from "@/domain/intake-signature";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 type SnapshotField={
@@ -82,7 +83,7 @@ export async function issueAppointmentIntakeToken(args:{salonId:string;appointme
     form_snapshot:snapshot,
   });
   if(error)throw error;
-  return{token,expiresAt,formTitle:form.title};
+  return{token,expiresAt,formTitle:form.title,publicPath:buildIntakePublicPath(token)};
 }
 
 export async function getPublicIntakeContext(rawToken:string){
@@ -105,16 +106,18 @@ export async function getPublicIntakeContext(rawToken:string){
   return{tokenHash,link,appointment:appointmentResult.data,salon:salonResult.data,snapshot};
 }
 
-export async function submitPublicIntake(rawToken:string,customerName:string,answers:Record<string,unknown>,consentAccepted:boolean){
+export async function submitPublicIntake(rawToken:string,customerName:string,answers:Record<string,unknown>,consentAccepted:boolean,signatureName?:string){
   const context=await getPublicIntakeContext(rawToken);
   if(!context)throw new Error("FORM_LINK_INVALID");
   const normalized=validateIntakeAnswers(context.snapshot.fields.map(field=>({id:field.id,type:field.type,required:field.required,options:field.options,sortOrder:field.sortOrder,condition:field.condition})),answers);
+  const signature=context.snapshot.consentStatement?normalizeIntakeSignature(signatureName??""):null;
   const db=createAdminSupabaseClient();
   const {data,error}=await db.rpc("submit_intake_form",{
     p_token_hash:context.tokenHash,
     p_customer_name:customerName,
     p_answers:normalized,
     p_consent_accepted:consentAccepted,
+    p_signature_name:signature,
   });
   if(error)throw new Error(error.message);
   return data as string;
