@@ -22,6 +22,14 @@ export type AppointmentKpiSummary = {
   noShowRate: number;
 };
 
+export type CustomerHistoryRow = {
+  customer_id: string;
+  status: string;
+};
+
+export const validCustomerHistoryStatuses = ["pending", "confirmed", "checked_in", "completed"] as const;
+const validCustomerHistoryStatusSet = new Set<string>(validCustomerHistoryStatuses);
+
 function percentage(part: number, total: number) {
   if (!total) return 0;
   return Math.round((part / total) * 1_000) / 10;
@@ -44,6 +52,17 @@ export function calculateAppointmentKpis(rows: AppointmentKpiRow[]): Appointment
     cancellationRate: percentage(cancellations, rows.length),
     noShows,
     noShowRate: percentage(noShows, completedRows.length + noShows),
+  };
+}
+
+export function calculateCustomerMix(rows: CustomerHistoryRow[], returningBeforePeriod: Set<string>) {
+  const uniqueCustomers = [...new Set(rows
+    .filter((row) => validCustomerHistoryStatusSet.has(row.status))
+    .map((row) => row.customer_id))];
+  const newCustomers = uniqueCustomers.filter((id) => !returningBeforePeriod.has(id)).length;
+  return {
+    newCustomers,
+    returningCustomers: uniqueCustomers.length - newCustomers,
   };
 }
 
