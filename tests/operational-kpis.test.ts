@@ -5,6 +5,7 @@ const reporting = await import("../src/domain/reporting.ts");
 const capacity = await import("../src/domain/day-capacity.ts");
 
 type KpiRow = { status: string; price_cents_snapshot: number };
+type CustomerRow = { customer_id: string; status: string };
 type CapacityInterval = { start: Date; end: Date };
 type CapacityAppointment = CapacityInterval & { status: string };
 
@@ -55,6 +56,24 @@ test("appointment KPI rates are zero-safe", () => {
   assert.equal(summary.cancellationRate, 0);
   assert.equal(summary.noShowRate, 0);
   assert.equal(summary.averageCompletedValueCents, 0);
+});
+
+test("customer mix ignores cancelled and no-show rows as visit history", () => {
+  const calculate = (reporting as typeof reporting & {
+    calculateCustomerMix?: (rows: CustomerRow[], returningBeforePeriod: Set<string>) => { newCustomers: number; returningCustomers: number };
+  }).calculateCustomerMix;
+  assert.equal(typeof calculate, "function", "calculateCustomerMix must exist");
+  if (!calculate) return;
+
+  const summary = calculate([
+    { customer_id: "new-completed", status: "completed" },
+    { customer_id: "returning-confirmed", status: "confirmed" },
+    { customer_id: "cancelled-only", status: "cancelled" },
+    { customer_id: "no-show-only", status: "no_show" },
+    { customer_id: "new-completed", status: "confirmed" },
+  ], new Set(["returning-confirmed", "cancelled-only", "no-show-only"]));
+
+  assert.deepEqual(summary, { newCustomers: 1, returningCustomers: 1 });
 });
 
 test("capacity summary subtracts breaks and blocks and includes buffers and no-shows", () => {
