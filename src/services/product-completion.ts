@@ -51,7 +51,7 @@ export async function getIntakeForms(salonId:string){
   const db=createAdminSupabaseClient();
   const [forms,fields,links]=await Promise.all([
     db.from("intake_forms").select("id,title,description,active,version,consent_statement,updated_at").eq("salon_id",salonId).order("updated_at",{ascending:false}),
-    db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order").eq("salon_id",salonId).order("sort_order"),
+    db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order,condition").eq("salon_id",salonId).order("sort_order"),
     db.from("intake_form_services").select("form_id,service_id").eq("salon_id",salonId),
   ]);
   if(forms.error)throw forms.error;if(fields.error)throw fields.error;if(links.error)throw links.error;
