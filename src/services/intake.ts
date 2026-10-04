@@ -1,6 +1,6 @@
 import "server-only";
 import { generateSecureToken,hashSecureToken } from "@/domain/secure-token";
-import { validateIntakeAnswers,type IntakeFieldType } from "@/domain/intake-form";
+import { validateIntakeAnswers,type IntakeCondition,type IntakeFieldType } from "@/domain/intake-form";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 type SnapshotField={
@@ -10,6 +10,7 @@ type SnapshotField={
   required:boolean;
   options:string[];
   sortOrder:number;
+  condition?:IntakeCondition;
 };
 export type IntakeSnapshot={
   title:string;
@@ -41,7 +42,7 @@ export async function issueAppointmentIntakeToken(args:{salonId:string;appointme
   if(!appointment?.service_id)throw new Error("INTAKE_FORM_NOT_AVAILABLE");
   const [formResult,fieldsResult,linkResult]=await Promise.all([
     db.from("intake_forms").select("id,title,description,active,version,consent_statement").eq("salon_id",args.salonId).eq("id",args.formId).eq("active",true).maybeSingle(),
-    db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order").eq("salon_id",args.salonId).eq("form_id",args.formId).order("sort_order"),
+    db.from("intake_form_fields").select("id,form_id,label,field_type,required,options,sort_order,condition").eq("salon_id",args.salonId).eq("form_id",args.formId).order("sort_order"),
     db.from("intake_form_services").select("form_id,service_id").eq("salon_id",args.salonId).eq("form_id",args.formId).eq("service_id",appointment.service_id).maybeSingle(),
   ]);
   if(formResult.error)throw formResult.error;if(fieldsResult.error)throw fieldsResult.error;if(linkResult.error)throw linkResult.error;
@@ -57,6 +58,7 @@ export async function issueAppointmentIntakeToken(args:{salonId:string;appointme
       id:field.id,label:field.label,type:field.field_type as IntakeFieldType,required:field.required,
       options:Array.isArray(field.options)?field.options.filter((value):value is string=>typeof value==="string"):[],
       sortOrder:field.sort_order,
+      condition:(field.condition??undefined) as IntakeCondition|undefined,
     })),
   };
   if(!snapshot.fields.length)throw new Error("INTAKE_FORM_EMPTY");
@@ -106,7 +108,7 @@ export async function getPublicIntakeContext(rawToken:string){
 export async function submitPublicIntake(rawToken:string,customerName:string,answers:Record<string,unknown>,consentAccepted:boolean){
   const context=await getPublicIntakeContext(rawToken);
   if(!context)throw new Error("FORM_LINK_INVALID");
-  const normalized=validateIntakeAnswers(context.snapshot.fields.map(field=>({id:field.id,type:field.type,required:field.required,options:field.options})),answers);
+  const normalized=validateIntakeAnswers(context.snapshot.fields.map(field=>({id:field.id,type:field.type,required:field.required,options:field.options,sortOrder:field.sortOrder,condition:field.condition})),answers);
   const db=createAdminSupabaseClient();
   const {data,error}=await db.rpc("submit_intake_form",{
     p_token_hash:context.tokenHash,
