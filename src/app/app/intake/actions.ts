@@ -22,7 +22,7 @@ export async function saveIntakeForm(formData:FormData){
     if(!Array.isArray(raw))throw new Error("INVALID_FIELDS");
     fields=validateIntakeDefinition({title,description,fields:raw as Parameters<typeof validateIntakeDefinition>[0]["fields"]}).fields;
   }catch{
-    redirect("/app/intake?error=Controleer+de+velden+van+het+formulier.");
+    redirect("/app/intake?error=Controleer+de+velden+en+voorwaarden+van+het+formulier.");
   }
   if(consentStatement.length>800)redirect("/app/intake?error=De+toestemmingstekst+is+te+lang.");
 
@@ -34,7 +34,7 @@ export async function saveIntakeForm(formData:FormData){
     p_description:description,
     p_active:active,
     p_consent_statement:consentStatement,
-    p_fields:fields.map(field=>({label:field.label,type:field.type,required:field.required,options:field.options})),
+    p_fields:fields.map(field=>({label:field.label,type:field.type,required:field.required,options:field.options,condition:field.condition??null})),
     p_service_ids:serviceIds,
   });
   if(error){
