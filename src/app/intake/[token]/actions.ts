@@ -13,7 +13,8 @@ export async function submitIntakeAction(token:string,formData:FormData){
   }
   const customerName=String(formData.get("customerName")??context.appointment.customer_name_snapshot??"").trim();
   const consentAccepted=formData.get("__consent")==="on";
-  try{await submitPublicIntake(token,customerName,answers,consentAccepted)}
-  catch{redirect(`/intake/${token}?error=Controleer+de+verplichte+velden+en+toestemming.`)}
+  const signatureName=String(formData.get("__signature")??"");
+  try{await submitPublicIntake(token,customerName,answers,consentAccepted,signatureName)}
+  catch{redirect(`/intake/${token}?error=Controleer+de+verplichte+velden,+toestemming+en+handtekening.`)}
   redirect(`/intake/${token}?done=1`);
 }
