@@ -1,7 +1,8 @@
 import "server-only";
 
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { computeStaffGaps, type CapacityInterval } from "@/domain/day-capacity";
+import { computeCapacitySummary, computeStaffGaps, type CapacityInterval } from "@/domain/day-capacity";
+import { calculateAppointmentKpis } from "@/domain/reporting";
 import { getAppointmentsForDate, getBlocks, getDayOpening } from "@/services/app-data";
 import { getTodayStaffSchedule } from "@/services/workspace-data";
 import { findWaitlistMatchesForGaps } from "@/services/waitlist";
@@ -28,9 +29,14 @@ export type TodayWorkspaceData = {
   appointments: Appointments;
   activeAppointments: Appointments;
   nextAppointment: TodayAppointment | null;
-  plannedRevenueCents: number;
+  appointmentCount: number;
+  plannedValueCents: number;
   completedCount: number;
   workingStaffCount: number;
+  bookableMinutes: number;
+  occupiedMinutes: number;
+  freeCapacityMinutes: number;
+  occupancyPercent: number;
   gaps: TodayGap[];
   attention: TodayAttention[];
 };
@@ -67,6 +73,8 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
   const dayBlocks = blocks.filter((block) => new Date(block.starts_at) < dayEnd && new Date(block.ends_at) > dayStart);
   const gaps: TodayGap[] = [];
   let workingStaffCount = 0;
+  let bookableMinutes = 0;
+  let occupiedMinutes = 0;
 
   if (open?.is_open && open.start_time && open.end_time) {
     const salonWindow = localInterval(date, timezone, open.start_time, open.end_time);
@@ -92,6 +100,15 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
           status: appointment.status,
         }));
 
+      const capacity = computeCapacitySummary({
+        working: [working],
+        breaks: memberBreaks,
+        blocks: memberBlocks,
+        appointments: memberAppointments,
+      });
+      bookableMinutes += capacity.bookableMinutes;
+      occupiedMinutes += capacity.occupiedMinutes;
+
       for (const gap of computeStaffGaps({
         working: [working],
         breaks: memberBreaks,
@@ -106,11 +123,12 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
   const activeAppointments = appointments.filter((item) => !["cancelled", "no_show"].includes(item.status));
   const upcoming = appointments.filter((item) => ["pending", "confirmed"].includes(item.status) && new Date(item.starts_at) > now);
   const nextAppointment = upcoming[0] ?? null;
-  const plannedRevenueCents = activeAppointments.reduce((sum, item) => sum + item.price_cents_snapshot, 0);
-  const completedCount = appointments.filter((item) => item.status === "completed").length;
+  const appointmentKpis = calculateAppointmentKpis(appointments);
+  const freeCapacityMinutes = Math.max(0, bookableMinutes - occupiedMinutes);
+  const occupancyPercent = bookableMinutes ? Math.round((occupiedMinutes / bookableMinutes) * 1_000) / 10 : 0;
 
-  const cancelled = appointments.filter((item) => item.status === "cancelled").length;
-  const noShows = appointments.filter((item) => item.status === "no_show").length;
+  const cancelled = appointmentKpis.cancellations;
+  const noShows = appointmentKpis.noShows;
   const largeGap = gaps
     .filter((gap) => gap.durationMinutes >= 90 && gap.end > now)
     .toSorted((a, b) => a.start.getTime() - b.start.getTime())[0];
@@ -135,9 +153,14 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
     appointments,
     activeAppointments,
     nextAppointment,
-    plannedRevenueCents,
-    completedCount,
+    appointmentCount: appointmentKpis.appointments,
+    plannedValueCents: appointmentKpis.plannedValueCents,
+    completedCount: appointmentKpis.completed,
     workingStaffCount,
+    bookableMinutes,
+    occupiedMinutes,
+    freeCapacityMinutes,
+    occupancyPercent,
     gaps: gaps.toSorted((a, b) => a.start.getTime() - b.start.getTime()),
     attention,
   };
