@@ -1,7 +1,12 @@
+alter table public.waitlist_entries
+  drop constraint if exists waitlist_entries_salon_id_id_key;
+alter table public.waitlist_entries
+  add constraint waitlist_entries_salon_id_id_key unique (salon_id,id);
+
 create table if not exists public.waitlist_offers (
   id uuid primary key default gen_random_uuid(),
   salon_id uuid not null references public.salons(id) on delete cascade,
-  waitlist_entry_id uuid not null references public.waitlist_entries(id) on delete cascade,
+  waitlist_entry_id uuid not null,
   service_id uuid not null,
   staff_id uuid not null,
   starts_at timestamptz not null,
@@ -10,6 +15,7 @@ create table if not exists public.waitlist_offers (
   status text not null default 'offered',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint waitlist_offers_salon_entry_fkey foreign key (salon_id,waitlist_entry_id) references public.waitlist_entries(salon_id,id) on delete cascade,
   constraint waitlist_offers_salon_service_fkey foreign key (salon_id,service_id) references public.services(salon_id,id),
   constraint waitlist_offers_salon_staff_fkey foreign key (salon_id,staff_id) references public.staff(salon_id,id),
   constraint waitlist_offers_range_valid check (ends_at>starts_at),
