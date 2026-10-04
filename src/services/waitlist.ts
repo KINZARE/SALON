@@ -1,9 +1,10 @@
 import "server-only";
 
 import { formatInTimeZone } from "date-fns-tz";
+import { validateWaitlistOffer } from "@/domain/waitlist-offer";
 import { waitlistEntryMatchesGap } from "@/domain/waitlist";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { getPublicSalon, getPublicStaffForService } from "@/services/public-booking";
+import { getAvailableSlotsForDate, getPublicSalon, getPublicStaffForService } from "@/services/public-booking";
 
 export type WaitlistGap = {
   staffId: string;
@@ -12,6 +13,12 @@ export type WaitlistGap = {
   end: Date;
   durationMinutes: number;
 };
+
+function nextDate(date:string){
+  const current=new Date(`${date}T12:00:00Z`);
+  current.setUTCDate(current.getUTCDate()+1);
+  return current.toISOString().slice(0,10);
+}
 
 export async function joinPublicWaitlist(args:{
   salonSlug:string;
@@ -68,19 +75,101 @@ export async function joinPublicWaitlist(args:{
 
 export async function getWaitlistEntries(salonId:string){
   const db=createAdminSupabaseClient();
-  const [entriesResult,servicesResult,staffResult]=await Promise.all([
+  await db.from("waitlist_offers").update({status:"expired",updated_at:new Date().toISOString()})
+    .eq("salon_id",salonId).eq("status","offered").lte("expires_at",new Date().toISOString());
+  const [entriesResult,servicesResult,staffResult,offersResult]=await Promise.all([
     db.from("waitlist_entries").select("id,service_id,preferred_staff_id,customer_name,phone,email,requested_from,requested_to,status,created_at").eq("salon_id",salonId).in("status",["waiting","contacted"]).order("requested_from").order("created_at").limit(200),
     db.from("services").select("id,name,duration_minutes,buffer_minutes").eq("salon_id",salonId),
     db.from("staff").select("id,name").eq("salon_id",salonId),
+    db.from("waitlist_offers").select("id,waitlist_entry_id,staff_id,starts_at,ends_at,expires_at,status,created_at").eq("salon_id",salonId).order("created_at",{ascending:false}).limit(400),
   ]);
-  for(const result of [entriesResult,servicesResult,staffResult])if(result.error)throw result.error;
+  for(const result of [entriesResult,servicesResult,staffResult,offersResult])if(result.error)throw result.error;
   const services=new Map((servicesResult.data??[]).map(item=>[item.id,item]));
   const staff=new Map((staffResult.data??[]).map(item=>[item.id,item]));
+  const latestOffer=new Map<string,(typeof offersResult.data)[number]>();
+  for(const offer of offersResult.data??[])if(!latestOffer.has(offer.waitlist_entry_id))latestOffer.set(offer.waitlist_entry_id,offer);
   return (entriesResult.data??[]).map(item=>({
     ...item,
     service:services.get(item.service_id)??null,
     preferredStaff:item.preferred_staff_id?staff.get(item.preferred_staff_id)??null:null,
+    offer:latestOffer.get(item.id)??null,
   }));
+}
+
+export async function createNextWaitlistOffer(salonId:string,entryId:string){
+  const db=createAdminSupabaseClient();
+  const now=new Date();
+  await db.from("waitlist_offers").update({status:"expired",updated_at:now.toISOString()})
+    .eq("salon_id",salonId).eq("waitlist_entry_id",entryId).eq("status","offered").lte("expires_at",now.toISOString());
+
+  const {data:activeOffer,error:activeOfferError}=await db.from("waitlist_offers")
+    .select("id,waitlist_entry_id,service_id,staff_id,starts_at,ends_at,expires_at,status")
+    .eq("salon_id",salonId).eq("waitlist_entry_id",entryId).eq("status","offered").gt("expires_at",now.toISOString()).maybeSingle();
+  if(activeOfferError)throw activeOfferError;
+  if(activeOffer)return activeOffer;
+
+  const [entryResult,salonResult]=await Promise.all([
+    db.from("waitlist_entries").select("id,service_id,preferred_staff_id,requested_from,requested_to,status").eq("salon_id",salonId).eq("id",entryId).maybeSingle(),
+    db.from("salons").select("id,slug,timezone").eq("id",salonId).maybeSingle(),
+  ]);
+  if(entryResult.error)throw entryResult.error;if(salonResult.error)throw salonResult.error;
+  const entry=entryResult.data;const salon=salonResult.data;
+  if(!entry||!salon||!["waiting","contacted"].includes(entry.status))throw new Error("WAITLIST_ENTRY_NOT_OFFERABLE");
+
+  let date=entry.requested_from;
+  let scanned=0;
+  while(date<=entry.requested_to&&scanned<92){
+    const availability=await getAvailableSlotsForDate({
+      salonSlug:salon.slug,
+      serviceId:entry.service_id,
+      date,
+      staffId:entry.preferred_staff_id,
+      source:"public",
+    });
+    const slot=availability.slots.find(candidate=>candidate.staffIds.length>0);
+    if(slot){
+      const staffId=entry.preferred_staff_id??slot.staffIds[0];
+      const startsAt=new Date(slot.start);
+      const expiryByDay=new Date(now.getTime()+24*60*60*1000);
+      const expiryBeforeStart=new Date(startsAt.getTime()-15*60*1000);
+      const expiresAt=new Date(Math.min(expiryByDay.getTime(),expiryBeforeStart.getTime()));
+      const offer=validateWaitlistOffer({
+        waitlistEntryId:entry.id,
+        serviceId:entry.service_id,
+        staffId,
+        startsAt:slot.start,
+        endsAt:slot.serviceEnd,
+        expiresAt:expiresAt.toISOString(),
+      },now.toISOString());
+      const {data,error}=await db.from("waitlist_offers").insert({
+        salon_id:salonId,
+        waitlist_entry_id:offer.waitlistEntryId,
+        service_id:offer.serviceId,
+        staff_id:offer.staffId,
+        starts_at:offer.startsAt,
+        ends_at:offer.endsAt,
+        expires_at:offer.expiresAt,
+        status:"offered",
+      }).select("id,waitlist_entry_id,service_id,staff_id,starts_at,ends_at,expires_at,status").single();
+      if(!error)return data;
+      if(error.code==="23505"){
+        const {data:existing,error:existingError}=await db.from("waitlist_offers")
+          .select("id,waitlist_entry_id,service_id,staff_id,starts_at,ends_at,expires_at,status")
+          .eq("salon_id",salonId).eq("waitlist_entry_id",entryId).eq("status","offered").maybeSingle();
+        if(existingError)throw existingError;if(existing)return existing;
+      }
+      throw error;
+    }
+    date=nextDate(date);scanned+=1;
+  }
+  throw new Error("NO_WAITLIST_OFFER_SLOT");
+}
+
+export async function cancelWaitlistOffer(salonId:string,offerId:string){
+  const db=createAdminSupabaseClient();
+  const {error}=await db.from("waitlist_offers").update({status:"cancelled",updated_at:new Date().toISOString()})
+    .eq("salon_id",salonId).eq("id",offerId).eq("status","offered");
+  if(error)throw error;
 }
 
 export async function updateWaitlistEntryStatus(salonId:string,id:string,status:"waiting"|"contacted"|"booked"|"cancelled"){
