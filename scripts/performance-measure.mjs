@@ -37,12 +37,12 @@ try {
     }
   }
   const report = { base, measuredAt: new Date().toISOString(), sha: process.env.SALON_QA_SHA, browser: browser.version(), conditions: 'GitHub hosted Linux Chromium; no CPU or network throttle; 390/1440px, 900px high; three fresh-context navigations each followed by warm reload; lab observations, not field Core Web Vitals; observedEventMs is not field INP', results };
-  await writeFile('qa-artifacts/performance/results.json', JSON.stringify(report, null, 2));
+  await writeFile(`qa-artifacts/performance/results-${process.env.QA_PROFILE_LABEL ?? 'after'}.json`, JSON.stringify(report, null, 2));
   const median = values => values.filter(v => v !== null).sort((a, b) => a - b)[Math.floor(values.filter(v => v !== null).length / 2)] ?? null;
   const summary = [];
   for (const width of [390, 1440]) for (const route of routes) for (const cache of ['cold', 'warm']) {
     const rows = results.filter(r => r.width === width && r.route === route && r.cache === cache);
-    summary.push({ route, width, cache, ttfbMs: median(rows.map(r => r.ttfbMs)), lcpMs: median(rows.map(r => r.lcpMs)), documentMs: median(rows.map(r => r.documentMs)), jsBytes: median(rows.map(r => r.jsTransferredBytes)), cls: Math.max(...rows.map(r => r.cls)) });
+    summary.push({ route, width, cache, ttfbMs: median(rows.map(r => r.ttfbMs)), lcpMs: median(rows.map(r => r.lcpMs)), documentMs: median(rows.map(r => r.documentMs)), jsBytes: median(rows.map(r => r.jsTransferredBytes)), jsEncodedBytes: median(rows.map(r => r.jsEncodedBytes)), cls: Math.max(...rows.map(r => r.cls)) });
   }
   console.log(JSON.stringify({ base, summary }));
 } finally { await browser.close(); }

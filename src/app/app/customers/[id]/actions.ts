@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAppContext } from "@/lib/auth";
 import { saveWorkspaceEntity } from "@/services/workspace-mutations";
+import { CustomerProfileSchema } from "@/lib/schemas";
 
 export async function saveCustomer(formData:FormData){
   const {salon,membership}=await requireAppContext();
@@ -13,7 +14,7 @@ export async function saveCustomer(formData:FormData){
   const phone=String(formData.get("phone")??"").trim();
   const email=String(formData.get("email")??"").trim();
   const notes=String(formData.get("notes")??"").trim();
-  if(!id||!name||name.length>160||phone.length>60||email.length>254||notes.length>3000){
+  if(!CustomerProfileSchema.safeParse({id,name,phone,email,notes}).success){
     redirect(`/app/customers/${id}?error=Controleer+de+klantgegevens.`);
   }
   try{await saveWorkspaceEntity(salon.id,"customer",{id,name,phone,email,internal_notes:notes})}

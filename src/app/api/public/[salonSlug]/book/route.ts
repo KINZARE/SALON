@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createPublicBooking } from "@/services/public-booking";
-import { isUuid, normalizeOptionalText } from "@/lib/validation";
+import { PublicBookingSchema } from "@/lib/schemas";
 
 export async function POST(
   request: Request,
@@ -14,23 +14,9 @@ export async function POST(
     return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
   }
 
-  if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
-  }
-  const input = body as Record<string, unknown>;
-  const serviceId = typeof input.serviceId === "string" ? input.serviceId : null;
-  const staffId = typeof input.staffId === "string" ? input.staffId : null;
-  const startsAt = typeof input.startsAt === "string" ? input.startsAt : "";
-  const customer = input.customer && typeof input.customer === "object" ? input.customer as Record<string, unknown> : {};
-  const name = normalizeOptionalText(customer.name, 160);
-  const phone = normalizeOptionalText(customer.phone, 40);
-  const email = normalizeOptionalText(customer.email, 254);
-  const note = normalizeOptionalText(customer.note, 1000);
-
-  const phoneDigits = phone?.replace(/\D/g, "") ?? "";
-  if (!isUuid(serviceId) || (staffId && !isUuid(staffId)) || !name || !phone || phoneDigits.length < 6 || !email || !/^\S+@\S+\.\S+$/.test(email)) {
-    return NextResponse.json({ error: "Controleer je naam, telefoonnummer en e-mailadres." }, { status: 400 });
-  }
+  const parsed = PublicBookingSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Controleer je naam, telefoonnummer, e-mailadres en gekozen tijdstip." }, { status: 400 });
+  const { serviceId, staffId, startsAt, customer } = parsed.data;
 
   try {
     const result = await createPublicBooking({
@@ -38,7 +24,7 @@ export async function POST(
       serviceId,
       staffId,
       startsAt,
-      customer: { name, phone, email, note },
+      customer,
     });
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

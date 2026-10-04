@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 
 test("ORSIRA responsive QA covers required viewports, overflow, brand and focus", async () => {
   const [script, css] = await Promise.all([
-    fs.readFile("scripts/orsira-responsive-qa.mjs", "utf8"),
+    fs.readFile("tests/e2e/orsira-responsive-qa-scenarios.mjs", "utf8"),
     fs.readFile("src/app/globals.css", "utf8"),
   ]);
 

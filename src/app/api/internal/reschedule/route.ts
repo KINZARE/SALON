@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { isUuid } from "@/lib/validation";
+import { RescheduleInputSchema } from "@/lib/schemas";
 
 export async function POST(request: Request) {
   const db = createAdminSupabaseClient();
@@ -9,10 +9,9 @@ export async function POST(request: Request) {
 
   let body: Record<string, unknown>;
   try { body = await request.json() as Record<string, unknown>; } catch { return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 }); }
-  const appointmentId = typeof body.appointmentId === "string" ? body.appointmentId : null;
-  const staffId = typeof body.staffId === "string" ? body.staffId : null;
-  const startsAt = typeof body.startsAt === "string" ? body.startsAt : "";
-  if (!isUuid(appointmentId) || !isUuid(staffId) || Number.isNaN(Date.parse(startsAt))) return NextResponse.json({ error: "Ongeldige aanvraag." }, { status: 400 });
+  const parsed=RescheduleInputSchema.safeParse(body);
+  if(!parsed.success)return NextResponse.json({error:"Ongeldige aanvraag. Controleer de gegevens."},{status:400});
+  const {appointmentId,staffId,startsAt}=parsed.data;
   const appointment = await db.from("appointments").select("salon_id").eq("id",appointmentId).maybeSingle();
   if (!appointment.data || appointment.data.salon_id !== salon.data.id) return NextResponse.json({ error: "Afspraak niet gevonden." }, { status: 404 });
 

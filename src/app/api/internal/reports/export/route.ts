@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
 import { requireAppContext } from "@/lib/auth";
-import { escapeCsvCell,resolveReportRange } from "@/domain/reporting";
+import { serializeReportCsv } from "@/services/report-csv";
+import { resolveReportRange } from "@/domain/reporting";
 import { getReportAppointments } from "@/services/reports";
 
 export async function GET(request:Request){
@@ -18,7 +19,7 @@ export async function GET(request:Request){
   }
   const rows=await getReportAppointments({salonId:salon.id,timezone:salon.timezone,from:range.from,toExclusive:range.toExclusive});
   const header=["Afspraak ID","Datum","Tijd","Klant","Behandeling","Medewerker","Status","Omzet","Valuta"];
-  const lines=[header,...rows.map(row=>[
+  const records=[header,...rows.map(row=>[
     row.id,
     formatInTimeZone(new Date(row.starts_at),salon.timezone,"yyyy-MM-dd"),
     formatInTimeZone(new Date(row.starts_at),salon.timezone,"HH:mm"),
@@ -28,8 +29,8 @@ export async function GET(request:Request){
     row.status,
     (row.status==="completed"?row.price_cents_snapshot/100:0).toFixed(2),
     row.currency_snapshot,
-  ])].map(values=>values.map(escapeCsvCell).join(","));
-  return new NextResponse("\uFEFF"+lines.join("\r\n"),{
+  ])];
+  return new NextResponse(serializeReportCsv(records),{
     headers:{
       "Content-Type":"text/csv; charset=utf-8",
       "Content-Disposition":`attachment; filename="salon-rapport-${range.from}-${range.to}.csv"`,

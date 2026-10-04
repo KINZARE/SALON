@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isUuid } from "@/lib/validation";
+import { WaitlistSchema } from "@/lib/schemas";
 import { joinPublicWaitlist } from "@/services/waitlist";
 
 export async function POST(request:Request,{params}:{params:Promise<{salonSlug:string}>}){
@@ -7,11 +7,9 @@ export async function POST(request:Request,{params}:{params:Promise<{salonSlug:s
   let body:Record<string,unknown>;
   try{body=await request.json() as Record<string,unknown>;}catch{return NextResponse.json({error:"Ongeldige aanvraag."},{status:400});}
 
-  const serviceId=typeof body.serviceId==="string"?body.serviceId:"";
-  const staffId=typeof body.staffId==="string"&&body.staffId?body.staffId:null;
-  const date=typeof body.date==="string"?body.date:"";
-  const customer=body.customer&&typeof body.customer==="object"?body.customer as Record<string,unknown>:{};
-  if(!isUuid(serviceId)||(staffId&&!isUuid(staffId)))return NextResponse.json({error:"Ongeldige aanvraag."},{status:400});
+  const parsed=WaitlistSchema.safeParse(body);
+  if(!parsed.success)return NextResponse.json({error:"Controleer de gekozen dag en je contactgegevens."},{status:400});
+  const {serviceId,staffId,date,customer}=parsed.data;
 
   try{
     const id=await joinPublicWaitlist({
@@ -19,11 +17,7 @@ export async function POST(request:Request,{params}:{params:Promise<{salonSlug:s
       serviceId,
       staffId,
       date,
-      customer:{
-        name:typeof customer.name==="string"?customer.name:"",
-        phone:typeof customer.phone==="string"?customer.phone:null,
-        email:typeof customer.email==="string"?customer.email:null,
-      },
+      customer,
     });
     return NextResponse.json({ok:true,id});
   }catch(error){

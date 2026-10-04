@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseUnambiguousLocalDateTime } from "../src/domain/local-time.ts";
+import "./helpers/server-imports.mjs";
+const { parseUnambiguousLocalDateTime } = await import("../src/domain/local-time.ts");
 
 test("accepts a normal Europe/Amsterdam local time", () => {
   const value = parseUnambiguousLocalDateTime("2026-10-01T14:30", "Europe/Amsterdam");
@@ -62,4 +63,17 @@ test("accepts the final minute before local midnight", () => {
   const value = parseUnambiguousLocalDateTime("2026-01-15T23:59", "Europe/Amsterdam");
   assert.ok(value);
   assert.equal(value.toISOString(), "2026-01-15T22:59:00.000Z");
+});
+
+test("invalid timezones and impossible dates reject safely",()=>{
+  assert.equal(parseUnambiguousLocalDateTime("2026-10-01T14:30","Invalid/Zone"),null);
+  assert.equal(parseUnambiguousLocalDateTime("2026-02-30T14:30","Europe/Amsterdam"),null);
+  assert.equal(parseUnambiguousLocalDateTime("2026-10-01T24:00","Europe/Amsterdam"),null);
+});
+
+
+test("handles non-hour DST transitions with explicit rejection",()=>{
+  assert.equal(parseUnambiguousLocalDateTime("2026-10-04T02:15","Australia/Lord_Howe"),null);
+  assert.equal(parseUnambiguousLocalDateTime("2026-04-05T01:45","Australia/Lord_Howe"),null);
+  assert.equal(parseUnambiguousLocalDateTime("2026-10-04T02:30","Australia/Lord_Howe")?.toISOString(),"2026-10-03T15:30:00.000Z");
 });

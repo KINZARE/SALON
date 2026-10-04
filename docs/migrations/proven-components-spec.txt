@@ -1,0 +1,1667 @@
+# SALON PROVEN COMPONENTS MIGRATION EXECUTOR
+## END-TO-END REPLACEMENT OF GENERIC CUSTOM CODE WITH PROVEN LIBRARIES
+
+Je bent een tijdelijke gespecialiseerde migratie-agent voor de bestaande SALON SaaS.
+
+Repository:
+
+KINZARE/SALON
+
+Je taak is NIET om SALON opnieuw te bouwen.
+
+Je taak is:
+
+> Vervang generieke zelfgebouwde infrastructuur en utility-code waar mogelijk door bewezen, actief onderhouden, production-grade open-source libraries of officiële SDK's, zonder de huidige SALON-functionaliteit, UX, performance, security, booking correctness of database-integriteit te verslechteren.
+
+Werk end-to-end.
+
+Stop NIET na analyse.
+
+Stop NIET na dependency-installatie.
+
+Stop NIET na codewijzigingen.
+
+Werk door tot:
+
+audit
+→ selectie bewezen libraries
+→ gecontroleerde migratie
+→ tests
+→ browser QA
+→ performance vergelijking
+→ Vercel Preview
+→ PR
+→ merge
+→ productie
+→ live smoke QA.
+
+==================================================
+0. BELANGRIJKSTE REGEL
+==================================================
+
+NIET alle zelfgebouwde code moet worden vervangen.
+
+Gebruik deze regel:
+
+GENERIC INFRASTRUCTURE
+→ liever bewezen library / official SDK.
+
+SALON-SPECIFIEKE BUSINESSLOGICA
+→ behouden.
+
+Voorbeelden van code die NIET zomaar vervangen mag worden:
+
+- AvailabilityService;
+- public booking businessregels;
+- opening hours / exceptions;
+- staff schedules;
+- staff overrides;
+- breaks;
+- blocks;
+- buffers;
+- no-preference staff selection;
+- atomic booking;
+- double-booking prevention;
+- rescheduling transactions;
+- customer self-service rules;
+- Smart Booking Link businesslogica;
+- RLS;
+- tenant isolation;
+- appointment snapshots;
+- SALON calendar UX;
+- Today workspace logic.
+
+Geen library mag de server-authoritative booking truth vervangen.
+
+==================================================
+1. LIVE STATE EERST
+==================================================
+
+Controleer voordat je iets verandert:
+
+- actuele repository;
+- actuele main SHA;
+- open PR's;
+- branches;
+- GitHub Actions;
+- Vercel Production;
+- huidige dependencies;
+- huidige package-lock;
+- huidige Supabase migrations;
+- huidige teststatus;
+- huidige browser-QA;
+- huidige performancebaseline.
+
+Ga NIET uit van SHA's uit eerdere chats.
+
+Gebruik actuele main als source of truth.
+
+Maak een nieuwe branch vanaf actuele main.
+
+Bijvoorbeeld:
+
+refactor/proven-components-migration
+
+Geen directe wijzigingen op main.
+
+==================================================
+2. DYNAMIC SKILL DISCOVERY
+==================================================
+
+Inventariseer beschikbare skills/tools.
+
+Gebruik daadwerkelijk relevante skills:
+
+- Superpowers;
+- systematic debugging;
+- test-driven development;
+- verification before completion;
+- code review;
+- Next.js;
+- React;
+- Supabase;
+- PostgreSQL;
+- security;
+- performance;
+- accessibility;
+- browser QA;
+- Vercel;
+- dependency auditing.
+
+Gebruik alleen tools/skills die werkelijk beschikbaar zijn.
+
+==================================================
+3. LIBRARY ACCEPTANCE POLICY
+==================================================
+
+Voordat een dependency wordt toegevoegd:
+
+controleer:
+
+- officiële package/repository;
+- onderhoudsstatus;
+- recente releases;
+- GitHub activiteit;
+- npm usage indien relevant;
+- license;
+- compatibility met huidige Next.js / React / Node;
+- TypeScript support;
+- tree-shaking;
+- bundle impact;
+- security/advisories;
+- server/client compatibility.
+
+Voorkeur:
+
+1. officiële platform SDK;
+2. gevestigde open-source library;
+3. native platform API;
+4. pas daarna custom code.
+
+Geen random GitHub snippets kopiëren.
+
+Geen repositorycode rechtstreeks plakken tenzij:
+
+- license duidelijk compatibel is;
+- herkomst/documentatie vastgelegd wordt;
+- er een aantoonbare reden is dat packagegebruik onmogelijk is.
+
+Gebruik packages via package manager.
+
+==================================================
+4. MIGRATIESTRATEGIE
+==================================================
+
+Voer de tien onderdelen één voor één uit.
+
+Volg voor ELKE migratie:
+
+1. inspect huidige implementatie;
+2. noteer huidige tests;
+3. maak eventueel ontbrekende regression tests;
+4. installeer bewezen library;
+5. maak kleine adapter indien nodig;
+6. vervang alleen relevante custom code;
+7. verwijder oude code pas nadat nieuwe versie bewezen werkt;
+8. test;
+9. typecheck;
+10. lint;
+11. build;
+12. relevante browser-QA;
+13. performance sanity check;
+14. commit.
+
+Geen gigantische alles-in-één refactor.
+
+==================================================
+5. MIGRATIE 1 — ZOD
+==================================================
+
+DOEL:
+
+Vervang generieke handgeschreven inputvalidatie door Zod.
+
+Gebruik:
+
+zod
+
+Controleer huidige custom validatie in onder andere:
+
+- src/lib/validation.ts
+- service actions;
+- staff actions;
+- customer actions;
+- booking inputs;
+- waitlist inputs;
+- intake;
+- reports;
+- Smart Booking Links;
+- public API payloads;
+- self-service API inputs.
+
+Maak gedeelde schemas waar logisch.
+
+Voorbeelden:
+
+ServiceSchema
+StaffSchema
+CustomerSchema
+AppointmentInputSchema
+PublicBookingSchema
+WaitlistSchema
+BookingLinkSchema
+IntakeDefinitionSchema
+IntakeAnswerSchema
+ReportRangeSchema
+OpeningExceptionSchema
+StaffScheduleOverrideSchema
+
+Belangrijk:
+
+Businessregels zoals:
+
+- slot werkelijk beschikbaar;
+- staff eligible;
+- booking cutoff;
+- double booking;
+- schedule conflicts;
+
+horen NIET in Zod.
+
+Zod valideert inputvorm.
+
+Domain/database blijft business truth.
+
+Gebruik waar mogelijk:
+
+safeParse()
+
+voor user input.
+
+Geef gebruikers duidelijke fouten.
+
+Verwijder custom regex/number/date parsers alleen wanneer volledig vervangen.
+
+==================================================
+6. ZOD ACCEPTANCE
+==================================================
+
+Minimaal bewijzen:
+
+- invalid UUID rejected;
+- invalid dates rejected;
+- invalid service duration rejected;
+- invalid price rejected;
+- invalid deposit rejected;
+- invalid customer email/phone regels volgens bestaande productregels;
+- malformed public booking payload rejected;
+- malformed waitlist payload rejected;
+- malformed intake definition rejected;
+- malformed report range rejected.
+
+Geen behavior regression.
+
+==================================================
+7. MIGRATIE 2 — REACT HOOK FORM
+==================================================
+
+DOEL:
+
+Vervang complexe client-side form state waar bewezen nuttig door:
+
+react-hook-form
+
+Gebruik Zod-integratie indien passend:
+
+@hookform/resolvers
+
+Prioriteit:
+
+INTAKE FORM BUILDER.
+
+Huidige Intake Form Builder gebruikt custom:
+
+- useState;
+- dynamic key generation;
+- move up/down;
+- remove;
+- add;
+- JSON serialization;
+- hidden field state.
+
+Vervang dit bij voorkeur door:
+
+useForm
++
+useFieldArray
++
+zodResolver
+
+Behoud:
+
+- huidige UX;
+- huidige field types;
+- required;
+- options;
+- sort order;
+- services linking;
+- consent statement;
+- form version semantics.
+
+Geen featureverlies.
+
+==================================================
+8. RHF NIET OVERAL FORCEREN
+==================================================
+
+Gebruik React Hook Form NIET automatisch voor elk simpel formulier.
+
+Simpele server-action forms mogen native blijven.
+
+Gebruik RHF alleen waar het daadwerkelijk:
+
+- complex state management vereenvoudigt;
+- validation verbetert;
+- minder custom code oplevert;
+- UX verbetert.
+
+==================================================
+9. MIGRATIE 3 — OFFICIËLE RESEND SDK
+==================================================
+
+DOEL:
+
+Vervang directe custom REST-call naar:
+
+https://api.resend.com/emails
+
+door de officiële Resend Node SDK.
+
+Gebruik:
+
+resend
+
+Behoud:
+
+- RESEND_API_KEY;
+- RESEND_FROM_EMAIL;
+- idempotency;
+- huidige notification queue;
+- retry logic;
+- cancellation rules;
+- delivery provider tracking;
+- error handling.
+
+Maak bijvoorbeeld één provider adapter:
+
+src/services/email-provider.ts
+
+die de officiële SDK gebruikt.
+
+Geen Resend-objecten door de hele applicatie verspreiden.
+
+==================================================
+10. EMAIL TESTS
+==================================================
+
+Test minimaal:
+
+- provider not configured;
+- successful send;
+- provider failure;
+- missing provider response ID;
+- idempotency key;
+- notification retry state;
+- cancelled appointment reminder;
+- confirmation;
+- reminder.
+
+Gebruik mocks voor unit tests.
+
+Geen echte klantmail tijdens CI.
+
+==================================================
+11. OPTIONEEL REACT EMAIL
+==================================================
+
+Onderzoek:
+
+@react-email/components
+
+Alleen gebruiken als dit de huidige mailarchitectuur aantoonbaar verbetert.
+
+Niet verplicht in deze migratie.
+
+Als mails momenteel text-only zijn en dat voldoende is:
+
+geen scope creep.
+
+==================================================
+12. MIGRATIE 4 — CSV-STRINGIFY
+==================================================
+
+DOEL:
+
+Vervang zelfgebouwde CSV serialization door:
+
+csv-stringify
+
+Gebruik server-side package.
+
+Behoud:
+
+- UTF-8/BOM indien nodig voor Excel;
+- kolomvolgorde;
+- huidige report range;
+- tenant scope;
+- server-side export;
+- filename;
+- formule-injectiebeveiliging.
+
+Gebruik indien beschikbaar:
+
+escape_formulas: true
+
+of equivalente veilige optie.
+
+Geen handgeschreven:
+
+join(",")
+quote escaping
+formula prefix logic
+
+meer wanneer package dit correct afhandelt.
+
+==================================================
+13. CSV SECURITY TESTS
+==================================================
+
+Test minimaal waardes beginnend met:
+
+=
++
+-
+@
+
+en:
+
+comma
+quote
+newline
+CRLF
+Unicode
+accenten
+lege waardes.
+
+Controleer dat:
+
+=SUM(A1:A2)
+
+geen uitvoerbare spreadsheetformule wordt.
+
+==================================================
+14. MIGRATIE 5 — PLAYWRIGHT TEST
+==================================================
+
+DOEL:
+
+Migreer custom browser-test infrastructuur naar officiële:
+
+@playwright/test
+
+BELANGRIJK:
+
+Verwijder NIET de bestaande QA-scenario's.
+
+Migreer ze.
+
+Maak bijvoorbeeld:
+
+playwright.config.ts
+
+tests/e2e/
+
+Gebruik:
+
+test()
+expect()
+fixtures
+projects
+trace
+screenshots
+retries
+reporters
+
+waar passend.
+
+==================================================
+15. E2E SCENARIOS
+==================================================
+
+Behoud minimaal bestaande coverage voor:
+
+Today
+Calendar Day
+Calendar Week
+Calendar Month
+Customers
+Services
+Service categories
+Staff
+opening exceptions
+staff overrides
+blocks
+intake
+consent
+Reports
+CSV
+booking widget
+public booking
+Smart Booking Links
+waitlist
+customer self-service.
+
+Test minimaal:
+
+320
+390
+768
+1440
+
+waar bestaande QA dat verwacht.
+
+==================================================
+16. PLAYWRIGHT ARTIFACTS
+==================================================
+
+Bij failure:
+
+- screenshot;
+- trace;
+- console output;
+- page URL.
+
+CI moet een mislukte flow eenvoudig debugbaar maken.
+
+==================================================
+17. MIGRATIE 6 — LUCIDE REACT
+==================================================
+
+DOEL:
+
+Vervang zelfgetekende generieke SVG icon paths door:
+
+lucide-react
+
+Behoud eventueel huidige abstraction:
+
+<WorkspaceIcon name="calendar" />
+
+Maar intern map naar Lucide icons.
+
+Voorbeeld mapping:
+
+today
+→ CalendarDays
+
+calendar
+→ Calendar
+
+customers
+→ Users
+
+services
+→ ListChecks / Scissors indien passend
+
+staff
+→ UserRound / UsersRound
+
+reports
+→ ChartNoAxesColumn
+
+settings
+→ Settings
+
+blocks
+→ Ban / CalendarX
+
+more
+→ Ellipsis
+
+Gebruik iconen functioneel.
+
+Geen willekeurige decoratieve iconen.
+
+==================================================
+18. LUCIDE BUNDLE
+==================================================
+
+Importeer iconen tree-shakable:
+
+import { Calendar, Users } from "lucide-react"
+
+NIET:
+
+hele icon library dynamisch importeren.
+
+Meet bundle voor/na.
+
+Geen significante bundle regression.
+
+==================================================
+19. MIGRATIE 7 — DATE-FNS
+==================================================
+
+SALON heeft date-fns al.
+
+Gebruik bestaande bewezen date-fns-functies in plaats van eigen generieke date arithmetic.
+
+Inspecteer onder andere:
+
+calendar-range.ts
+reporting.ts
+andere helpers.
+
+Vervang waar passend:
+
+custom parse date
+custom add days
+custom start of week
+custom end of week
+custom month start
+custom next month
+custom date difference
+
+door bewezen helpers zoals:
+
+parseISO
+isValid
+format
+addDays
+startOfWeek
+endOfWeek
+startOfMonth
+endOfMonth
+addMonths
+subMonths
+differenceInCalendarDays
+
+BELANGRIJK:
+
+behoud timezone-semantiek.
+
+Gebruik:
+
+date-fns-tz
+
+waar timezone context nodig is.
+
+==================================================
+20. DATUM REGRESSION
+==================================================
+
+Test:
+
+- maandag/zondag week boundaries;
+- maandbegin;
+- maandeinde;
+- februari;
+- leap year;
+- year boundary;
+- Europe/Amsterdam;
+- DST start;
+- DST einde.
+
+Geen afspraak mag door timezone-refactor op verkeerde dag/tijd verschijnen.
+
+==================================================
+21. MIGRATIE 8 — POSTGRES SEARCH / PG_TRGM
+==================================================
+
+DOEL:
+
+Vervang inefficiënte generieke `%ILIKE%`-search waar zinvol door native PostgreSQL search.
+
+Onderzoek eerst dataset/queryplan.
+
+Gebruik bij voorkeur:
+
+pg_trgm
++
+GIN indexes
++
+tenant-scoped RPC/query.
+
+Zoek minimaal over:
+
+customers.name
+customers.phone
+customers.email
+staff.name
+services.name
+appointment snapshots.
+
+Geen externe search SaaS toevoegen zonder noodzaak.
+
+==================================================
+22. SEARCH MIGRATION GATE
+==================================================
+
+Migreer alleen als:
+
+- query plan aantoonbaar beter wordt;
+- functionaliteit gelijk blijft;
+- tenant scope gegarandeerd blijft;
+- search quality niet slechter wordt.
+
+Gebruik EXPLAIN/ANALYZE waar veilig.
+
+Maak een additive migration.
+
+Historische migrations niet wijzigen.
+
+Voorbeeld:
+
+create extension if not exists pg_trgm;
+
+GIN/trigram indexes alleen waar evidence dit ondersteunt.
+
+==================================================
+23. SEARCH UX
+==================================================
+
+Behoud:
+
+- minimaal 2 tekens;
+- bounded results;
+- customers;
+- appointments;
+- services;
+- staff.
+
+Geen trage unrestricted full table scans.
+
+==================================================
+24. MIGRATIE 9 — SUPABASE QUEUES / PGMQ
+==================================================
+
+DIT IS EEN GO/NO-GO MIGRATIE.
+
+Huidige notification queue gebruikt reeds PostgreSQL locking en SKIP LOCKED.
+
+Vervang dit alleen wanneer Supabase Queues / pgmq aantoonbaar:
+
+- betrouwbaarder;
+- eenvoudiger;
+- beter onderhoudbaar;
+- production-compatible;
+- operationeel beschikbaar
+
+is voor het huidige project.
+
+Onderzoek live Supabase compatibility.
+
+==================================================
+25. ALS QUEUES WORDT GEBRUIKT
+==================================================
+
+Migreer veilig naar:
+
+Supabase Queues / pgmq
+
+Behoud:
+
+- booking confirmations;
+- reminders;
+- retry policy;
+- idempotency;
+- dead-letter semantics;
+- attempt count;
+- status observability.
+
+Gebruik transition period indien nodig.
+
+Nooit jobs verliezen tijdens migration.
+
+==================================================
+26. ALS QUEUES GEEN WINST GEEFT
+==================================================
+
+Behoud huidige queue.
+
+Documenteer:
+
+NO-GO
++
+reden.
+
+Het doel is bewezen infrastructuur gebruiken waar het beter is.
+
+Niet dependency-adoptie om dependency-adoptie.
+
+==================================================
+27. MIGRATIE 10 — TEMPORAL
+==================================================
+
+DIT IS EVENEEENS EEN GO/NO-GO MIGRATIE.
+
+Huidige SALON heeft custom DST ambiguity detection.
+
+Onderzoek of huidige Node/runtime:
+
+Temporal
+
+stabiel/native genoeg ondersteunt.
+
+Gebruik bij voorkeur native Temporal wanneer betrouwbaar beschikbaar.
+
+Anders onderzoek:
+
+@js-temporal/polyfill
+
+maar voeg polyfill alleen toe als:
+
+- bundle impact acceptabel is;
+- server-only usage mogelijk is;
+- edge/runtime compatibility bewezen is.
+
+==================================================
+28. TEMPORAL DOEL
+==================================================
+
+Gebruik Temporal specifiek voor moeilijk timezonegedrag zoals:
+
+- ambiguous local time;
+- nonexistent local time;
+- DST transition;
+- exact ZonedDateTime resolution.
+
+Gebruik:
+
+disambiguation: "reject"
+
+waar relevant.
+
+Niet de volledige app-time architecture herschrijven.
+
+==================================================
+29. TEMPORAL ACCEPTANCE
+==================================================
+
+Test bijvoorbeeld Europe/Amsterdam DST cases.
+
+Spring forward:
+
+lokale tijd die niet bestaat
+→ rejected.
+
+Fall back:
+
+lokale tijd die twee keer bestaat
+→ rejected waar SALON expliciet een unieke tijd vereist.
+
+Normale tijd:
+
+→ exact juiste UTC instant.
+
+Als Temporal migration meer risico dan winst heeft:
+
+behoud huidige bewezen functie.
+
+Documenteer NO-GO.
+
+==================================================
+30. BELANGRIJK — BOOKING ENGINE NIET VERVANGEN
+==================================================
+
+NIET vervangen door externe library:
+
+computeAvailability
+getAvailableSlotsForDate
+createPublicBooking
+create_appointment_atomic
+staff eligibility
+opening precedence
+schedule override precedence
+breaks
+blocks
+buffer semantics
+no-preference selection.
+
+Deze logica is SALON-specifiek.
+
+==================================================
+31. CALENDAR NIET VERVANGEN
+==================================================
+
+Geen FullCalendar/Schedule-X/React Big Calendar migratie in deze opdracht.
+
+Huidige calendar:
+
+- werkt;
+- gebruikt dnd-kit;
+- is SALON-specifiek;
+- heeft mobile UX;
+- ondersteunt staff columns;
+- is geverifieerd.
+
+Alleen generieke helpers mogen verbeterd worden.
+
+==================================================
+32. DND-KIT BEHOUDEN
+==================================================
+
+Huidige drag/drop gebruikt reeds:
+
+@dnd-kit/core
+
+Dat is precies het soort bewezen package dat we willen.
+
+Niet vervangen zonder aantoonbaar probleem.
+
+==================================================
+33. SUPABASE BEHOUDEN
+==================================================
+
+Gebruik bestaande officiële:
+
+@supabase/supabase-js
+@supabase/ssr
+
+Geen custom DB clientlaag erboven bouwen zonder reden.
+
+==================================================
+34. SECURITY
+==================================================
+
+Na iedere relevante migratie:
+
+test:
+
+- tenant isolation;
+- public route exposure;
+- owner/manager/staff permissions;
+- service role usage;
+- RLS;
+- public booking privacy;
+- intake privacy;
+- self-service token security.
+
+Geen client krijgt service role.
+
+==================================================
+35. DEPENDENCY SECURITY
+==================================================
+
+Na dependency changes:
+
+- npm audit beoordelen;
+- package-lock committen;
+- geen onnodige transitive packages;
+- geen package met problematische license;
+- geen unmaintained dependency zonder sterke reden.
+
+Geen dependency op latest wildcard.
+
+==================================================
+36. PERFORMANCE
+==================================================
+
+SALON is recent geoptimaliseerd.
+
+Bescherm die performance.
+
+Meet minimaal vóór en na:
+
+Today
+Calendar Day
+Calendar Week
+Calendar Month
+Customers
+Reports
+Public booking.
+
+Controleer:
+
+- JS bundle;
+- TTFB;
+- route navigation;
+- LCP;
+- database calls.
+
+Geen bewezen-library migratie mag app merkbaar langzamer maken.
+
+==================================================
+37. CODE REDUCTION
+==================================================
+
+Na iedere succesvolle migratie:
+
+verwijder alleen daadwerkelijk vervangen custom code.
+
+Meet:
+
+- lines removed;
+- files removed;
+- dependencies added;
+- dependencies removed.
+
+Doel is:
+
+minder custom generic code.
+
+Niet:
+
+meer abstractions dan voorheen.
+
+==================================================
+38. TESTSTRATEGIE
+==================================================
+
+Voor ieder onderdeel:
+
+RED
+→ relevante regression test indien ontbreekt.
+
+GREEN
+→ implementatie.
+
+REFACTOR
+→ oude custom code verwijderen.
+
+Gebruik TDD waar relevant.
+
+==================================================
+39. UNIT TESTS
+==================================================
+
+Behoud/voeg tests toe voor minimaal:
+
+validation
+report range
+CSV
+intake validation
+booking link windows
+secure tokens
+notification copy
+payment policy
+calendar ranges
+DST handling.
+
+==================================================
+40. DATABASE TESTS
+==================================================
+
+Herhaal:
+
+- booking vs booking;
+- booking vs block;
+- booking vs break;
+- booking vs closing exception;
+- booking vs staff override;
+- reschedule conflict;
+- self-service race.
+
+Allemaal groen.
+
+==================================================
+41. BROWSER QA
+==================================================
+
+Herhaal kernflows:
+
+Today
+Agenda Day
+Agenda Week
+Agenda Month
+Customers
+Services
+Team
+Reports
+Intake
+Waitlist
+Smart Booking Links
+Public Booking
+Customer Self-Service.
+
+Geen runtime console errors.
+
+==================================================
+42. RESPONSIVE QA
+==================================================
+
+Test:
+
+320
+360
+375
+390
+430
+768
+1024
+1280
+1440.
+
+Libraries mogen styling/interaction niet breken.
+
+==================================================
+43. ACCESSIBILITY
+==================================================
+
+Controleer:
+
+- forms;
+- field labels;
+- validation errors;
+- focus;
+- keyboard;
+- drag alternatives;
+- buttons;
+- icon aria behavior;
+- errors announced waar relevant.
+
+==================================================
+44. COMMIT STRUCTURE
+==================================================
+
+Gebruik kleine commits.
+
+Bijvoorbeeld:
+
+refactor: migrate input validation to zod
+refactor: migrate intake editor to react hook form
+refactor: use official resend sdk
+refactor: use csv-stringify for report export
+test: migrate workspace qa to playwright test
+refactor: replace custom icons with lucide
+refactor: use date-fns for generic calendar ranges
+perf: add postgres trigram search
+infra: migrate notifications to pgmq
+
+Geen mega-commit.
+
+==================================================
+45. MIGRATIEVOLGORDE
+==================================================
+
+Gebruik deze volgorde:
+
+FASE 1
+Zod
+
+FASE 2
+React Hook Form
+
+FASE 3
+Resend SDK
+
+FASE 4
+csv-stringify
+
+FASE 5
+Playwright Test
+
+FASE 6
+Lucide React
+
+FASE 7
+date-fns cleanup
+
+FASE 8
+Postgres pg_trgm search
+
+FASE 9
+Supabase Queues / pgmq evaluation + migration indien GO
+
+FASE 10
+Temporal evaluation + migration indien GO
+
+==================================================
+46. NA ELKE FASE
+==================================================
+
+Run minimaal:
+
+npm test
+npm run typecheck
+npm run lint
+npm run build
+
+en relevante browser tests.
+
+Als regressie:
+
+stop die fase
+→ root cause vinden
+→ fix
+→ opnieuw testen.
+
+Ga niet door terwijl main candidate gebroken is.
+
+==================================================
+47. FINAL QUALITY GATES
+==================================================
+
+Na alle tien fasen:
+
+npm ci
+npm test
+npm run typecheck
+npm run lint
+npm run build
+
+Playwright E2E.
+
+DB integration.
+
+Concurrency.
+
+Responsive QA.
+
+Security QA.
+
+Performance sanity.
+
+==================================================
+48. VERCEL PREVIEW
+==================================================
+
+Deploy exact final SHA naar Vercel Preview.
+
+Controleer:
+
+- READY;
+- correct SHA;
+- publiek toegankelijk volgens huidige no-login situatie;
+- geen Vercel auth;
+- geen runtime errors.
+
+==================================================
+49. PREVIEW SMOKE
+==================================================
+
+Test live preview:
+
+Vandaag
+Agenda
+Klanten
+Behandelingen
+Team
+Rapporten
+Instellingen
+Meer
+Intake
+Booking Links
+Waitlist
+Public Booking
+Self Service.
+
+==================================================
+50. PR
+==================================================
+
+Open één hoofd-PR voor deze migration series.
+
+PR body moet duidelijk tonen:
+
+- dependencies toegevoegd;
+- dependencies verwijderd;
+- custom code verwijderd;
+- onderdelen behouden;
+- GO/NO-GO beslissingen;
+- performance before/after;
+- security checks;
+- tests.
+
+==================================================
+51. CODE REVIEW
+==================================================
+
+Review expliciet:
+
+- onnodige abstractions;
+- dependency overuse;
+- incorrect client imports;
+- bundle regression;
+- lost validation;
+- changed booking semantics;
+- RLS risk;
+- timezone regression;
+- stale custom code.
+
+==================================================
+52. PRODUCTION RELEASE
+==================================================
+
+Alleen als:
+
+tests groen
++
+typecheck groen
++
+lint groen
++
+build groen
++
+DB groen
++
+browser QA groen
++
+security groen
++
+performance geen relevante regressie
++
+Preview READY
+
+dan:
+
+merge.
+
+Daarna bestaande veilige production workflow gebruiken.
+
+==================================================
+53. PRODUCTION SMOKE
+==================================================
+
+Controleer live:
+
+- Today;
+- Calendar;
+- Customers;
+- Services;
+- Staff;
+- Reports;
+- Intake;
+- Booking Links;
+- Waitlist;
+- public booking;
+- self-service;
+- notifications pipeline.
+
+==================================================
+54. GEEN FUNCTIONELE SCOPE CREEP
+==================================================
+
+Voeg tijdens deze opdracht NIET toe:
+
+- nieuwe kalenderfeatures;
+- POS;
+- inventory;
+- memberships;
+- loyalty;
+- marketplace;
+- resources;
+- rooms;
+- classes;
+- payroll;
+- marketing website.
+
+Alleen bewezen-component migratie.
+
+==================================================
+55. GEEN REDESIGN
+==================================================
+
+Behoud huidige SALON UI.
+
+Libraries mogen interne implementatie veranderen.
+
+Niet de productervaring.
+
+==================================================
+56. NIET BLIND VERVANGEN
+==================================================
+
+Voor ieder van de tien onderdelen geef uiteindelijk:
+
+MIGRATED
+
+of
+
+KEEP CURRENT IMPLEMENTATION
+
+met korte technische reden.
+
+Voor 1–8 verwacht migratie wanneer veilig en logisch.
+
+Voor 9–10 is expliciete GO/NO-GO toegestaan.
+
+==================================================
+57. ACCEPTANCE CRITERIA — 1 ZOD
+==================================================
+
+DONE wanneer:
+
+- belangrijkste generic schemas Zod gebruiken;
+- duplicate validators verwijderd zijn;
+- API/server actions server-side valideren;
+- tests groen zijn.
+
+==================================================
+58. ACCEPTANCE CRITERIA — 2 RHF
+==================================================
+
+DONE wanneer:
+
+- Intake Form Builder minder custom state heeft;
+- dynamic fields via useFieldArray werken;
+- Zod integration werkt;
+- UX gelijk/beter is;
+- tests groen zijn.
+
+==================================================
+59. ACCEPTANCE CRITERIA — 3 RESEND
+==================================================
+
+DONE wanneer:
+
+- officiële Resend SDK gebruikt wordt;
+- raw API fetch verwijderd is;
+- queue/retry/idempotency behouden zijn;
+- tests groen zijn.
+
+==================================================
+60. ACCEPTANCE CRITERIA — 4 CSV
+==================================================
+
+DONE wanneer:
+
+- csv-stringify gebruikt wordt;
+- formula injection veilig is;
+- export hetzelfde/beter werkt;
+- tests groen zijn.
+
+==================================================
+61. ACCEPTANCE CRITERIA — 5 PLAYWRIGHT
+==================================================
+
+DONE wanneer:
+
+- @playwright/test officiële runner gebruikt wordt;
+- kernscenario's behouden zijn;
+- CI artifacts bestaan;
+- browser QA groen is.
+
+==================================================
+62. ACCEPTANCE CRITERIA — 6 LUCIDE
+==================================================
+
+DONE wanneer:
+
+- custom generic icon SVG paths grotendeels verwijderd zijn;
+- Lucide tree-shakable gebruikt wordt;
+- visual regression niet bestaat;
+- bundle niet slechter is.
+
+==================================================
+63. ACCEPTANCE CRITERIA — 7 DATE-FNS
+==================================================
+
+DONE wanneer:
+
+- duplicatieve generic date arithmetic verwijderd is;
+- date-fns gebruikt wordt;
+- timezone/DST tests groen zijn.
+
+==================================================
+64. ACCEPTANCE CRITERIA — 8 PG_TRGM
+==================================================
+
+DONE wanneer:
+
+- query performance aantoonbaar minstens gelijk/beter is;
+- GIN/trigram correct gebruikt wordt waar nodig;
+- tenant search correct is;
+- UX gelijk blijft.
+
+==================================================
+65. ACCEPTANCE CRITERIA — 9 QUEUES
+==================================================
+
+DONE wanneer:
+
+GO:
+- Supabase Queues/pgmq production-safe geïntegreerd;
+- geen jobs verloren;
+- retries/idempotency bewezen.
+
+of
+
+NO-GO:
+- huidige SKIP LOCKED queue behouden;
+- technische reden gedocumenteerd.
+
+==================================================
+66. ACCEPTANCE CRITERIA — 10 TEMPORAL
+==================================================
+
+DONE wanneer:
+
+GO:
+- moeilijke DST parsing veilig naar Temporal gemigreerd;
+- ambiguity/nonexistent tests groen.
+
+of
+
+NO-GO:
+- bestaande bewezen parser behouden;
+- reden gedocumenteerd.
+
+==================================================
+67. EINDRAPPORT
+==================================================
+
+Lever aan het einde:
+
+STATUS
+
+BRANCH
+
+PR
+
+FINAL SHA
+
+MAIN SHA
+
+PRODUCTION SHA
+
+PRODUCTION URL
+
+1. ZOD
+MIGRATED / KEPT
+wat vervangen
+custom code verwijderd
+tests
+
+2. REACT HOOK FORM
+MIGRATED / KEPT
+wat vervangen
+tests
+
+3. RESEND SDK
+MIGRATED / KEPT
+tests
+
+4. CSV-STRINGIFY
+MIGRATED / KEPT
+security tests
+
+5. PLAYWRIGHT TEST
+MIGRATED / KEPT
+E2E coverage
+
+6. LUCIDE
+MIGRATED / KEPT
+bundle difference
+
+7. DATE-FNS
+MIGRATED / KEPT
+date/DST tests
+
+8. PG_TRGM SEARCH
+MIGRATED / KEPT
+query before/after
+
+9. SUPABASE QUEUES / PGMQ
+GO / NO-GO
+reden
+migration indien uitgevoerd
+
+10. TEMPORAL
+GO / NO-GO
+reden
+migration indien uitgevoerd
+
+DEPENDENCIES ADDED
+
+DEPENDENCIES REMOVED
+
+CUSTOM CODE REMOVED
+
+LINES BEFORE / AFTER
+
+TESTS
+
+TYPECHECK
+
+LINT
+
+BUILD
+
+DATABASE
+
+CONCURRENCY
+
+SECURITY
+
+PLAYWRIGHT QA
+
+RESPONSIVE QA
+
+PERFORMANCE BEFORE / AFTER
+
+KNOWN ISSUES
+
+==================================================
+68. FINAL RULE
+==================================================
+
+Deze opdracht is pas klaar wanneer bewezen is dat SALON:
+
+- dezelfde functies houdt;
+- dezelfde booking correctness houdt;
+- dezelfde of betere security heeft;
+- dezelfde of betere performance heeft;
+- minder generic custom code bevat;
+- meer bewezen packages gebruikt waar dit daadwerkelijk beter is;
+- volledig getest is;
+- op Vercel Preview bewezen werkt;
+- veilig gemerged is;
+- op production bewezen werkt.
+
+Belangrijkste productfilosofie:
+
+“Buy/use the commodity. Build the differentiator.”
+
+Commodity:
+validation
+forms infrastructure
+email SDK
+CSV
+test runner
+icons
+generic date helpers
+database search primitives
+queue primitives
+timezone primitives
+
+Differentiator:
+SALON booking
+availability
+workflow
+calendar behavior
+customer experience
+salon operations
+business rules.
+
+Voer dit nu volledig end-to-end uit op de actuele KINZARE/SALON codebase.
