@@ -19,7 +19,7 @@ ORSIRA should feel clear, modern, light, practical, friendly and quietly premium
 - Surface soft: `#F2F5EF`
 - Ink: `#171A17`
 - Muted: `#626A63`
-- Subtle: `#8A938B`
+- Subtle: `#6C756D`
 - Border: `#E1E7DE`
 - Border strong: `#D1D9CE`
 - Primary dark: `#1B241D`
