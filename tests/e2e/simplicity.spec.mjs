@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {randomUUID} from 'node:crypto';
 import {qaDatabase} from './fixtures.mjs';
 
 test('daily shell, Today hierarchy and secondary destinations',async({page})=>{
@@ -25,7 +26,7 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  await page.goto('/app/customers');
  await page.locator('a[href^="/app/customers/"]').first().click();
  await page.getByRole('link',{name:'Opnieuw boeken',exact:true}).click();
- expect(new URL(page.url()).searchParams.get('customerId')).toBeTruthy();
+ await expect(page).toHaveURL(/\/app\/calendar\/new\?customerId=/);
  await expect(page.getByRole('button',{name:'Andere / nieuwe klant'})).toBeVisible();
  await expect(page.getByLabel('Klantnaam',{exact:true})).toHaveCount(0);
  await expect(page.getByLabel('Notitie (optioneel)')).not.toBeVisible();
@@ -40,7 +41,8 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeDisabled();
  failed=false;
  await page.getByLabel('Datum',{exact:true}).fill(secondDate);
- const time=page.getByRole('button',{name:'10:00',exact:true});
+ const slotLabel=new Intl.DateTimeFormat('nl-NL',{timeZone:'Europe/Amsterdam',hour:'2-digit',minute:'2-digit'}).format(new Date(`${secondDate}T08:00:00.000Z`));
+ const time=page.getByRole('button',{name:slotLabel,exact:true});
  await time.click();
  await expect(time).toHaveAttribute('aria-pressed','true');
  const booking=page.waitForRequest(req=>req.url().includes('/api/internal/book')&&req.method()==='POST');
@@ -80,4 +82,38 @@ test('secondary destructive actions can be dismissed without changing appointmen
  await expect(page.getByRole('button',{name:'Annuleren',exact:true})).toBeVisible();
  const {data:unchanged,error:readError}=await db.from('appointments').select('status').eq('id',item.id).eq('salon_id',salon.id).single();if(readError)throw readError;
  expect(unchanged.status).toBe(item.status);
+});
+
+
+test('new appointment finishes and confirmed cancellation applies only to disposable booking',async({page})=>{
+ const db=qaDatabase();const customerName=`QA simplicity ${randomUUID()}`;
+ const {data:salon,error:salonError}=await db.from('salons').select('id,timezone').eq('slug','salon').single();if(salonError)throw salonError;
+ try{
+  await page.goto('/app/calendar/new');
+  await page.getByLabel('Klantnaam',{exact:true}).fill(customerName);
+  let slot=null;
+  for(let offset=14;offset<21&&!slot;offset++){
+   const date=new Date();date.setUTCDate(date.getUTCDate()+offset);const dateString=date.toISOString().slice(0,10);
+   const response=page.waitForResponse(r=>r.url().includes('/api/internal/availability?')&&new URL(r.url()).searchParams.get('date')===dateString);
+   await page.getByLabel('Datum',{exact:true}).fill(dateString);
+   const result=await response;expect(result.status()).toBe(200);const body=await result.json();slot=body.slots?.[0]?.start??null;
+  }
+  expect(slot).toBeTruthy();
+  const time=new Intl.DateTimeFormat('nl-NL',{timeZone:salon.timezone,hour:'2-digit',minute:'2-digit'}).format(new Date(slot));
+  await page.getByRole('button',{name:time,exact:true}).click();
+  const result=page.waitForResponse(r=>r.url().endsWith('/api/internal/book')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Afspraak opslaan'}).click();
+  const response=await result;expect(response.status()).toBe(201);const {appointmentId}=await response.json();
+  await expect(page).toHaveURL(new RegExp(`/app/appointments/${appointmentId}$`));
+  await expect(page.getByRole('heading',{name:customerName,exact:true})).toBeVisible();
+  await page.getByText('Meer acties',{exact:true}).click();
+  page.once('dialog',dialog=>dialog.accept());
+  await page.getByRole('button',{name:'Annuleren',exact:true}).click();
+  await expect(page.locator('[data-status-chip]')).toHaveText('Geannuleerd');
+  const {data:booking,error}=await db.from('appointments').select('status,customer_id').eq('id',appointmentId).eq('salon_id',salon.id).single();if(error)throw error;
+  expect(booking.status).toBe('cancelled');
+ }finally{
+  const {data:customers,error}=await db.from('customers').select('id').eq('salon_id',salon.id).eq('name',customerName);if(error)throw error;
+  for(const customer of customers??[]){const deleted=await db.from('appointments').delete().eq('salon_id',salon.id).eq('customer_id',customer.id);if(deleted.error)throw deleted.error;const cleaned=await db.from('customers').delete().eq('salon_id',salon.id).eq('id',customer.id).eq('name',customerName);if(cleaned.error)throw cleaned.error;}
+ }
 });

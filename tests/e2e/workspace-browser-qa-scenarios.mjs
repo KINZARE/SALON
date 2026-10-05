@@ -35,7 +35,7 @@ async function noBodyOverflow(label) {
   await assertNoDemoOrLoginContent();
 
   await gotoWorkspace("/app/today");
-  await page.getByRole("heading", { name: "Je salon vandaag" }).waitFor();
+  await page.getByRole("heading", { name: "Vandaag", exact: true }).waitFor();
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + "/app/today", { waitUntil: "networkidle" });
