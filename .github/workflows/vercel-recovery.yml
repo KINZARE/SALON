@@ -1,0 +1,35 @@
+name: vercel-recovery-diagnostics
+on:
+  push:
+    branches: [ops/orsira-vercel-recovery]
+    paths: [.github/workflows/vercel-recovery.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Inspect existing Vercel project using release credentials
+        run: |
+          node --input-type=module <<'NODE'
+          const token=process.env.VERCEL_TOKEN;
+          if(!token)throw new Error('Existing release token unavailable');
+          const team='team_rlwI48Ln6dElH7xEI0XALFeC';
+          const project='prj_iB5lkpC97M0iHyGd4K8bRp3Ylf2J';
+          async function get(path){
+            const response=await fetch('https://api.vercel.com'+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(20000)});
+            const body=await response.json();
+            if(!response.ok){console.log('API_ERROR',response.status,JSON.stringify(body.error));return null;}
+            return body;
+          }
+          const p=await get('/v9/projects/'+project+'?teamId='+team);
+          if(p){if(p.id!==project||p.name!=='salon'||p.accountId!==team)throw new Error('Unexpected project scope');
+          console.log('PROJECT_STATE',JSON.stringify({id:p.id,name:p.name,accountId:p.accountId,autoAssignCustomDomains:p.autoAssignCustomDomains,flags:Object.fromEntries(Object.entries(p).filter(([key])=>/pause|block|disabled/i.test(key))),production:p.targets?.production?{id:p.targets.production.id,readyState:p.targets.production.readyState,blocked:p.targets.production.blocked}:null}));}
+          const t=await get('/v2/teams/'+team);
+          if(t)console.log('TEAM_STATE',JSON.stringify({id:t.id,slug:t.slug,billing:t.billing?{plan:t.billing.plan,status:t.billing.status,period:t.billing.period}:null,flags:Object.fromEntries(Object.entries(t).filter(([key])=>/pause|block|disabled/i.test(key)))}));
+          const response=await fetch('https://salon-gamma-steel.vercel.app/app/today',{signal:AbortSignal.timeout(20000)});
+          console.log('HTTP_STATE',response.status,response.headers.get('x-vercel-error'));
+          NODE
