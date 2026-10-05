@@ -14,8 +14,9 @@ type NotificationJob = {
   attempt_count: number;
 };
 
-const supportedKinds = new Set<NotificationKind>(["booking_confirmation", "appointment_reminder"]);
+const supportedKinds = new Set<NotificationKind>(["booking_confirmation", "appointment_reminder", "feedback_request", "rebook_reminder"]);
 const activeStatuses = new Set(["pending", "confirmed", "checked_in"]);
+const completionKinds = new Set<NotificationKind>(["feedback_request", "rebook_reminder"]);
 
 function errorMessage(error: unknown) {
   return (error instanceof Error ? error.message : "UNKNOWN_NOTIFICATION_ERROR").slice(0, 500);
@@ -88,6 +89,10 @@ async function processJob(job: NotificationJob) {
   }
   if (job.kind === "appointment_reminder" && !activeStatuses.has(appointment.status)) {
     await markCancelled(job.id, "APPOINTMENT_NO_LONGER_ACTIVE");
+    return "cancelled" as const;
+  }
+  if (completionKinds.has(job.kind as NotificationKind) && appointment.status !== "completed") {
+    await markCancelled(job.id, "APPOINTMENT_NOT_COMPLETED");
     return "cancelled" as const;
   }
 

@@ -15,13 +15,15 @@ export async function getTodayStaffSchedule(salonId: string, weekday: number, da
 export async function getWorkspaceServices(salonId: string) {
   const db = createAdminSupabaseClient();
   const [servicesResult, linksResult] = await Promise.all([
-    db.from("services").select("id,name,description,duration_minutes,buffer_minutes,price_cents,currency,active,online_bookable,payment_mode,deposit_cents").eq("salon_id", salonId).order("name"),
+    db.from("services").select("*").eq("salon_id", salonId).order("name"),
     db.from("staff_services").select("staff_id,service_id").eq("salon_id", salonId),
   ]);
   if (servicesResult.error) throw servicesResult.error;
   if (linksResult.error) throw linksResult.error;
+
   return (servicesResult.data ?? []).map((service) => ({
     ...service,
+    rebook_after_days: typeof service.rebook_after_days === "number" ? service.rebook_after_days : null,
     staff_ids: (linksResult.data ?? []).filter((link) => link.service_id === service.id).map((link) => link.staff_id),
   }));
 }

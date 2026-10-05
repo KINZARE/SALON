@@ -22,11 +22,14 @@ export async function saveService(formData:FormData){
   const rawDeposit=String(formData.get("deposit")??"").trim();
   const depositCents=rawDeposit?cents(rawDeposit):null;
   const paymentMode=String(formData.get("paymentMode")??"pay_in_salon");
+  const rawRebook=String(formData.get("rebookAfterDays")??"").trim();
+  const rebookAfterDays=rawRebook===""?null:Number(rawRebook);
   const staffIds=formData.getAll("staffIds").map(String);
   if(priceCents===null||!ServiceSchema.safeParse({id,name,categoryId,duration,buffer,priceCents,depositCents,staffIds,paymentMode}).success)redirect("/app/services?error=Controleer+naam,+duur,+buffer+en+prijs.");
+  if(rebookAfterDays!==null&&(!Number.isInteger(rebookAfterDays)||rebookAfterDays<1||rebookAfterDays>730))redirect("/app/services?error=De+herboektermijn+moet+tussen+1+en+730+dagen+liggen.");
   let policy;try{policy=normalizePaymentPolicy({mode:paymentMode,depositCents,priceCents})}catch{redirect("/app/services?error=Controleer+de+betaalregel+en+aanbetaling.")}
   try{
-    await saveWorkspaceService(salon.id,{id:id||undefined,name,description,category_id:categoryId||null,duration_minutes:duration,buffer_minutes:buffer,price_cents:priceCents,active:formData.get("active")==="on",online_bookable:formData.get("onlineBookable")==="on",staff_ids:staffIds,payment_mode:policy.mode,deposit_cents:policy.depositCents});
+    await saveWorkspaceService(salon.id,{id:id||undefined,name,description,category_id:categoryId||null,duration_minutes:duration,buffer_minutes:buffer,price_cents:priceCents,active:formData.get("active")==="on",online_bookable:formData.get("onlineBookable")==="on",staff_ids:staffIds,payment_mode:policy.mode,deposit_cents:policy.depositCents,rebook_after_days:rebookAfterDays});
   }catch(error){console.error("service_save_failed",{error});redirect("/app/services?error=Behandeling+kon+niet+worden+opgeslagen.")}
   revalidatePath("/app/services");revalidatePath("/app/calendar");revalidatePath(`/book/${salon.slug}`);redirect("/app/services?saved=1");
 }

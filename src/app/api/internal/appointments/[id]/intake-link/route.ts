@@ -12,7 +12,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if(!body?.formId||!isUuid(body.formId))return NextResponse.json({error:"Kies een geldig formulier."},{status:400});
   try{
     const result=await issueAppointmentIntakeToken({salonId:salon.id,appointmentId:id,formId:body.formId});
-    return NextResponse.json({path:`/intake/${result.token}`,expiresAt:result.expiresAt});
+    return NextResponse.json({path:result.publicPath,qrPayload:result.publicPath,expiresAt:result.expiresAt});
   }catch{
     return NextResponse.json({error:"Intakelink kon niet worden gemaakt."},{status:400});
   }
