@@ -1,21 +1,14 @@
-name: orsira-render-live-verification
+name: orsira-render-targeted-performance
 on:
   push:
     branches: [ops/orsira-vercel-recovery]
     paths: [.github/workflows/vercel-recovery.yml]
 permissions:
   contents: read
-env:
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  NEXT_PUBLIC_SUPABASE_URL: https://pqozwzakdqtueunictid.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD
-  SALON_QA_SHA: ee5dcd25850a160432ba04736312590b78063321
-  QA_BASE_URL: https://orsira-salon-preview.onrender.com
-  QA_BASELINE_URL: https://orsira-salon-baseline.onrender.com
 jobs:
-  live-verification:
+  measure:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,40 +18,39 @@ jobs:
           node-version: '22'
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Wait for healthy Render services
+      - name: Alternate matched hosts to investigate LCP variance
         run: |
           node --input-type=module <<'NODE'
-          for(const base of [process.env.QA_BASELINE_URL,process.env.QA_BASE_URL]){
-            let ready=false;
-            for(let i=0;i<40;i++){
-              try {const r=await fetch(base+'/app/today',{signal:AbortSignal.timeout(30000)}); const body=await r.text();if(r.ok&&body.includes('Vandaag')){ready=true;console.log('HEALTHY',base,r.status);break;}}catch{}
-              await new Promise(r=>setTimeout(r,15000));
+          import {chromium} from 'playwright';
+          import {mkdir,writeFile} from 'node:fs/promises';
+          const browser=await chromium.launch(),rows=[];
+          const hosts={before:'https://orsira-salon-baseline.onrender.com',after:'https://orsira-salon-preview.onrender.com'};
+          try{
+            for(const [route,width] of [['/app/reports',1440],['/app/staff',390]]){
+              for(let run=0;run<7;run++)for(const label of run%2?['after','before']:['before','after']){
+                const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+                await page.addInitScript(()=>{window.__p={lcp:null,cls:0};new PerformanceObserver(l=>{for(const e of l.getEntries())window.__p.lcp=e.startTime}).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(l=>{for(const e of l.getEntries())if(!e.hadRecentInput)window.__p.cls+=e.value}).observe({type:'layout-shift',buffered:true})});
+                for(const cache of ['cold','warm']){
+                  const response=await page.goto(hosts[label]+route,{waitUntil:'networkidle',timeout:45000});if(!response.ok())throw Error('Unavailable');
+                  await page.locator('h1').first().waitFor();
+                  const metrics=await page.evaluate(()=>{const n=performance.getEntriesByType('navigation')[0];return{ttfbMs:n.responseStart,lcpMs:window.__p.lcp,cls:window.__p.cls}});
+                  rows.push({route,width,run,label,cache,...metrics});
+                }
+                await context.close();
+              }
             }
-            if(!ready)throw new Error('Render service unavailable: '+base);
+          }finally{await browser.close()}
+          const median=a=>a.sort((x,y)=>x-y)[Math.floor(a.length/2)],summary=[];
+          for(const [route,width] of [['/app/reports',1440],['/app/staff',390]])for(const cache of ['cold','warm'])for(const label of ['before','after']){
+            const subset=rows.filter(r=>r.route===route&&r.cache===cache&&r.label===label);
+            summary.push({route,width,cache,label,ttfbMs:median(subset.map(r=>r.ttfbMs)),lcpMs:median(subset.map(r=>r.lcpMs)),cls:Math.max(...subset.map(r=>r.cls)),lcpSamples:subset.map(r=>r.lcpMs)});
           }
+          await mkdir('qa-artifacts',{recursive:true});await writeFile('qa-artifacts/targeted-performance.json',JSON.stringify({sha:'ee5dcd25850a160432ba04736312590b78063321',conditions:'Seven alternating paired fresh contexts per case, same runner and Chromium, unthrottled lab',rows,summary},null,2));
+          console.log('TARGETED_PERFORMANCE '+JSON.stringify(summary));
           NODE
-      - name: Full browser QA on exact Render candidate
-        run: npm run test:e2e
-      - name: Daily core candidate performance
-        env:
-          QA_PROFILE_LABEL: render-after
-        run: node scripts/simplicity-performance.mjs
-      - name: Equivalent Render baseline performance
-        env:
-          QA_BASE_URL: https://orsira-salon-baseline.onrender.com
-          QA_PROFILE_LABEL: before
-        run: node scripts/performance-measure.mjs
-      - name: Equivalent Render candidate performance
-        env:
-          QA_PROFILE_LABEL: after
-        run: node scripts/performance-measure.mjs
-      - name: Compare actual hosted performance
-        run: node scripts/performance-compare.mjs
-      - name: Compare Today to Calendar navigation
-        run: node scripts/performance-navigation.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: render-live-qa-ee5dcd25850a160432ba04736312590b78063321
+          name: render-targeted-performance
           path: qa-artifacts
           retention-days: 30
