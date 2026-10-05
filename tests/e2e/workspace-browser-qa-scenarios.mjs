@@ -129,8 +129,9 @@ async function noBodyOverflow(label) {
   await page.goto(base + calendarPath, { waitUntil: "networkidle" });
   const detailSeed = page.locator("[data-appointment-id]").first();
   if (await detailSeed.getAttribute("aria-pressed") !== "true") await detailSeed.click();
-  const detailHref = await page.locator("[data-calendar-detail] a").getAttribute("href");
+  const detailHref = await page.locator("[data-calendar-detail]").getByRole("link", { name: "Open afspraak", exact: true }).getAttribute("href");
   assert.ok(detailHref, "Calendar detail must link to appointment");
+  assert.equal(await page.locator("[data-calendar-detail]").getByRole("link", { name: "Verplaatsen", exact: true }).getAttribute("href"), `${detailHref}/reschedule`, "Calendar must offer direct move without appointment-detail detour");
   await page.goto(base + detailHref, { waitUntil: "networkidle" });
   await page.locator("[data-appointment-action-centre]").waitFor();
 

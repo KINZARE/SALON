@@ -37,7 +37,7 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  let failed=true;
  await page.route('**/api/internal/availability?*',route=>route.fulfill({status:failed?503:200,contentType:'application/json',body:JSON.stringify(failed?{error:'Tijdelijk niet bereikbaar'}:{slots:[{start:`${secondDate}T08:00:00.000Z`}]})}));
  await page.getByLabel('Datum',{exact:true}).fill(firstDate);
- await expect(page.getByRole('alert')).toHaveText('Tijdelijk niet bereikbaar');
+ await expect(page.locator('form').getByRole('alert')).toHaveText('Tijdelijk niet bereikbaar');
  await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeDisabled();
  failed=false;
  await page.getByLabel('Datum',{exact:true}).fill(secondDate);
@@ -53,7 +53,7 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  expect(payload.customer.name).toBe(await page.locator('input[name="name"]').inputValue());
  expect(payload.customer.phone).toBe(await page.locator('input[name="phone"]').inputValue());
  expect(payload.customer.email).toBe(await page.locator('input[name="email"]').inputValue());
- await expect(page.getByRole('alert')).toContainText('zojuist geboekt');
+ await expect(page.locator('form').getByRole('alert')).toContainText('zojuist geboekt');
  await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeEnabled();
 });
 
