@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {qaDatabase} from './fixtures.mjs';
 
 test('daily shell, Today hierarchy and secondary destinations',async({page})=>{
  await page.goto('/app/today');
@@ -30,13 +31,15 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  await expect(page.getByLabel('Notitie (optioneel)')).not.toBeVisible();
  await page.getByText('Meer opties',{exact:true}).click();
  await expect(page.getByLabel('Notitie (optioneel)')).toBeVisible();
+ const future=new Date();future.setUTCDate(future.getUTCDate()+14);
+ const firstDate=future.toISOString().slice(0,10);future.setUTCDate(future.getUTCDate()+1);const secondDate=future.toISOString().slice(0,10);
  let failed=true;
- await page.route('**/api/internal/availability?*',route=>route.fulfill({status:failed?503:200,contentType:'application/json',body:JSON.stringify(failed?{error:'Tijdelijk niet bereikbaar'}:{slots:[{start:'2026-10-12T08:00:00.000Z'}]})}));
- await page.getByLabel('Datum',{exact:true}).fill('2026-10-12');
+ await page.route('**/api/internal/availability?*',route=>route.fulfill({status:failed?503:200,contentType:'application/json',body:JSON.stringify(failed?{error:'Tijdelijk niet bereikbaar'}:{slots:[{start:`${secondDate}T08:00:00.000Z`}]})}));
+ await page.getByLabel('Datum',{exact:true}).fill(firstDate);
  await expect(page.getByRole('alert')).toHaveText('Tijdelijk niet bereikbaar');
  await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeDisabled();
  failed=false;
- await page.getByLabel('Datum',{exact:true}).fill('2026-10-13');
+ await page.getByLabel('Datum',{exact:true}).fill(secondDate);
  const time=page.getByRole('button',{name:'10:00',exact:true});
  await time.click();
  await expect(time).toHaveAttribute('aria-pressed','true');
@@ -45,6 +48,9 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  await page.getByRole('button',{name:'Afspraak opslaan'}).click();
  const payload=(await booking).postDataJSON();
  expect(payload.customerId).toBeTruthy();expect(payload.staffId).toBeTruthy();
+ expect(payload.customer.name).toBe(await page.locator('input[name="name"]').inputValue());
+ expect(payload.customer.phone).toBe(await page.locator('input[name="phone"]').inputValue());
+ expect(payload.customer.email).toBe(await page.locator('input[name="email"]').inputValue());
  await expect(page.getByRole('alert')).toContainText('zojuist geboekt');
  await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeEnabled();
 });
@@ -59,4 +65,19 @@ test('Reports offers four primary metrics and keeps advanced controls available'
  await page.getByText('Meer details',{exact:true}).click();
  await expect(page.getByText('Annuleringspercentage',{exact:true})).toBeVisible();
  await expect(page.getByRole('link',{name:'CSV exporteren'})).toBeVisible();
+});
+
+
+test('secondary destructive actions can be dismissed without changing appointment',async({page})=>{
+ const db=qaDatabase();
+ const {data:salon,error:salonError}=await db.from('salons').select('id').eq('slug','salon').single();if(salonError)throw salonError;
+ const {data:item,error}=await db.from('appointments').select('id,status').eq('salon_id',salon.id).eq('status','confirmed').limit(1).single();if(error)throw error;
+ await page.goto(`/app/appointments/${item.id}`);
+ await expect(page.getByRole('button',{name:'Annuleren',exact:true})).not.toBeVisible();
+ await page.getByText('Meer acties',{exact:true}).click();
+ page.once('dialog',dialog=>dialog.dismiss());
+ await page.getByRole('button',{name:'Annuleren',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Annuleren',exact:true})).toBeVisible();
+ const {data:unchanged,error:readError}=await db.from('appointments').select('status').eq('id',item.id).eq('salon_id',salon.id).single();if(readError)throw readError;
+ expect(unchanged.status).toBe(item.status);
 });

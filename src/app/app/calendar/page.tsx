@@ -34,7 +34,7 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
       <div>
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-[var(--primary)]"><span className="h-2 w-2 rounded-full bg-[var(--primary)]"/>Teamagenda</div>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-.045em] sm:text-[36px]">Agenda</h1>
-        
+
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex h-11 rounded-[10px] border border-[var(--border)] bg-white p-1" aria-label="Kalenderweergave">
