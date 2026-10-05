@@ -1,23 +1,64 @@
-name: vercel-recovery-diagnostics
+name: orsira-render-live-verification
 on:
   push:
     branches: [ops/orsira-vercel-recovery]
     paths: [.github/workflows/vercel-recovery.yml]
 permissions:
   contents: read
+env:
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  NEXT_PUBLIC_SUPABASE_URL: https://pqozwzakdqtueunictid.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD
+  SALON_QA_SHA: ee5dcd25850a160432ba04736312590b78063321
+  QA_BASE_URL: https://orsira-salon-preview.onrender.com
+  QA_BASELINE_URL: https://orsira-salon-baseline.onrender.com
 jobs:
-  configure-render:
+  live-verification:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 45
     steps:
-      - name: Encrypt existing database credential for authorized Render migration
-        env:
-          DATABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          ref: ee5dcd25850a160432ba04736312590b78063321
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Wait for healthy Render services
         run: |
           node --input-type=module <<'NODE'
-          import {publicEncrypt,constants} from 'node:crypto';
-          const key = "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAji3h3CH4Fd2ktcDUkAYK\nYiIsj2B4eQ4U7vXqhpCBTvG5zzu5lNdHAoNURSXxVSC7+ujmMG6e0N48tOLkadvW\nOjb78T6T0NCnOQw6qQk2SxwpZie2d8H3MmnU9fropTMJPAJexfUWlwU2YTEji7fI\nABQIrhphfmWnaKwGovbf2EvYSowAq0bFVVL3pFCN2UFfq48ouaUSSzKY8pp/6/3+\nNA/0ZS1Zh1BbRC0KWsGodya6SOu/iFNhUtjf/RlJvaw1e174CNsDv8hvzOQHN13w\nC8x/VsTO27zkqwTfIfOKrLTTp21bRN7zCV00TTJ7UMMNA6YFJSBC9kYf63a6Dnwf\n2ekGYcDjC4RmCQchT9Fwg7en24hsoYn5zEz6xUVqdfNhjOxEKOpcPv4sVktQPsc+\noX3/wPD86x59cw0GsUzz7VA7ioeXAfcTt86vNfVIXJCeewJZyStTq4LAcn18YGj+\nx8vWjKjzvQ71Kxi0ke0lAqg/akJHdnipRkIHaah3NYbdcYa1o9WnfTV/B+com69a\nZvo2KTSB2CE3XBx0t/82KuYQ9n8RGbjbeNQxECeZUAIza7RQahl5/vW6v/GvreW6\nsqmp1tJ7iEp9dGSN8lpUXTW/yD6djXxfDXTP97lN5B8KY1YF2NeNrZuwGVc/onQo\nwJcz+7z8YEYCLYAVzJmXlyECAwEAAQ==\n-----END PUBLIC KEY-----";
-          if (!process.env.DATABASE_KEY) throw new Error('Existing database credential missing');
-          const ciphertext=publicEncrypt({key,padding:constants.RSA_PKCS1_OAEP_PADDING,oaepHash:'sha256'},Buffer.from(process.env.DATABASE_KEY)).toString('base64');
-          console.log('RENDER_CONFIG_ENCRYPTED '+ciphertext);
+          for(const base of [process.env.QA_BASELINE_URL,process.env.QA_BASE_URL]){
+            let ready=false;
+            for(let i=0;i<40;i++){
+              try {const r=await fetch(base+'/app/today',{signal:AbortSignal.timeout(30000)}); const body=await r.text();if(r.ok&&body.includes('Vandaag')){ready=true;console.log('HEALTHY',base,r.status);break;}}catch{}
+              await new Promise(r=>setTimeout(r,15000));
+            }
+            if(!ready)throw new Error('Render service unavailable: '+base);
+          }
           NODE
+      - name: Full browser QA on exact Render candidate
+        run: npm run test:e2e
+      - name: Daily core candidate performance
+        env:
+          QA_PROFILE_LABEL: render-after
+        run: node scripts/simplicity-performance.mjs
+      - name: Equivalent Render baseline performance
+        env:
+          QA_BASE_URL: https://orsira-salon-baseline.onrender.com
+          QA_PROFILE_LABEL: before
+        run: node scripts/performance-measure.mjs
+      - name: Equivalent Render candidate performance
+        env:
+          QA_PROFILE_LABEL: after
+        run: node scripts/performance-measure.mjs
+      - name: Compare actual hosted performance
+        run: node scripts/performance-compare.mjs
+      - name: Compare Today to Calendar navigation
+        run: node scripts/performance-navigation.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render-live-qa-ee5dcd25850a160432ba04736312590b78063321
+          path: qa-artifacts
+          retention-days: 30
