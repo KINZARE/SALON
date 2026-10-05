@@ -1,40 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #fbfcf8;
   --surface: #ffffff;
-  --surface-soft: #faf7f2;
-  --foreground: #2b2b2b;
-  --ink: #2b2b2b;
-  --muted: #706b66;
-  --subtle: #9b948d;
-  --border: #e8e2db;
-  --border-strong: #d9d4cc;
+  --surface-soft: #f2f5ef;
+  --surface-muted: #f2f5ef;
+  --foreground: #171a17;
+  --ink: #171a17;
+  --muted: #626a63;
+  --subtle: #8a938b;
+  --border: #e1e7de;
+  --border-strong: #d1d9ce;
 
-  /* ORSIRA brand system */
-  --primary: #7b3f46;
-  --primary-hover: #68353b;
-  --primary-soft: #f4eaeb;
-  --secondary: #a7b89f;
-  --secondary-hover: #96aa8d;
-  --secondary-soft: #eef2ec;
+  /* ORSIRA brand system — light, practical, green-accented */
+  --primary: #1b241d;
+  --primary-hover: #101611;
+  --primary-soft: #edf2ed;
+  --secondary: #58c96d;
+  --secondary-hover: #48b95d;
+  --secondary-soft: #eaf8ed;
 
-  --accent: #7b3f46;
-  --accent-light: #c8a8ac;
-  --accent-dark: #5e3036;
+  --accent: #58c96d;
+  --accent-light: #a8eab2;
+  --accent-dark: #27803a;
 
-  --warning: #8a6728;
-  --danger: #9f3f37;
-  --status-pending: #8a6728;
-  --status-confirmed: #61775b;
-  --status-checked-in: #5f7374;
-  --status-completed: #5f5b57;
-  --status-cancelled: #9b5b55;
-  --status-no-show: #8f3933;
+  --success: #2f7d46;
+  --warning: #9b671f;
+  --danger: #b54842;
+  --status-pending: #9b671f;
+  --status-confirmed: #397c4a;
+  --status-checked-in: #3b7370;
+  --status-completed: #596159;
+  --status-cancelled: #a4514b;
+  --status-no-show: #963c36;
 
   --radius: 10px;
   --radius-card: 16px;
-  --shadow-soft: 0 10px 28px rgba(43, 43, 43, .06);
+  --shadow-soft: 0 12px 32px rgba(23, 26, 23, .07);
 }
 
 * { box-sizing: border-box; }
@@ -42,6 +44,7 @@
 html {
   background: var(--background);
   color-scheme: light;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -55,7 +58,8 @@ body {
 }
 
 .font-display {
-  font-family: var(--font-playfair), Georgia, "Times New Roman", serif;
+  font-family: var(--font-manrope), var(--font-inter), ui-sans-serif, sans-serif;
+  letter-spacing: -0.035em;
 }
 
 button, input, textarea, select { font: inherit; }
@@ -63,12 +67,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 a { text-decoration: none; }
 
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--accent-dark);
   outline-offset: 3px;
 }
 
 ::selection {
-  background: var(--primary-soft);
+  background: var(--secondary-soft);
   color: var(--ink);
 }
 
@@ -86,6 +90,7 @@ a { text-decoration: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   *, *::before, *::after {
     scroll-behavior: auto !important;
     animation-duration: .01ms !important;
