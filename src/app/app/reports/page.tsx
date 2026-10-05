@@ -44,9 +44,11 @@ export default async function ReportsPage({searchParams}:{searchParams:Promise<R
     [formatMoney(summary.completedValueCents,salon.currency),"Afgeronde behandelwaarde"],
     [formatMoney(summary.plannedValueCents,salon.currency),"Geplande waarde"],
     [String(summary.appointments),"Afspraken"],
+    [`${summary.noShowRate}%`,"No-showpercentage"],
+  ];
+  const detailMetrics=[
     [formatMoney(summary.averageCompletedValueCents,salon.currency),"Gemiddelde behandelwaarde"],
     [`${summary.cancellationRate}%`,"Annuleringspercentage"],
-    [`${summary.noShowRate}%`,"No-showpercentage"],
   ];
   const exportParams=new URLSearchParams({preset,from:range.from,to:range.to});
   const trendMap=new Map<string,TrendDay>();
@@ -61,7 +63,7 @@ export default async function ReportsPage({searchParams}:{searchParams:Promise<R
 
   return <div data-reports-workspace>
     <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--primary)]">Reports</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Rapportage</h1><p className="mt-1 text-sm text-[var(--muted)]">Operationele cijfers voor de gekozen periode, zonder BI-overload.</p></div>
+      <div><h1 className="mt-2 text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">Rapportage</h1><p className="mt-1 text-sm text-[var(--muted)]">Inzicht in afspraken en behandelwaarde.</p></div>
       <a href={`/api/internal/reports/export?${exportParams.toString()}`} className="inline-flex h-11 items-center justify-center rounded-[10px] border border-[var(--border)] bg-white px-4 text-sm font-semibold hover:bg-[var(--surface-soft)]">CSV exporteren</a>
     </header>
 
@@ -69,31 +71,29 @@ export default async function ReportsPage({searchParams}:{searchParams:Promise<R
 
     <section className="mt-6 rounded-[16px] border border-[var(--border)] bg-white p-4 sm:p-5">
       <div className="flex flex-wrap gap-2">
-        {presets.map(([value,label])=><Link key={value} href={`/app/reports?preset=${value}`} className={`inline-flex min-h-10 items-center rounded-[10px] px-3 text-xs font-semibold ${preset===value?"bg-[var(--primary)] text-white":"border border-[var(--border)] bg-white text-[var(--muted)] hover:bg-[var(--surface-soft)]"}`}>{label}</Link>)}
+        {presets.map(([value,label])=><Link key={value} href={`/app/reports?preset=${value}`} className={`inline-flex min-h-11 items-center rounded-[10px] px-3 text-xs font-semibold ${preset===value?"bg-[var(--primary)] text-white":"border border-[var(--border)] bg-white text-[var(--muted)] hover:bg-[var(--surface-soft)]"}`}>{label}</Link>)}
       </div>
+      <details className="mt-4" open={preset==="custom"||!!rangeError}>
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[var(--primary)]">Andere periode kiezen</summary>
       <form method="get" className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <input type="hidden" name="preset" value="custom"/>
         <label className="grid gap-1.5 text-sm font-medium"><span>Van</span><input name="from" type="date" defaultValue={preset==="custom"?range.from:""} className="h-11 min-w-0 rounded-[10px] border border-[var(--border)] bg-white px-3 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"/></label>
         <label className="grid gap-1.5 text-sm font-medium"><span>Tot en met</span><input name="to" type="date" defaultValue={preset==="custom"?range.to:""} className="h-11 min-w-0 rounded-[10px] border border-[var(--border)] bg-white px-3 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"/></label>
         <button className="h-11 rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primary-dark)]">Toepassen</button>
       </form>
+      </details>
       <p className="mt-3 text-xs text-[var(--muted)]">{new Intl.DateTimeFormat("nl-NL",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}).format(new Date(`${range.from}T12:00:00Z`))} – {new Intl.DateTimeFormat("nl-NL",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}).format(new Date(`${range.to}T12:00:00Z`))}</p>
     </section>
 
     <section className="mt-5 overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--border)]" aria-label="Kerncijfers">
-      <div className="grid grid-cols-2 gap-px sm:grid-cols-3">{metrics.map(([value,label])=><div key={label} className="min-w-0 bg-white px-4 py-4 sm:px-5"><p className="text-xs text-[var(--muted)]">{label}</p><p className="mt-2 truncate text-xl font-semibold tracking-[-.04em] tabular-nums sm:text-2xl">{value}</p></div>)}</div>
+      <div className="grid grid-cols-2 gap-px lg:grid-cols-4">{metrics.map(([value,label])=><div key={label} className="min-w-0 bg-white px-4 py-4 sm:px-5"><p className="text-xs text-[var(--muted)]">{label}</p><p className="mt-2 truncate text-xl font-semibold tracking-[-.04em] tabular-nums sm:text-2xl">{value}</p></div>)}</div>
     </section>
 
     <section className="mt-7 rounded-[16px] border border-[var(--border)] bg-white p-4 sm:p-5" aria-labelledby="ontwikkeling-heading">
       <div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Ontwikkeling</p><h2 id="ontwikkeling-heading" className="mt-1 text-lg font-semibold tracking-[-.025em]">Per dag in deze periode</h2></div>
-      {trend.length?<div className="mt-5 grid gap-6 lg:grid-cols-2">
-        <TrendBars title="Afspraken" rows={trend} getValue={(row)=>row.appointments} formatValue={(value)=>String(value)}/>
+      {trend.length?<div className="mt-5">
         <TrendBars title="Afgeronde behandelwaarde" rows={trend} getValue={(row)=>row.completedValueCents} formatValue={(value)=>formatMoney(value,salon.currency)}/>
       </div>:<p className="mt-4 text-sm text-[var(--muted)]">Geen data in deze periode.</p>}
-    </section>
-
-    <section className="mt-7" aria-labelledby="klanten-heading">
-      <div className="flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Klanten</p><h2 id="klanten-heading" className="mt-1 text-lg font-semibold tracking-[-.025em]">Nieuw en terugkerend</h2></div><p className="text-sm text-[var(--muted)]">{summary.newCustomers} nieuw · {summary.returningCustomers} terugkerend</p></div>
     </section>
 
     <div className="mt-7 grid gap-5 xl:grid-cols-2">
@@ -101,7 +101,15 @@ export default async function ReportsPage({searchParams}:{searchParams:Promise<R
       <Breakdown title="Per medewerker" rows={summary.staff} currency={salon.currency}/>
     </div>
 
+    <details className="mt-7 border-t border-[var(--border)]" data-report-details>
+      <summary className="min-h-11 cursor-pointer py-4 text-sm font-semibold">Meer details</summary>
+      <div className="grid grid-cols-2 gap-5 py-3">{detailMetrics.map(([value,label])=><div key={label} className="min-w-0"><p className="text-xs text-[var(--muted)]">{label}</p><p className="mt-2 text-xl font-semibold tabular-nums">{value}</p></div>)}</div>
+    <section className="mt-7" aria-labelledby="klanten-heading">
+      <div className="flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Klanten</p><h2 id="klanten-heading" className="mt-1 text-lg font-semibold tracking-[-.025em]">Nieuw en terugkerend</h2></div><p className="text-sm text-[var(--muted)]">{summary.newCustomers} nieuw · {summary.returningCustomers} terugkerend</p></div>
+    </section>
+
     <p className="mt-5 max-w-3xl text-xs leading-5 text-[var(--muted)]">Geplande waarde is de snapshotwaarde van niet-geannuleerde afspraken. Afgeronde behandelwaarde telt alleen afgeronde afspraken en is niet automatisch ontvangen omzet. Nieuwe en terugkerende klanten zijn gebaseerd op geldige afspraakgeschiedenis; geannuleerde afspraken en no-shows maken een klant niet automatisch terugkerend.</p>
+    </details>
   </div>;
 }
 

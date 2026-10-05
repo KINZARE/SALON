@@ -42,19 +42,17 @@ export default async function CustomerPage({params,searchParams}:{params:Promise
   const inputClass="h-11 rounded-[10px] border border-[var(--border)] bg-white px-3.5 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]";
 
   return <div data-customer-profile data-customer-action-centre>
-    <Link href="/app/customers" className="text-sm text-[var(--muted)] hover:text-[var(--primary)]">← Customers</Link>
+    <Link href="/app/customers" className="text-sm text-[var(--muted)] hover:text-[var(--primary)]">← Klanten</Link>
 
     <header className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--primary)]">Klant</p><h1 className="mt-2 break-words text-3xl font-semibold tracking-[-.05em] sm:text-[36px]">{customer.name}</h1><p className="mt-1 break-words text-sm text-[var(--muted)]">{[customer.phone,customer.email].filter(Boolean).join(" · ")||"Geen contactgegevens"}</p></div>
       <div className="flex flex-wrap gap-2">
         {customer.phone?<a href={`tel:${customer.phone}`} className="inline-flex h-11 items-center rounded-[10px] border border-[var(--border)] bg-white px-4 text-sm font-medium hover:bg-[var(--surface-soft)]">Bellen</a>:null}
-        <Link href={`/app/calendar/new?customerId=${customer.id}`} className="inline-flex h-11 items-center rounded-[10px] bg-[var(--primary)] px-4 text-sm font-medium text-white hover:bg-[var(--primary-dark)]">+ Nieuwe afspraak</Link>
+        <Link href={`/app/calendar/new?customerId=${customer.id}`} className="inline-flex h-11 items-center rounded-[10px] bg-[var(--primary)] px-4 text-sm font-medium text-white hover:bg-[var(--primary-dark)]">Opnieuw boeken</Link>
       </div>
     </header>
 
     {error?<p role="alert" className="mt-5 rounded-[10px] border border-[#e8c8c3] bg-[#fbefed] p-3.5 text-sm text-[var(--danger)]">{error}</p>:null}
-
-    <section className="mt-7 overflow-hidden rounded-[16px] border border-[var(--border)] bg-white" aria-label="Klantcijfers"><div className="grid grid-cols-2 sm:grid-cols-4">{metrics.map(([value,label],index)=><div key={label} className={`px-4 py-4 ${index%2?"border-l border-[var(--border)]":""} ${index>=2?"border-t border-[var(--border)] sm:border-t-0":""} ${index>0?"sm:border-l sm:border-[var(--border)]":""}`}><p className="text-2xl font-semibold">{value}</p><p className="mt-1 text-xs text-[var(--muted)]">{label}</p></div>)}</div></section>
 
     <div className="mt-8 grid gap-5 lg:grid-cols-2">
       <section className="rounded-[16px] border border-[var(--primary-soft)] bg-[var(--primary-soft)] p-5">
@@ -63,13 +61,16 @@ export default async function CustomerPage({params,searchParams}:{params:Promise
       </section>
 
       <section className="rounded-[16px] border border-[var(--border)] bg-white p-5">
-        <p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--muted)]">Laatste bezoek</p>
+        <p className="text-xs font-semibold uppercase tracking-[.14em] text-[var(--muted)]">{lastVisit&&lastVisit.status!=="completed"?"Laatste afspraak":"Laatste bezoek"}</p>
         {lastVisit?<Link href={`/app/appointments/${lastVisit.id}`} className="mt-4 block"><p className="text-xl font-semibold">{lastVisit.service_name_snapshot}</p><p className="mt-1 text-sm text-[var(--muted)]">{formatInTimeZone(new Date(lastVisit.starts_at),salon.timezone,"dd MMM yyyy · HH:mm")}</p><div className="mt-3"><StatusChip status={lastVisit.status}/></div></Link>:<p className="mt-4 text-sm text-[var(--muted)]">Nog geen eerdere bezoeken.</p>}
       </section>
     </div>
 
-    <section className="mt-9 max-w-2xl rounded-[16px] border border-[var(--border)] bg-white p-5">
-      <h2 className="text-lg font-semibold">Klantgegevens & interne notitie</h2>
+    <section className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-b border-[var(--border)] pb-5 text-sm text-[var(--muted)]" aria-label="Klantcijfers">{metrics.filter(([value,label])=>value>0||label==="afspraken"||label==="afgerond").map(([value,label])=><p key={label}><strong className="font-semibold text-[var(--ink)] tabular-nums">{value}</strong> {label}</p>)}</section>
+
+    {customer.internal_notes?<section className="mt-7 max-w-2xl" aria-labelledby="customer-notes-heading"><h2 id="customer-notes-heading" className="text-sm font-semibold">Interne notitie</h2><p className="mt-2 whitespace-pre-wrap break-words text-sm text-[var(--muted)]">{customer.internal_notes}</p></section>:null}
+    <details className="mt-7 max-w-2xl border-y border-[var(--border)] py-1" open={!!error} data-customer-edit>
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">Klantgegevens bewerken</summary>
       <form action={saveCustomer} className="mt-4 grid gap-4 sm:grid-cols-2">
         <input type="hidden" name="customerId" value={customer.id}/>
         <label className="grid gap-1.5 text-sm font-medium sm:col-span-2"><span>Naam</span><input name="name" defaultValue={customer.name} required maxLength={160} className={inputClass}/></label>
@@ -78,9 +79,9 @@ export default async function CustomerPage({params,searchParams}:{params:Promise
         <label className="grid gap-1.5 text-sm font-medium sm:col-span-2"><span>Interne notitie</span><textarea name="notes" defaultValue={customer.internal_notes??""} maxLength={3000} rows={4} className="rounded-[10px] border border-[var(--border)] bg-white px-3.5 py-3 outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"/></label>
         <div className="sm:col-span-2"><Button variant="secondary">Klant opslaan</Button></div>
       </form>
-    </section>
+    </details>
 
-    <section className="mt-9 rounded-[16px] border border-[var(--border)] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Intake & toestemming</p><h2 className="mt-1 text-lg font-semibold">Dossierstatus</h2></div><span className="text-xs text-[var(--muted)]">{intake.submissions.length} formulieren</span></div><div className="mt-4 divide-y divide-[var(--border)] border-y border-[var(--border)]">{intake.submissions.map(item=><Link key={item.id} href={`/app/intake/submissions/${item.id}`} className="flex items-center justify-between gap-3 py-3 text-sm"><span>Formulier v{item.form_version}</span><span className="text-xs text-[var(--muted)]">{formatInTimeZone(new Date(item.submitted_at),salon.timezone,"dd MMM yyyy · HH:mm")}</span></Link>)}{!intake.submissions.length?<p className="py-4 text-sm text-[var(--muted)]">Nog geen intake ontvangen.</p>:null}</div>{intake.consents.length?<p className="mt-4 text-xs text-[var(--muted)]">{intake.consents.length} toestemming{intake.consents.length===1?"":"en"} geregistreerd.</p>:null}</section>
+    {intake.submissions.length||intake.consents.length?<section className="mt-9 rounded-[16px] border border-[var(--border)] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Intake & toestemming</p><h2 className="mt-1 text-lg font-semibold">Dossierstatus</h2></div><span className="text-xs text-[var(--muted)]">{intake.submissions.length} formulieren</span></div><div className="mt-4 divide-y divide-[var(--border)] border-y border-[var(--border)]">{intake.submissions.map(item=><Link key={item.id} href={`/app/intake/submissions/${item.id}`} className="flex items-center justify-between gap-3 py-3 text-sm"><span>Formulier v{item.form_version}</span><span className="text-xs text-[var(--muted)]">{formatInTimeZone(new Date(item.submitted_at),salon.timezone,"dd MMM yyyy · HH:mm")}</span></Link>)}</div>{intake.consents.length?<p className="mt-4 text-xs text-[var(--muted)]">{intake.consents.length} toestemming{intake.consents.length===1?"":"en"} geregistreerd.</p>:null}</section>:null}
 
     <section className="mt-9">
       <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Afspraakgeschiedenis</h2><span className="text-xs text-[var(--muted)]">{appointments.length} totaal</span></div>
