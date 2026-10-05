@@ -55,12 +55,17 @@ jobs:
         env:
           QA_BASE_URL: "http://127.0.0.1:3000"
         run: npm run test:e2e
+      - name: Measure exact candidate performance
+        env:
+          QA_BASE_URL: "http://127.0.0.1:3000"
+          QA_PROFILE_LABEL: "local-after"
+        run: node scripts/simplicity-performance.mjs
       - name: Compare real database reads against unchanged baseline
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin fd56cf66bc7ec1df84ad15f1fb1cdf6b92a94d6f --depth=1
-          git worktree add --detach /tmp/salon-performance-before fd56cf66bc7ec1df84ad15f1fb1cdf6b92a94d6f
+          git fetch origin 33c43333cca60846d67d0c9516e194395d487996 --depth=1
+          git worktree add --detach /tmp/salon-performance-before 33c43333cca60846d67d0c9516e194395d487996
           cp -a "$PWD/node_modules" /tmp/salon-performance-before/node_modules
           SALON_SOURCE_ROOT=/tmp/salon-performance-before QA_PROFILE_LABEL=before node --experimental-strip-types scripts/performance-queries.mjs
           QA_PROFILE_LABEL=after node --experimental-strip-types scripts/performance-queries.mjs
@@ -73,6 +78,11 @@ jobs:
           SALON_SOURCE_ROOT=/tmp/salon-performance-before QA_PROFILE_LABEL=before node scripts/bundle-metrics.mjs
       - name: Real database concurrency regression in isolated fixture
         run: node scripts/performance-concurrency.mjs
+      - name: Measure current production simplicity baseline
+        env:
+          QA_BASE_URL: "https://salon-gamma-steel.vercel.app"
+          QA_PROFILE_LABEL: "before"
+        run: node scripts/simplicity-performance.mjs
       - name: Upload QA evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -178,8 +188,8 @@ jobs:
           echo "$LOGIN_URL" | grep -Eqi '/app/today([?#].*)?$'
           grep -qi "Meer rust in je salon" /tmp/root.html
           grep -qi "ORSIRA" /tmp/root.html /tmp/pricing.html /tmp/app.html
-          grep -qi "Today" /tmp/app.html
-          grep -qi "Settings" /tmp/settings.html
+          grep -qi "Vandaag" /tmp/app.html
+          grep -qi "Saloninstellingen" /tmp/settings.html
 
           if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl|Welkom terug" /tmp/root.html /tmp/pricing.html /tmp/app.html /tmp/settings.html /tmp/login.html; then
             echo "Demo or login content detected in no-login deployment"
@@ -225,9 +235,14 @@ jobs:
         env:
           QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
         run: npm run test:e2e
+      - name: Daily core exact preview performance
+        env:
+          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          QA_PROFILE_LABEL: preview-after
+        run: node scripts/simplicity-performance.mjs
       - name: Baseline live performance measurements
         env:
-          QA_BASE_URL: https://salon-7qp9srmha-kwinphetmanee-2069.vercel.app
+          QA_BASE_URL: https://salon-4ijl26l1g-kwinphetmanee-2069.vercel.app
           QA_PROFILE_LABEL: before
         run: node scripts/performance-measure.mjs
       - name: Equivalent live performance measurements
@@ -238,7 +253,7 @@ jobs:
         run: node scripts/performance-compare.mjs
       - name: Compare actual Today to Calendar navigation
         env:
-          QA_BASELINE_URL: https://salon-7qp9srmha-kwinphetmanee-2069.vercel.app
+          QA_BASELINE_URL: https://salon-4ijl26l1g-kwinphetmanee-2069.vercel.app
           QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
         run: node scripts/performance-navigation.mjs
       - uses: actions/upload-artifact@v4

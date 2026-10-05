@@ -20,7 +20,7 @@ export function TodayTimeline({ appointments, timezone }: { appointments: TodayA
       return <Link key={item.id} href={`/app/appointments/${item.id}`} className={`grid min-h-[76px] grid-cols-[56px_minmax(0,1fr)] items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--surface-soft)] sm:grid-cols-[68px_minmax(0,1fr)_auto] sm:px-5 ${index ? "border-t border-[var(--border)]" : ""}`}>
         <time className="text-sm font-semibold tabular-nums">{formatInTimeZone(new Date(item.starts_at),timezone,"HH:mm")}</time>
         <div className="min-w-0"><p className="truncate text-[15px] font-semibold">{item.customer?.name??item.customer_name_snapshot??"Klant"}</p><p className="mt-1 truncate text-sm text-[var(--muted)]">{item.service_name_snapshot}{item.staff?.name?` · ${item.staff.name}`:""}</p></div>
-        <span className={`hidden shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold sm:inline-flex ${statusClass[status.tone]}`}>{status.label}</span>
+        {item.status !== "confirmed" ? <span className={`col-start-2 w-fit shrink-0 rounded-[6px] px-2 py-1 text-[11px] font-medium sm:col-start-auto ${statusClass[status.tone]}`}>{status.label}</span> : null}
       </Link>;
     })}
   </div>;

@@ -139,7 +139,7 @@ function StaffDropColumn({ member, disabled, children, height }: { member: Staff
   >{children}</div>;
 }
 
-function AppointmentPanel({ item, timezone }: { item: Appointment | null; timezone: string }) {
+function AppointmentPanel({ item, timezone, canManage }: { item: Appointment | null; timezone: string; canManage: boolean }) {
   if(!item) return <aside className="rounded-[16px] border border-[var(--border)] bg-white p-5">
     <div className="grid min-h-[260px] place-items-center text-center"><div><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[var(--primary-soft)] text-lg text-[var(--primary)]">↗</div><p className="mt-3 text-sm font-semibold">Selecteer een afspraak</p><p className="mt-1 max-w-[220px] text-xs leading-5 text-[var(--muted)]">Klik op een kaart in de agenda om details te bekijken.</p></div></div>
   </aside>;
@@ -157,14 +157,13 @@ function AppointmentPanel({ item, timezone }: { item: Appointment | null; timezo
       <p className="mt-1 text-sm font-medium text-[var(--muted)]">{item.service_name_snapshot}</p>
       <div className="mt-4 flex items-center gap-2 text-xs text-[var(--muted)]"><span aria-hidden>◷</span><span>{dateLabel} · {start}–{end}</span></div>
       <Link href={`/app/appointments/${item.id}`} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primary-dark)]">Open afspraak</Link>
+      {canManage && !["completed", "cancelled", "no_show"].includes(item.status) ? <Link href={`/app/appointments/${item.id}/reschedule`} className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-[10px] border border-[var(--border)] px-4 text-sm font-medium">Verplaatsen</Link> : null}
     </div>
-    <div className="divide-y divide-[var(--border)] px-5">
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Klant</p><p className="mt-1.5 text-sm font-semibold">{customerName}</p></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Behandeling</p><div className="mt-1.5 flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{item.service_name_snapshot}</p><p className="mt-1 text-xs text-[var(--muted)]">{item.duration_minutes_snapshot} min</p></div><p className="text-sm font-semibold">{formatMoney(item.price_cents_snapshot,item.currency_snapshot)}</p></div></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Medewerker</p><p className="mt-1.5 text-sm font-semibold">{item.staff?.name ?? "Medewerker"}</p></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Betaling</p><p className="mt-1.5 text-sm font-semibold capitalize">{item.payment_status.replaceAll("_"," ")}</p></div>
-      <div className="py-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Notitie</p><p className="mt-1.5 whitespace-pre-wrap text-sm leading-5 text-[var(--muted)]">{item.note || "Geen notitie."}</p></div>
-    </div>
+    <details className="px-5">
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[var(--muted)]">Meer details</summary>
+      <p className="pb-3 text-sm text-[var(--muted)]">{item.staff?.name ?? "Medewerker"} · {formatMoney(item.price_cents_snapshot,item.currency_snapshot)}</p>
+      {item.note ? <p className="pb-4 whitespace-pre-wrap text-sm text-[var(--muted)]">{item.note}</p> : null}
+    </details>
   </aside>;
 }
 
@@ -399,6 +398,6 @@ export function CalendarBoard({ date, timezone, appointments, staff, blocks, bre
         </div>
       </div>
     </div>
-    <AppointmentPanel item={selected} timezone={timezone}/>
+    <AppointmentPanel item={selected} timezone={timezone} canManage={canManage}/>
   </div>;
 }

@@ -18,9 +18,8 @@ test("Today is wired to server-side KPI and capacity truth", () => {
 
 test("Today summary exposes a calm operational KPI hierarchy", () => {
   const summary = source("src/components/workspace/today-summary.tsx");
-  for (const label of ["Afspraken", "Geplande waarde", "Bezetting", "Vrije capaciteit", "Aandacht nodig"]) {
-    assert.match(summary, new RegExp(label));
-  }
+  for (const label of ["afspraken", "geplande waarde", "bezet"]) assert.ok(summary.includes(label));
+  assert.doesNotMatch(summary, /grid-cols|Vrije capaciteit|Aandacht nodig/);
   assert.doesNotMatch(summary, /overflow-x-auto|carousel/i);
 });
 

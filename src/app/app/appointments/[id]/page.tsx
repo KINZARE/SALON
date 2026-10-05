@@ -5,6 +5,7 @@ import { requireAppContext } from "@/lib/auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/format";
 import { transitionAppointmentStatus,updateAppointmentNote } from "./actions";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SelfServiceLinkButton } from "@/components/workspace/self-service-link-button";
@@ -49,7 +50,7 @@ export default async function AppointmentPage({params,searchParams}:{params:Prom
   const date=formatInTimeZone(new Date(appointment.starts_at),salon.timezone,"EEEE d MMMM yyyy");
 
   return <div data-appointment-action-centre>
-    <Link href="/app/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--primary)]">← Calendar</Link>
+    <Link href="/app/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--primary)]">← Agenda</Link>
 
     <header className="mt-5 grid gap-5 rounded-[16px] border border-[var(--border)] bg-white p-5 sm:grid-cols-[.8fr_1.2fr] sm:items-end sm:p-6">
       <div>
@@ -69,10 +70,14 @@ export default async function AppointmentPage({params,searchParams}:{params:Prom
     {canManage&&![ "completed","cancelled","no_show" ].includes(appointment.status)?<section className="mt-5 flex flex-wrap items-center gap-2">
       <Link href={`/app/appointments/${appointment.id}/reschedule`} className="inline-flex h-11 items-center justify-center rounded-[10px] bg-[var(--primary)] px-4 text-sm font-medium text-white hover:bg-[var(--primary-dark)]">Verplaatsen</Link>
       {(actions[appointment.status]??[]).map(action=><form key={action.status} action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value={action.status}/><Button variant={action.variant??"secondary"}>{action.label}</Button></form>)}
-      {appointment.status==="confirmed"?<form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="no_show"/><Button variant="ghost">No-show</Button></form>:null}
-      <form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="cancelled"/><Button variant="danger">Annuleren</Button></form>
+      <details className="w-full">
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-[var(--muted)]">Meer acties</summary>
+        <div className="flex flex-wrap gap-2">      {appointment.status==="confirmed"?<form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="no_show"/><ConfirmButton variant="ghost" message="Deze afspraak als no-show markeren?">No-show</ConfirmButton></form>:null}
+      <form action={transitionAppointmentStatus}><input type="hidden" name="appointmentId" value={appointment.id}/><input type="hidden" name="status" value="cancelled"/><ConfirmButton message="Deze afspraak annuleren?">Annuleren</ConfirmButton></form>
       <SelfServiceLinkButton appointmentId={appointment.id}/>
       <IntakeLinkButton appointmentId={appointment.id} forms={intake.forms.map(form=>({id:form.id,title:form.title}))}/>
+        </div>
+      </details>
     </section>:null}
 
     {canManage&&intake.forms.length?<section className="mt-4 rounded-[12px] border border-[var(--border)] bg-white px-4 py-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">Intake</p><p className="text-xs text-[var(--muted)]">{intake.submissions.length?`${intake.submissions.length} ontvangen`:"Nog niet ontvangen"}</p></div></section>:null}
@@ -86,14 +91,14 @@ export default async function AppointmentPage({params,searchParams}:{params:Prom
         </div>
         <div className="border-t border-[var(--border)] p-5">
           <p className="text-xs text-[var(--muted)]">Notitie</p>
-          {canManage?<form action={updateAppointmentNote} className="mt-2"><input type="hidden" name="appointmentId" value={appointment.id}/><textarea name="note" defaultValue={appointment.note??""} maxLength={1000} rows={4} className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--background)] px-3.5 py-3 text-sm outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"/><Button variant="secondary" className="mt-2">Notitie opslaan</Button></form>:<p className="mt-2 whitespace-pre-wrap text-sm leading-6">{appointment.note||"Geen notitie."}</p>}
+          {canManage?<form action={updateAppointmentNote} className="mt-2"><input type="hidden" name="appointmentId" value={appointment.id}/><textarea aria-label="Afspraaknotitie" name="note" defaultValue={appointment.note??""} maxLength={1000} rows={4} className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--background)] px-3.5 py-3 text-sm outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary-soft)]"/><Button variant="secondary" className="mt-2">Notitie opslaan</Button></form>:<p className="mt-2 whitespace-pre-wrap text-sm leading-6">{appointment.note||"Geen notitie."}</p>}
         </div>
       </section>
 
       <aside className="rounded-[16px] border border-[var(--border)] bg-white p-5">
         <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--muted)]">Klant</p>
         <p className="mt-2 text-lg font-semibold">{customer?.name??appointment.customer_name_snapshot??"—"}</p>
-        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{[customer?.phone,customer?.email].filter(Boolean).join(" · ")||"Geen contactgegevens"}</p>
+        <p className="mt-1 break-words text-sm leading-6 text-[var(--muted)]">{[customer?.phone,customer?.email].filter(Boolean).join(" · ")||"Geen contactgegevens"}</p>
         <div className="mt-5 flex flex-wrap gap-2">
           {customer?.phone?<a href={`tel:${customer.phone}`} className="inline-flex min-h-10 items-center rounded-[10px] border border-[var(--border)] px-3 text-xs font-medium hover:bg-[var(--surface-soft)]">Bellen</a>:null}
           {canManage?<Link href={`/app/customers/${appointment.customer_id}`} className="inline-flex min-h-10 items-center rounded-[10px] border border-[var(--border)] px-3 text-xs font-medium hover:bg-[var(--surface-soft)]">Open klant</Link>:null}

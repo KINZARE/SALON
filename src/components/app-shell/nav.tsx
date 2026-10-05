@@ -13,14 +13,9 @@ export function AppNav({ role }: { role: Role }) {
     ? [["Vandaag", "/app/today", "today"], ["Agenda", "/app/calendar", "calendar"], ["Meer", "/app/more", "more"]]
     : [["Vandaag", "/app/today", "today"], ["Agenda", "/app/calendar", "calendar"], ["Klanten", "/app/customers", "customers"], ["Meer", "/app/more", "more"]];
 
-  const secondary: readonly NavItem[] = role === "staff"
-    ? [["Instellingen", "/app/settings", "settings"]]
-    : [["Behandelingen", "/app/services", "services"], ["Team", "/app/staff", "staff"], ["Rapporten", "/app/reports", "reports"], ["Instellingen", "/app/settings", "settings"]];
-
   const routeIsActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const moreRoutes = ["/app/more", "/app/blocks", "/app/booking-links", "/app/waitlist", "/app/intake", "/app/settings/schedule", "/app/settings/widget"];
+  const moreRoutes = ["/app/more", "/app/services", "/app/staff", "/app/reports", "/app/settings", "/app/blocks", "/app/booking-links", "/app/waitlist", "/app/intake", "/app/settings/schedule", "/app/settings/widget"];
   const moreIsActive = moreRoutes.some((href) => routeIsActive(href));
-  const desktopPrimary = primary.filter(([label]) => label !== "Meer");
 
   const desktopLink = ([label, href, iconName]: NavItem) => {
     const active = label === "Meer"
@@ -33,6 +28,7 @@ export function AppNav({ role }: { role: Role }) {
       <Link
         key={href}
         href={href}
+        aria-current={active ? "page" : undefined}
         className={`group relative flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm font-semibold transition-colors ${active ? "bg-[var(--secondary-soft)] text-[var(--ink)]" : "text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"}`}
       >
         <span className={`grid h-8 w-8 place-items-center rounded-[8px] transition-colors ${active ? "text-[var(--accent-dark)]" : "text-[var(--muted)] group-hover:text-[var(--ink)]"}`}>
@@ -55,23 +51,9 @@ export function AppNav({ role }: { role: Role }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Hoofdnavigatie">
-          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-[var(--subtle)]">Dagelijks</p>
-          <div className="grid gap-1">{desktopPrimary.map(desktopLink)}</div>
-
-          <div className="my-5 border-t border-[var(--border)]" />
-          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-[var(--subtle)]">Beheer</p>
-          <div className="grid gap-1">{secondary.map(desktopLink)}</div>
-
-          <div className="mt-2 grid gap-1">{desktopLink(["Meer", "/app/more", "more"])}</div>
+          <div className="grid gap-1">{primary.map(desktopLink)}</div>
         </nav>
 
-        <div className="border-t border-[var(--border)] p-4">
-          <Link href="/app/blocks" className="flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-xs font-semibold text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]">
-            <WorkspaceIcon name="blocks" size={16} />
-            Tijd blokkeren
-          </Link>
-          <p className="mt-3 px-3 text-[11px] leading-5 text-[var(--subtle)]">Planning, klanten en team op één plek.</p>
-        </div>
       </aside>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(env(safe-area-inset-bottom),10px)] md:hidden" aria-label="Mobiele navigatie">
@@ -83,6 +65,7 @@ export function AppNav({ role }: { role: Role }) {
                 key={href}
                 href={href}
                 aria-label={label}
+                aria-current={active ? "page" : undefined}
                 className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] px-1 text-[11px] font-semibold transition-colors ${active ? "bg-[var(--secondary-soft)] text-[var(--ink)]" : "text-[var(--muted)]"}`}
               >
                 <WorkspaceIcon name={iconName} size={17} />

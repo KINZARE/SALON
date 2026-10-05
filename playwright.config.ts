@@ -21,6 +21,7 @@ export default defineConfig({
   },
   projects: [
     { name: "workspace", testMatch: "workspace.spec.mjs" },
+    { name: "simplicity", testMatch: "simplicity.spec.mjs" },
     { name: "responsive", testMatch: "responsive.spec.mjs" },
     ...[320, 390, 768, 1440].map(width => ({ name: `migration-${width}`, testMatch: "migration.spec.mjs", use: { viewport: { width, height: 900 } } })),
   ],

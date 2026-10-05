@@ -35,7 +35,7 @@ async function noBodyOverflow(label) {
   await assertNoDemoOrLoginContent();
 
   await gotoWorkspace("/app/today");
-  await page.getByRole("heading", { name: "Je salon vandaag" }).waitFor();
+  await page.getByRole("heading", { name: "Vandaag", exact: true }).waitFor();
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + "/app/today", { waitUntil: "networkidle" });
@@ -48,9 +48,9 @@ async function noBodyOverflow(label) {
   }
 
   await page.getByTestId("today-command-centre").waitFor();
-  await page.getByText("Vrije ruimte", { exact: true }).waitFor();
-  await page.getByRole("link", { name: /Afspraak/ }).first().waitFor();
-  await page.getByRole("link", { name: /Blokkeer tijd/ }).first().waitFor();
+  await page.getByRole("region", { name: "Vandaag samengevat" }).waitFor();
+  await page.getByRole("link", { name: "Nieuwe afspraak", exact: true }).waitFor();
+
 
   const workspacePaths = [
     "/app/today",
@@ -129,8 +129,9 @@ async function noBodyOverflow(label) {
   await page.goto(base + calendarPath, { waitUntil: "networkidle" });
   const detailSeed = page.locator("[data-appointment-id]").first();
   if (await detailSeed.getAttribute("aria-pressed") !== "true") await detailSeed.click();
-  const detailHref = await page.locator("[data-calendar-detail] a").getAttribute("href");
+  const detailHref = await page.locator("[data-calendar-detail]").getByRole("link", { name: "Open afspraak", exact: true }).getAttribute("href");
   assert.ok(detailHref, "Calendar detail must link to appointment");
+  assert.equal(await page.locator("[data-calendar-detail]").getByRole("link", { name: "Verplaatsen", exact: true }).getAttribute("href"), `${detailHref}/reschedule`, "Calendar must offer direct move without appointment-detail detour");
   await page.goto(base + detailHref, { waitUntil: "networkidle" });
   await page.locator("[data-appointment-action-centre]").waitFor();
 
@@ -200,7 +201,7 @@ async function noBodyOverflow(label) {
   await page.goto(base + customerActionHref, { waitUntil: "networkidle" });
   await page.locator("[data-customer-action-centre]").waitFor();
   await page.getByText("Komende afspraak", { exact: true }).waitFor();
-  const rebook = page.getByRole("link", { name: /Nieuwe afspraak/ }).first();
+  const rebook = page.getByRole("link", { name: "Opnieuw boeken", exact: true });
   await rebook.waitFor();
   assert.match(await rebook.getAttribute("href") ?? "", /^\/app\/calendar\/new\?customerId=/);
 
