@@ -11,7 +11,7 @@ env:
   NEXT_PUBLIC_SUPABASE_URL: "https://pqozwzakdqtueunictid.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD"
   SALON_QA_SHA: "${{ github.sha }}"
-  TESTED_APP_SHA: "6ce11ece9a97338164df1f89134ddae177bf91c0"
+  TESTED_APP_SHA: "eeb35a4c261d7260edb6baf0d19dfd3498c15930"
 
 jobs:
   verify-and-deploy-production:
@@ -170,7 +170,7 @@ jobs:
             --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### SALON Production" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ORSIRA Production" >> "$GITHUB_STEP_SUMMARY"
           echo "Main SHA: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Tested app SHA: $TESTED_APP_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "Deployment: $URL" >> "$GITHUB_STEP_SUMMARY"
@@ -223,22 +223,28 @@ jobs:
         run: |
           set -euo pipefail
           ROOT_RESULT="$(curl --silent --show-error --location --output /tmp/prod-root.html --write-out '%{http_code}|%{url_effective}' "$PROD_URL/")"
+          PRICING_RESULT="$(curl --silent --show-error --location --output /tmp/prod-pricing.html --write-out '%{http_code}|%{url_effective}' "$PROD_URL/pricing")"
           TODAY_RESULT="$(curl --silent --show-error --location --output /tmp/prod-today.html --write-out '%{http_code}|%{url_effective}' "$PROD_URL/app/today")"
           ROOT_CODE="${ROOT_RESULT%%|*}"
+          PRICING_CODE="${PRICING_RESULT%%|*}"
           TODAY_CODE="${TODAY_RESULT%%|*}"
           ROOT_URL="${ROOT_RESULT#*|}"
+          PRICING_URL="${PRICING_RESULT#*|}"
           TODAY_URL="${TODAY_RESULT#*|}"
-          echo "root=$ROOT_RESULT today=$TODAY_RESULT"
+          echo "root=$ROOT_RESULT pricing=$PRICING_RESULT today=$TODAY_RESULT"
           test "$ROOT_CODE" = "200"
+          test "$PRICING_CODE" = "200"
           test "$TODAY_CODE" = "200"
-          echo "$ROOT_URL" | grep -Eqi '/app/today([?#].*)?$'
+          echo "$ROOT_URL" | grep -Eqi '/([?#].*)?$'
+          echo "$PRICING_URL" | grep -Eqi '/pricing([?#].*)?$'
           echo "$TODAY_URL" | grep -Eqi '/app/today([?#].*)?$'
-          grep -qi "ORSIRA" /tmp/prod-today.html
-          if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode|Baan Thai Wellness" /tmp/prod-root.html /tmp/prod-today.html; then
+          grep -qi "Meer rust in je salon" /tmp/prod-root.html
+          grep -qi "ORSIRA" /tmp/prod-root.html /tmp/prod-pricing.html /tmp/prod-today.html
+          if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode|Baan Thai Wellness" /tmp/prod-root.html /tmp/prod-pricing.html /tmp/prod-today.html; then
             echo "Unexpected login/demo/protection content detected in production"
             exit 1
           fi
-          echo "Public SALON production smoke checks passed."
+          echo "Public ORSIRA production smoke checks passed."
 
       - name: Full browser QA on deployed production
         env:
