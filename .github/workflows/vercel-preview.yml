@@ -144,43 +144,49 @@ jobs:
           set -euo pipefail
           npx --yes vercel@latest inspect "$PREVIEW_URL" --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-inspect.txt
           grep -Eqi 'Ready' /tmp/vercel-inspect.txt
-      - name: Smoke test real no-login app
+      - name: Smoke test ORSIRA website and no-login app
         shell: bash
         env:
           PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
         run: |
           set -euo pipefail
           ROOT_RESULT="$(npx --yes vercel@latest curl / --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/root.html --write-out '%{http_code}|%{url_effective}')"
+          PRICING_RESULT="$(npx --yes vercel@latest curl /pricing --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/pricing.html --write-out '%{http_code}|%{url_effective}')"
           APP_RESULT="$(npx --yes vercel@latest curl /app/today --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/app.html --write-out '%{http_code}|%{url_effective}')"
           SETTINGS_RESULT="$(npx --yes vercel@latest curl /app/settings --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/settings.html --write-out '%{http_code}|%{url_effective}')"
           LOGIN_RESULT="$(npx --yes vercel@latest curl /login --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/login.html --write-out '%{http_code}|%{url_effective}')"
 
           ROOT_CODE="${ROOT_RESULT%%|*}"
+          PRICING_CODE="${PRICING_RESULT%%|*}"
           APP_CODE="${APP_RESULT%%|*}"
           SETTINGS_CODE="${SETTINGS_RESULT%%|*}"
           LOGIN_CODE="${LOGIN_RESULT%%|*}"
           ROOT_URL="${ROOT_RESULT#*|}"
+          PRICING_URL="${PRICING_RESULT#*|}"
           APP_URL="${APP_RESULT#*|}"
           LOGIN_URL="${LOGIN_RESULT#*|}"
 
-          echo "root=$ROOT_RESULT app=$APP_RESULT settings=$SETTINGS_RESULT login=$LOGIN_RESULT"
+          echo "root=$ROOT_RESULT pricing=$PRICING_RESULT app=$APP_RESULT settings=$SETTINGS_RESULT login=$LOGIN_RESULT"
           test "$ROOT_CODE" = "200"
+          test "$PRICING_CODE" = "200"
           test "$APP_CODE" = "200"
           test "$SETTINGS_CODE" = "200"
           test "$LOGIN_CODE" = "200"
-          echo "$ROOT_URL" | grep -Eqi '/app/today([?#].*)?$'
+          echo "$ROOT_URL" | grep -Eqi '/([?#].*)?$'
+          echo "$PRICING_URL" | grep -Eqi '/pricing([?#].*)?$'
           echo "$APP_URL" | grep -Eqi '/app/today([?#].*)?$'
           echo "$LOGIN_URL" | grep -Eqi '/app/today([?#].*)?$'
+          grep -qi "Meer rust in je salon" /tmp/root.html
+          grep -qi "ORSIRA" /tmp/root.html /tmp/pricing.html /tmp/app.html
           grep -qi "Today" /tmp/app.html
-          grep -qi "ORSIRA" /tmp/app.html
           grep -qi "Settings" /tmp/settings.html
 
-          if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl|Welkom terug" /tmp/root.html /tmp/app.html /tmp/settings.html /tmp/login.html; then
+          if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl|Welkom terug" /tmp/root.html /tmp/pricing.html /tmp/app.html /tmp/settings.html /tmp/login.html; then
             echo "Demo or login content detected in no-login deployment"
             exit 1
           fi
 
-          echo "Real no-login ORSIRA smoke checks passed for $PREVIEW_URL"
+          echo "ORSIRA website and real no-login app smoke checks passed for $PREVIEW_URL"
 
       - name: Verify public URL needs no Vercel login
         shell: bash
@@ -193,14 +199,14 @@ jobs:
           FINAL_URL="${RESULT#*|}"
           echo "public=$RESULT"
           test "$CODE" = "200"
-          echo "$FINAL_URL" | grep -Eqi '/app/today([?#].*)?$'
-          grep -qi "Today" /tmp/public.html
+          echo "$FINAL_URL" | grep -Eqi '/([?#].*)?$'
+          grep -qi "Meer rust in je salon" /tmp/public.html
           grep -qi "ORSIRA" /tmp/public.html
           if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode" /tmp/public.html; then
             echo "A login/protection screen is still present"
             exit 1
           fi
-          echo "Public no-login access verified for $PREVIEW_URL"
+          echo "Public ORSIRA homepage verified for $PREVIEW_URL"
 
   live-preview-verification:
     needs: deploy-preview

@@ -30,9 +30,12 @@ async function noBodyOverflow(label) {
 
   const rootResponse = await page.goto(base + "/", { waitUntil: "networkidle" });
   assert.ok(rootResponse);
-  assert.equal(new URL(page.url()).pathname, "/app/today", "Root must open the real workspace directly");
-  await page.getByRole("heading", { name: "Je salon vandaag" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/", "Root must remain the ORSIRA marketing homepage");
+  await page.getByRole("heading", { name: "Meer rust in je salon. Meer grip op je dag." }).waitFor();
   await assertNoDemoOrLoginContent();
+
+  await gotoWorkspace("/app/today");
+  await page.getByRole("heading", { name: "Je salon vandaag" }).waitFor();
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base + "/app/today", { waitUntil: "networkidle" });
@@ -316,13 +319,15 @@ async function noBodyOverflow(label) {
     }
   }
 
-  assert.deepEqual(runtimeErrors, [], `Runtime errors detected:\n${runtimeErrors.join("\n")}`);
+  assert.deepEqual(runtimeErrors, [], `Runtime errors detected:\
+${runtimeErrors.join("\
+")}`);
   const result = {
     ok: true,
     mode: "real-no-login",
     workspacePaths,
     widths,
-    flows: ["root-direct-workspace", "today-command-centre", "calendar-redesign", "calendar-optimistic-drag", "calendar-conflict-rollback", "mobile-calendar", "appointment-detail-panel", "customer-profile", "staff-service-management", "smart-booking-links-workspace", "waitlist-workspace", "auth-routes-bypassed", "real-settings-persistence", "reports-csv", "public-booking-real-salon", "public-booking-staff-slot-customer-form", "booking-keyboard-focus", "invalid-booking-and-token-denial", "notification-worker-denial", "no-legacy-demo-content", "responsive-workspace"],
+    flows: ["marketing-root", "app-direct-workspace", "today-command-centre", "calendar-redesign", "calendar-optimistic-drag", "calendar-conflict-rollback", "mobile-calendar", "appointment-detail-panel", "customer-profile", "staff-service-management", "smart-booking-links-workspace", "waitlist-workspace", "auth-routes-bypassed", "real-settings-persistence", "reports-csv", "public-booking-real-salon", "public-booking-staff-slot-customer-form", "booking-keyboard-focus", "invalid-booking-and-token-denial", "notification-worker-denial", "no-legacy-demo-content", "responsive-workspace"],
     runtimeErrors,
   };
   await fs.writeFile("qa-artifacts/result.json", JSON.stringify(result, null, 2));
