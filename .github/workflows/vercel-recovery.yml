@@ -1,56 +1,59 @@
-name: orsira-render-targeted-performance
+name: orsira-render-production-smoke
 on:
   push:
     branches: [ops/orsira-vercel-recovery]
     paths: [.github/workflows/vercel-recovery.yml]
 permissions:
   contents: read
+env:
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  NEXT_PUBLIC_SUPABASE_URL: https://pqozwzakdqtueunictid.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_v7adLt1okM7r8JudNT-xXQ_MVGEYFvD
+  SALON_QA_SHA: c9b39429c52bc734930b9c3dedc1064c5029bcc6
+  QA_BASE_URL: https://orsira-salon-preview.onrender.com
 jobs:
-  measure:
+  production-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ee5dcd25850a160432ba04736312590b78063321
+          ref: c9b39429c52bc734930b9c3dedc1064c5029bcc6
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Alternate matched hosts to investigate LCP variance
+      - name: Final HTTP and retired baseline checks
         run: |
           node --input-type=module <<'NODE'
-          import {chromium} from 'playwright';
+          import assert from 'node:assert/strict';
           import {mkdir,writeFile} from 'node:fs/promises';
-          const browser=await chromium.launch(),rows=[];
-          const hosts={before:'https://orsira-salon-baseline.onrender.com',after:'https://orsira-salon-preview.onrender.com'};
-          try{
-            for(const [route,width] of [['/app/reports',1440],['/app/staff',390]]){
-              for(let run=0;run<7;run++)for(const label of run%2?['after','before']:['before','after']){
-                const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
-                await page.addInitScript(()=>{window.__p={lcp:null,cls:0};new PerformanceObserver(l=>{for(const e of l.getEntries())window.__p.lcp=e.startTime}).observe({type:'largest-contentful-paint',buffered:true});new PerformanceObserver(l=>{for(const e of l.getEntries())if(!e.hadRecentInput)window.__p.cls+=e.value}).observe({type:'layout-shift',buffered:true})});
-                for(const cache of ['cold','warm']){
-                  const response=await page.goto(hosts[label]+route,{waitUntil:'networkidle',timeout:45000});if(!response.ok())throw Error('Unavailable');
-                  await page.locator('h1').first().waitFor();
-                  const metrics=await page.evaluate(()=>{const n=performance.getEntriesByType('navigation')[0];return{ttfbMs:n.responseStart,lcpMs:window.__p.lcp,cls:window.__p.cls}});
-                  rows.push({route,width,run,label,cache,...metrics});
-                }
-                await context.close();
-              }
-            }
-          }finally{await browser.close()}
-          const median=a=>a.sort((x,y)=>x-y)[Math.floor(a.length/2)],summary=[];
-          for(const [route,width] of [['/app/reports',1440],['/app/staff',390]])for(const cache of ['cold','warm'])for(const label of ['before','after']){
-            const subset=rows.filter(r=>r.route===route&&r.cache===cache&&r.label===label);
-            summary.push({route,width,cache,label,ttfbMs:median(subset.map(r=>r.ttfbMs)),lcpMs:median(subset.map(r=>r.lcpMs)),cls:Math.max(...subset.map(r=>r.cls)),lcpSamples:subset.map(r=>r.lcpMs)});
+          const results=[];
+          for(const path of ['/','/pricing','/app/today','/app/calendar','/app/customers','/app/reports','/app/more','/book/salon']){
+            const r=await fetch(process.env.QA_BASE_URL+path,{signal:AbortSignal.timeout(45000)}),body=await r.text();
+            assert.equal(r.status,200,path);assert.equal(new URL(r.url).pathname,path);assert.ok(body.includes('ORSIRA'),path);
+            assert.ok(!/Preview mode|Baan Thai Wellness|Welkom terug/.test(body),path);
+            results.push({path,status:r.status,url:r.url});
           }
-          await mkdir('qa-artifacts',{recursive:true});await writeFile('qa-artifacts/targeted-performance.json',JSON.stringify({sha:'ee5dcd25850a160432ba04736312590b78063321',conditions:'Seven alternating paired fresh contexts per case, same runner and Chromium, unthrottled lab',rows,summary},null,2));
-          console.log('TARGETED_PERFORMANCE '+JSON.stringify(summary));
+          for(const path of ['/book-link/invalid','/manage/invalid','/intake/invalid']){
+            const r=await fetch(process.env.QA_BASE_URL+path,{signal:AbortSignal.timeout(30000)});assert.equal(r.status,404,path);results.push({path,status:r.status});
+          }
+          const retired=await fetch('https://orsira-salon-baseline.onrender.com/app/today',{signal:AbortSignal.timeout(30000)});
+          assert.equal(retired.status,500,'Baseline DB access must be retired after removing credentials');
+          await mkdir('qa-artifacts',{recursive:true});
+          const evidence={sha:process.env.SALON_QA_SHA,results,baselineRetiredHttpStatus:retired.status};
+          await writeFile('qa-artifacts/production-http.json',JSON.stringify(evidence,null,2));console.log('PRODUCTION_HTTP_PASS '+JSON.stringify(evidence));
           NODE
+      - name: Production daily flows including real temporary booking cancellation cleanup
+        run: npm run test:e2e -- --project=simplicity
+      - name: Production responsive navigation brand and focus
+        run: npm run test:e2e -- --project=responsive
+      - name: Malformed API bodies remain rejected before mutation
+        run: npm run test:e2e -- --project=migration-390 --grep "malformed API bodies"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: render-targeted-performance
+          name: orsira-render-production-c9b39429c52bc734930b9c3dedc1064c5029bcc6
           path: qa-artifacts
           retention-days: 30
