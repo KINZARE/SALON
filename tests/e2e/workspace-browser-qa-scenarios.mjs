@@ -48,9 +48,9 @@ async function noBodyOverflow(label) {
   }
 
   await page.getByTestId("today-command-centre").waitFor();
-  await page.getByText("Vrije ruimte", { exact: true }).waitFor();
-  await page.getByRole("link", { name: /Afspraak/ }).first().waitFor();
-  await page.getByRole("link", { name: /Blokkeer tijd/ }).first().waitFor();
+  await page.getByRole("region", { name: "Vandaag samengevat" }).waitFor();
+  await page.getByRole("link", { name: "Nieuwe afspraak", exact: true }).waitFor();
+
 
   const workspacePaths = [
     "/app/today",
@@ -200,7 +200,7 @@ async function noBodyOverflow(label) {
   await page.goto(base + customerActionHref, { waitUntil: "networkidle" });
   await page.locator("[data-customer-action-centre]").waitFor();
   await page.getByText("Komende afspraak", { exact: true }).waitFor();
-  const rebook = page.getByRole("link", { name: /Nieuwe afspraak/ }).first();
+  const rebook = page.getByRole("link", { name: "Opnieuw boeken", exact: true });
   await rebook.waitFor();
   assert.match(await rebook.getAttribute("href") ?? "", /^\/app\/calendar\/new\?customerId=/);
 

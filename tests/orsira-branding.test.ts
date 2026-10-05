@@ -84,10 +84,12 @@ test("app shell keeps role-aware routes and uses green as a deliberate accent", 
   assert.match(nav, />ORSIRA</);
   assert.ok(!nav.includes(">SALON<"));
   assert.match(appLayout, />ORSIRA</);
-  for (const route of ["/app/today", "/app/calendar", "/app/customers", "/app/services", "/app/staff", "/app/reports", "/app/settings", "/app/more"]) {
+  for (const route of ["/app/today", "/app/calendar", "/app/customers", "/app/more"]) {
     assert.ok(nav.includes(route), `navigation route must remain: ${route}`);
   }
   assert.match(nav, /role === "staff"/);
+  const more = await read("src/app/app/more/page.tsx");
+  for (const route of ["/app/services", "/app/staff", "/app/reports", "/app/settings"]) assert.ok(more.includes(route));
   assert.match(nav, /bg-\[var\(--secondary-soft\)\]/);
   assert.match(nav, /bg-\[var\(--secondary\)\]/);
   assert.match(search, /focus:border-\[var\(--primary\)\]/);
