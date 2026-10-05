@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 
 export async function runResponsiveQa({page,base,runtimeErrors}) {
 const widths = [320, 360, 375, 390, 430, 768, 1024, 1280, 1440];
-const representativePaths = ["/app/today", "/app/calendar", "/app/customers", "/app/reports"];
+const representativePaths = ["/", "/pricing", "/app/today", "/app/calendar", "/app/customers", "/app/reports"];
 const evidence=[];
 
 async function noBodyOverflow(label) {
@@ -18,7 +18,7 @@ async function noBodyOverflow(label) {
 async function assertVisibleBrand() {
   const brands = page.getByText("ORSIRA", { exact: true });
   const count = await brands.count();
-  assert.ok(count > 0, "ORSIRA brand must be present in the app shell");
+  assert.ok(count > 0, "ORSIRA brand must be present in the active surface");
   let visible = false;
   for (let index = 0; index < count; index += 1) {
     if (await brands.nth(index).isVisible()) {
@@ -26,7 +26,7 @@ async function assertVisibleBrand() {
       break;
     }
   }
-  assert.equal(visible, true, "ORSIRA brand must be visible in the active responsive shell");
+  assert.equal(visible, true, "ORSIRA brand must be visible in the active responsive surface");
 }
 
 async function open(path, width) {
