@@ -19,7 +19,7 @@ begin
  if not rejected then raise exception 'TENANT_ISOLATION_FAILED'; end if;
  perform public.daily_appointment_action(tenant,ap,'check_in','confirmed',null);
  rejected:=false;
- begin perform public.daily_appointment_action(tenant,ap,'check_in','confirmed',null); exception when serialization_failure then rejected:=true; end;
+ begin perform public.daily_appointment_action(tenant,ap,'check_in','confirmed',null); exception when sqlstate 'PT409' then rejected:=true; end;
  if not rejected then raise exception 'DUPLICATE_CHECKIN_FAILED'; end if;
  perform public.daily_appointment_action(tenant,ap,'start','checked_in',null);
  select treatment_started_at into started from public.appointments where id=ap;
@@ -32,7 +32,7 @@ begin
  if not rejected then raise exception 'PAUSE_OVERLAP_FAILED'; end if;
  perform public.daily_appointment_action(tenant,ap,'note','checked_in',started,'First note',null);
  rejected:=false;
- begin perform public.daily_appointment_action(tenant,ap,'note','checked_in',started,'Lost update',null); exception when serialization_failure then rejected:=true; end;
+ begin perform public.daily_appointment_action(tenant,ap,'note','checked_in',started,'Lost update',null); exception when sqlstate 'PT409' then rejected:=true; end;
  if not rejected then raise exception 'NOTE_CAS_FAILED'; end if;
  perform public.daily_appointment_action(tenant,ap,'finish','checked_in',started);
  if (select status from public.appointments where id=ap)<>'completed' then raise exception 'FINISH_FAILED'; end if;
