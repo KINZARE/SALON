@@ -5,7 +5,6 @@ import {createAdminSupabaseClient} from '@/lib/supabase/admin';
 import {getDailyAppointment,getDailyCatalog,getDailyIntake} from '@/services/today-context';
 import {validateDailyMutation} from '@/domain/today-actions';
 import {UuidSchema} from '@/lib/schemas';
-import {saveWorkspaceEntity} from '@/services/workspace-mutations';
 import {parseUnambiguousLocalDateTime} from '@/domain/local-time';
 import {revalidatePath} from 'next/cache';
 const headers={'Cache-Control':'private, no-store'};
@@ -35,7 +34,7 @@ export async function POST(request:Request){
    const start=parseUnambiguousLocalDateTime(startsAt,salon.timezone);const end=parseUnambiguousLocalDateTime(endsAt,salon.timezone);
    if(!start||!end||start>=end)return NextResponse.json({error:'Kies geldige start- en eindtijden; controleer de klokwisseling.'},{status:400,headers});
    // Tenant/staff FK and salon serialization are enforced by the existing RPC.
-   await saveWorkspaceEntity(salon.id,'block',{staff_id:staffId,starts_at:start.toISOString(),ends_at:end.toISOString(),reason,idempotency_key:requestId});
+   const db=createAdminSupabaseClient();const {error}=await db.rpc('daily_create_block',{p_salon_id:salon.id,p_staff_id:staffId,p_starts_at:start.toISOString(),p_ends_at:end.toISOString(),p_reason:reason,p_request_id:requestId});if(error)throw error;
   }else if(mutation){
    const db=createAdminSupabaseClient();const {error}=await db.rpc('daily_appointment_action',{p_salon_id:salon.id,p_id:mutation.appointmentId,p_action:mutation.action,p_expected_status:mutation.expectedStatus,p_expected_started_at:mutation.expectedStartedAt,p_note:mutation.note??null,p_expected_note:mutation.expectedNote??null});
    if(error)throw error;
@@ -43,7 +42,7 @@ export async function POST(request:Request){
   revalidatePath('/app/today');revalidatePath('/app/calendar');return NextResponse.json({ok:true},{headers});
  }catch(error){
   const message=error instanceof Error?error.message:typeof error==='object'&&error&&'message' in error?String(error.message):'';
-  const conflict=['STALE_APPOINTMENT','STALE_NOTE','APPOINTMENTS_IN_BLOCK','INVALID_STATUS_TRANSITION'].some(c=>message.includes(c));
+  const conflict=['STALE_APPOINTMENT','STALE_NOTE','APPOINTMENTS_IN_BLOCK','INVALID_STATUS_TRANSITION','REQUEST_ALREADY_USED'].some(c=>message.includes(c));
   return NextResponse.json({error:conflict?'De planning of notitie is intussen gewijzigd, of deze tijd overlapt een afspraak. Controleer de actuele gegevens en probeer opnieuw.':'Opslaan is niet gelukt. Je gegevens zijn behouden; probeer opnieuw.'},{status:conflict?409:400,headers});
  }
 }

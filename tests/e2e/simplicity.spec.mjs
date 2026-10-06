@@ -7,7 +7,7 @@ test('daily shell, Today hierarchy and secondary destinations',async({page})=>{
  const nav=page.getByRole('navigation',{name:'Hoofdnavigatie',exact:true});
  await expect(nav.getByRole('link')).toHaveText(['Vandaag','Agenda','Klanten','Meer']);
  await expect(nav.getByRole('link',{name:'Vandaag',exact:true})).toHaveAttribute('aria-current','page');
- await expect(page.getByRole('link',{name:'Nieuwe afspraak',exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Nieuwe afspraak',exact:true})).toHaveCount(1);
  const next=page.locator('[data-orsira-next-appointment]');
  const summary=page.getByRole('region',{name:'Vandaag samengevat'});
  expect((await next.boundingBox()).y).toBeLessThan((await summary.boundingBox()).y);

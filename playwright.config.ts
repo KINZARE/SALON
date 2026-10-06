@@ -12,14 +12,16 @@ export default defineConfig({
   use: {
     baseURL: process.env.QA_BASE_URL ?? "http://127.0.0.1:3000",
     headless: true,
+    launchOptions: process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH, args: ["--no-sandbox"] } : {},
     viewport: { width: 1280, height: 900 },
     actionTimeout: 15_000,
     navigationTimeout: 25_000,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: process.env.QA_CHROMIUM_PATH ? "off" : "retain-on-failure",
   },
   projects: [
+    { name: "one-screen", testMatch: "one-screen.spec.mjs" },
     { name: "workspace", testMatch: "workspace.spec.mjs" },
     { name: "simplicity", testMatch: "simplicity.spec.mjs" },
     { name: "responsive", testMatch: "responsive.spec.mjs" },
