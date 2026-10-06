@@ -54,6 +54,9 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  expect(payload.customer.phone).toBe(await page.locator('input[name="phone"]').inputValue());
  expect(payload.customer.email).toBe(await page.locator('input[name="email"]').inputValue());
  await expect(page.locator('form').getByRole('alert')).toContainText('zojuist geboekt');
+ await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeDisabled();
+ await expect(time).toBeVisible();
+ await time.click();
  await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeEnabled();
 });
 
