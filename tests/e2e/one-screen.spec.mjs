@@ -25,7 +25,7 @@ test('synthetic full workday stays on Today and removes every fixture',async({pa
  const db=qaDatabase();const prefix=`QA day ${randomUUID().slice(0,8)}`;
  const salon=await checked(db.from('salons').select('id,timezone').eq('slug','salon').single());
  const date=formatInTimeZone(new Date(),salon.timezone,'yyyy-MM-dd');
- const st=randomUUID(),svc=randomUUID(),customer=randomUUID(),ids=[randomUUID(),randomUUID(),randomUUID()];
+ const st=randomUUID(),blockStaff=randomUUID(),svc=randomUUID(),customer=randomUUID(),ids=[randomUUID(),randomUUID(),randomUUID()];
  const instant=time=>fromZonedTime(`${date}T${time}:00`,salon.timezone).toISOString();
  const mutations=[];page.on('request',req=>{if(req.method()==='POST'&&/\/api\/internal\/(today|book|move)/.test(req.url()))mutations.push(req.url())});
  await page.setViewportSize({width:390,height:844});
@@ -55,9 +55,12 @@ test('synthetic full workday stays on Today and removes every fixture',async({pa
   await form.getByRole('button',{name:/^\d\d:\d\d$/}).first().click();await form.getByRole('button',{name:'Afspraak opslaan',exact:true}).click();await expect(form).not.toBeVisible();
   await open(ids[1]);await page.getByRole('button',{name:'Verplaatsen',exact:true}).click();const move=page.getByRole('dialog',{name:'Afspraak verplaatsen',exact:true});await move.getByRole('button',{name:/^\d\d:\d\d$/}).last().click();await move.getByRole('button',{name:'Afspraak verplaatsen',exact:true}).click();await expect(move).not.toBeVisible();
   await open(ids[2]);await page.getByRole('dialog').getByText('Meer',{exact:true}).click();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Niet verschenen',exact:true}).click();await expect(page.locator('[data-daily-status]')).toHaveText('No-show');await page.getByRole('button',{name:'Sluiten',exact:true}).click();
-  // Dedicated staff keeps pause/block regression independent from normal bookings.
+  // Create the pause/block employee only after booking and move flows so it cannot be selected by them.
+  await checked(db.from('staff').insert({id:blockStaff,salon_id:salon.id,name:`${prefix} blocks`,active:true}));
+  await checked(db.from('staff_services').insert({salon_id:salon.id,staff_id:blockStaff,service_id:svc}));
+  await checked(db.from('staff_schedules').insert(Array.from({length:7},(_,weekday)=>({salon_id:salon.id,staff_id:blockStaff,weekday,is_working:true,start_time:'09:00',end_time:'20:00'}))));
   const addBlock=async(mode,start,end)=>{
-   await page.getByRole('heading',{name:'Vrije ruimte',exact:true}).locator('..').getByText('Meer',{exact:true}).click();await page.getByRole('button',{name:mode,exact:true}).filter({visible:true}).first().click();const sheet=page.getByRole('dialog',{name:mode,exact:true});await sheet.getByRole('combobox',{name:/^Medewerker/}).selectOption(st);await sheet.getByLabel('Start',{exact:true}).fill(`${date}T${start}`);await sheet.getByLabel('Einde',{exact:true}).fill(`${date}T${end}`);await sheet.getByRole('button',{name:mode,exact:true}).click();await expect(sheet).not.toBeVisible();
+   await page.getByRole('heading',{name:'Vrije ruimte',exact:true}).locator('..').getByText('Meer',{exact:true}).click();await page.getByRole('button',{name:mode,exact:true}).filter({visible:true}).first().click();const sheet=page.getByRole('dialog',{name:mode,exact:true});await sheet.getByRole('combobox',{name:/^Medewerker/}).selectOption(blockStaff);await sheet.getByLabel('Start',{exact:true}).fill(`${date}T${start}`);await sheet.getByLabel('Einde',{exact:true}).fill(`${date}T${end}`);await sheet.getByRole('button',{name:mode,exact:true}).click();await expect(sheet).not.toBeVisible();
   };
   await addBlock('Pauze toevoegen','16:00','16:15');await addBlock('Tijd blokkeren','16:30','16:45');
   const pauseRow=page.locator('[data-daily-timeline] > div').filter({hasText:'16:00'}).filter({hasText:'tot 16:15'});await expect(pauseRow.getByText('Pauze',{exact:true})).toBeVisible();await expect(page).toHaveURL(/\/app\/today/);
@@ -65,9 +68,11 @@ test('synthetic full workday stays on Today and removes every fixture',async({pa
   const final=await checked(db.from('appointments').select('status,note,treatment_started_at').eq('id',ids[0]).single());expect(final.status).toBe('completed');expect(final.note).toBe('Synthetic workday note');expect(final.treatment_started_at).not.toBeNull();
   expect(mutations.filter(url=>url.includes('/today')).length).toBe(7);
  }finally{
+  await checked(db.from('blocks').delete().eq('salon_id',salon.id).eq('staff_id',blockStaff));
   await checked(db.from('blocks').delete().eq('salon_id',salon.id).eq('staff_id',st));
   await checked(db.from('appointments').delete().eq('salon_id',salon.id).eq('staff_id',st));
   await checked(db.from('customers').delete().eq('salon_id',salon.id).like('name',`${prefix}%`));
+  await checked(db.from('staff').delete().eq('salon_id',salon.id).eq('id',blockStaff));
   await checked(db.from('staff').delete().eq('salon_id',salon.id).eq('id',st));
   await checked(db.from('services').delete().eq('salon_id',salon.id).eq('id',svc));
  }
