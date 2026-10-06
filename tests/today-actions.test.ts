@@ -23,3 +23,8 @@ test('daily mutation validates UUID, action, snapshots and bounded notes',()=>{
  assert.ok(validateDailyMutation(valid));
  for(const input of [{...valid,appointmentId:'other'},{...valid,action:'paid'},{...valid,note:'a'.repeat(1001)},{...valid,expectedStartedAt:'bad'}, {...valid,expectedStatus:'fake'}, {...valid,expectedNote:undefined}, null])assert.equal(validateDailyMutation(input),null);
 });
+test('a scheduled treatment covering now is current before check-in',()=>{
+ const current={...appointment('current','confirmed','2026-10-06T10:00:00Z'),service_ends_at:'2026-10-06T11:00:00Z'};
+ const next=appointment('next','confirmed','2026-10-06T12:00:00Z');
+ assert.deepEqual(selectCurrentNext([next,current],new Date('2026-10-06T10:30:00Z')),{current,next});
+});

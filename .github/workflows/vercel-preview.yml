@@ -1,4 +1,4 @@
-name: vercel-real-no-login
+name: orsira-one-screen-verification
 
 on:
   push:
@@ -64,8 +64,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin 33c43333cca60846d67d0c9516e194395d487996 --depth=1
-          git worktree add --detach /tmp/salon-performance-before 33c43333cca60846d67d0c9516e194395d487996
+          git fetch origin c9b39429c52bc734930b9c3dedc1064c5029bcc6 --depth=1
+          git worktree add --detach /tmp/salon-performance-before c9b39429c52bc734930b9c3dedc1064c5029bcc6
           cp -a "$PWD/node_modules" /tmp/salon-performance-before/node_modules
           SALON_SOURCE_ROOT=/tmp/salon-performance-before QA_PROFILE_LABEL=before node --experimental-strip-types scripts/performance-queries.mjs
           QA_PROFILE_LABEL=after node --experimental-strip-types scripts/performance-queries.mjs
@@ -80,7 +80,7 @@ jobs:
         run: node scripts/performance-concurrency.mjs
       - name: Measure current production simplicity baseline
         env:
-          QA_BASE_URL: "https://salon-gamma-steel.vercel.app"
+          QA_BASE_URL: "https://orsira-salon-preview.onrender.com"
           QA_PROFILE_LABEL: "before"
         run: node scripts/simplicity-performance.mjs
       - name: Upload QA evidence
@@ -92,134 +92,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  deploy-preview:
-    needs: browser-qa
-    outputs:
-      preview_url: ${{ steps.deploy.outputs.url }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN }}"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: "${{ env.SALON_QA_SHA }}"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Require deployment secrets and exact SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$VERCEL_TOKEN"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
-          test "$(git rev-parse HEAD)" = "$SALON_QA_SHA"
-          echo "Exact deployment SHA verified: $SALON_QA_SHA"
-      - name: Ensure Vercel project exists
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! npx --yes vercel@latest project inspect salon --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
-            npx --yes vercel@latest project add salon --token="$VERCEL_TOKEN" --non-interactive
-          fi
-      - name: Link Vercel project
-        run: npx --yes vercel@latest link --yes --project salon --token="$VERCEL_TOKEN"
-      - name: Configure Vercel as Next.js
-        run: npx --yes vercel@latest project update salon --framework nextjs --auto-detect output-directory --token="$VERCEL_TOKEN" --non-interactive --yes
-      - name: Deploy real no-login app
-        id: deploy
-        shell: bash
-        run: |
-          set -euo pipefail
-          URL="$(npx --yes vercel@latest deploy \
-            --yes \
-            --project salon \
-            --token="$VERCEL_TOKEN" \
-            --meta salonQaSha="$SALON_QA_SHA" \
-            --build-env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
-            --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-            --build-env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
-            --env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
-            --env NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-            --env SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY")"
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### ORSIRA real no-login app" >> "$GITHUB_STEP_SUMMARY"
-          echo "SHA: $SALON_QA_SHA" >> "$GITHUB_STEP_SUMMARY"
-          echo "URL: $URL" >> "$GITHUB_STEP_SUMMARY"
-      - name: Verify Vercel deployment is READY
-        shell: bash
-        env:
-          PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
-        run: |
-          set -euo pipefail
-          npx --yes vercel@latest inspect "$PREVIEW_URL" --token="$VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-inspect.txt
-          grep -Eqi 'Ready' /tmp/vercel-inspect.txt
-      - name: Smoke test ORSIRA website and no-login app
-        shell: bash
-        env:
-          PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
-        run: |
-          set -euo pipefail
-          ROOT_RESULT="$(npx --yes vercel@latest curl / --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/root.html --write-out '%{http_code}|%{url_effective}')"
-          PRICING_RESULT="$(npx --yes vercel@latest curl /pricing --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/pricing.html --write-out '%{http_code}|%{url_effective}')"
-          APP_RESULT="$(npx --yes vercel@latest curl /app/today --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/app.html --write-out '%{http_code}|%{url_effective}')"
-          SETTINGS_RESULT="$(npx --yes vercel@latest curl /app/settings --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/settings.html --write-out '%{http_code}|%{url_effective}')"
-          LOGIN_RESULT="$(npx --yes vercel@latest curl /login --deployment "$PREVIEW_URL" -- --silent --show-error --location --output /tmp/login.html --write-out '%{http_code}|%{url_effective}')"
-
-          ROOT_CODE="${ROOT_RESULT%%|*}"
-          PRICING_CODE="${PRICING_RESULT%%|*}"
-          APP_CODE="${APP_RESULT%%|*}"
-          SETTINGS_CODE="${SETTINGS_RESULT%%|*}"
-          LOGIN_CODE="${LOGIN_RESULT%%|*}"
-          ROOT_URL="${ROOT_RESULT#*|}"
-          PRICING_URL="${PRICING_RESULT#*|}"
-          APP_URL="${APP_RESULT#*|}"
-          LOGIN_URL="${LOGIN_RESULT#*|}"
-
-          echo "root=$ROOT_RESULT pricing=$PRICING_RESULT app=$APP_RESULT settings=$SETTINGS_RESULT login=$LOGIN_RESULT"
-          test "$ROOT_CODE" = "200"
-          test "$PRICING_CODE" = "200"
-          test "$APP_CODE" = "200"
-          test "$SETTINGS_CODE" = "200"
-          test "$LOGIN_CODE" = "200"
-          echo "$ROOT_URL" | grep -Eqi '/([?#].*)?$'
-          echo "$PRICING_URL" | grep -Eqi '/pricing([?#].*)?$'
-          echo "$APP_URL" | grep -Eqi '/app/today([?#].*)?$'
-          echo "$LOGIN_URL" | grep -Eqi '/app/today([?#].*)?$'
-          grep -qi "Meer rust in je salon" /tmp/root.html
-          grep -qi "ORSIRA" /tmp/root.html /tmp/pricing.html /tmp/app.html
-          grep -qi "Vandaag" /tmp/app.html
-          grep -qi "Saloninstellingen" /tmp/settings.html
-
-          if grep -Eqi "Preview mode|Baan Thai Wellness|Sophie de Vries|preview@salon-demo.nl|Welkom terug" /tmp/root.html /tmp/pricing.html /tmp/app.html /tmp/settings.html /tmp/login.html; then
-            echo "Demo or login content detected in no-login deployment"
-            exit 1
-          fi
-
-          echo "ORSIRA website and real no-login app smoke checks passed for $PREVIEW_URL"
-
-      - name: Verify public URL needs no Vercel login
-        shell: bash
-        env:
-          PREVIEW_URL: "${{ steps.deploy.outputs.url }}"
-        run: |
-          set -euo pipefail
-          RESULT="$(curl --silent --show-error --location --output /tmp/public.html --write-out '%{http_code}|%{url_effective}' "$PREVIEW_URL/")"
-          CODE="${RESULT%%|*}"
-          FINAL_URL="${RESULT#*|}"
-          echo "public=$RESULT"
-          test "$CODE" = "200"
-          echo "$FINAL_URL" | grep -Eqi '/([?#].*)?$'
-          grep -qi "Meer rust in je salon" /tmp/public.html
-          grep -qi "ORSIRA" /tmp/public.html
-          if grep -Eqi "vercel.*sign in|vercel.*login|Welkom terug|Preview mode" /tmp/public.html; then
-            echo "A login/protection screen is still present"
-            exit 1
-          fi
-          echo "Public ORSIRA homepage verified for $PREVIEW_URL"
-
   live-preview-verification:
-    needs: deploy-preview
+    needs: browser-qa
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -231,34 +105,22 @@ jobs:
           node-version: '22'
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Full browser QA on exact preview
+      - name: Require exact candidate on existing Render preview flow
         env:
-          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          QA_BASE_URL: https://orsira-one-screen-day.onrender.com
+        run: node scripts/verify-hosted-sha.mjs --wait
+      - name: Full browser QA on exact hosted candidate
+        env:
+          QA_BASE_URL: https://orsira-one-screen-day.onrender.com
         run: npm run test:e2e
-      - name: Daily core exact preview performance
+      - name: Exact preview performance
         env:
-          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          QA_BASE_URL: https://orsira-one-screen-day.onrender.com
           QA_PROFILE_LABEL: preview-after
         run: node scripts/simplicity-performance.mjs
-      - name: Baseline live performance measurements
-        env:
-          QA_BASE_URL: https://salon-4ijl26l1g-kwinphetmanee-2069.vercel.app
-          QA_PROFILE_LABEL: before
-        run: node scripts/performance-measure.mjs
-      - name: Equivalent live performance measurements
-        env:
-          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
-        run: node scripts/performance-measure.mjs
-      - name: Summarize migration performance
-        run: node scripts/performance-compare.mjs
-      - name: Compare actual Today to Calendar navigation
-        env:
-          QA_BASELINE_URL: https://salon-4ijl26l1g-kwinphetmanee-2069.vercel.app
-          QA_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
-        run: node scripts/performance-navigation.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: live-preview-qa-performance-${{ env.SALON_QA_SHA }}
+          name: live-preview-qa-${{ env.SALON_QA_SHA }}
           path: qa-artifacts
           retention-days: 30

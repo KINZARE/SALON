@@ -8,9 +8,9 @@ export function getDailyPrimaryAction(appointment:DailyState):{label:string;acti
   default:return null;
  }
 }
-export function selectCurrentNext<T extends {status:string;starts_at:string;treatment_started_at:string|null}>(appointments:T[],now:Date):{current:T|null;next:T|null}{
+export function selectCurrentNext<T extends {status:string;starts_at:string;service_ends_at?:string;treatment_started_at:string|null}>(appointments:T[],now:Date):{current:T|null;next:T|null}{
  const active=appointments.filter(a=>['pending','confirmed','checked_in'].includes(a.status)).toSorted((a,b)=>Date.parse(a.starts_at)-Date.parse(b.starts_at));
- const current=active.find(a=>a.status==='checked_in'&&a.treatment_started_at)??active.find(a=>a.status==='checked_in')??null;
+ const current=active.find(a=>a.status==='checked_in'&&a.treatment_started_at)??active.find(a=>a.status==='checked_in')??active.find(a=>Date.parse(a.starts_at)<=now.getTime()&&a.service_ends_at&&Date.parse(a.service_ends_at)>now.getTime())??null;
  const next=active.find(a=>a!==current&&Date.parse(a.starts_at)<=now.getTime())??active.find(a=>a!==current)??null;
  return {current,next};
 }

@@ -44,5 +44,16 @@ begin
  rejected:=false;
  begin perform public.daily_appointment_action(tenant,ap,'note','completed',started,'Unauthorized','First note'); exception when insufficient_privilege then rejected:=true; end;
  if not rejected then raise exception 'STAFF_AUTHORIZATION_FAILED'; end if;
+ -- Exercise actual RLS as authenticated manager (not merely JWT claims as postgres).
+ perform set_config('request.jwt.claims','{"role":"service_role"}',true);
+ update public.memberships set role='manager' where salon_id=tenant and user_id=uid;
+ ap:=public.create_appointment_atomic(tenant,svc,st,slot+interval '1 day','Authenticated synthetic customer',null,null,null,'internal',null,null);
+ perform public.daily_appointment_action(tenant,ap,'check_in','confirmed',null);
+ perform set_config('request.jwt.claims',jsonb_build_object('role','authenticated','sub',uid)::text,true);
+ execute 'set local role authenticated';
+ if (select count(*) from public.salons where id=other_tenant)<>0 then raise exception 'RLS_CROSS_TENANT_READ'; end if;
+ perform public.daily_appointment_action(tenant,ap,'start','checked_in',null);
+ if (select count(*) from public.appointment_events where appointment_id=ap and event_type='treatment_started')<>1 then raise exception 'AUTHENTICATED_START_EVENT_FAILED'; end if;
+ execute 'reset role';
 end;$$;
 select 'ONE_SCREEN_DB_REGRESSION_PASS' as result;
