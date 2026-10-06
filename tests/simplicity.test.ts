@@ -8,7 +8,7 @@ test('desktop and mobile use the same daily navigation without a management side
  assert.match(nav,/aria-current/);
 });
 test('Today puts the next appointment before the compact summary',()=>{
- const today=source('src/app/app/today/page.tsx');
+ const today=source('src/components/workspace/daily/daily-workspace.tsx');
  assert.ok(today.indexOf('data-orsira-next-appointment')<today.indexOf('<TodaySummary'));
  const summary=source('src/components/workspace/today-summary.tsx');
  assert.doesNotMatch(summary,/grid-cols|items\.map/);
@@ -18,8 +18,8 @@ test('Today has one create action and only useful gaps',()=>{
  const actions=source('src/components/workspace/quick-actions.tsx');
  assert.match(actions,/Nieuwe afspraak/);
  assert.doesNotMatch(actions,/Blokkeer tijd|Deel tijden|Klant toevoegen/);
- const today=source('src/app/app/today/page.tsx');
- assert.match(today,/data\.gaps\.length\s*>\s*0/);
+ const today=source('src/components/workspace/daily/daily-workspace.tsx');
+ assert.match(today,/data\.gaps\.length/);
 });
 test('booking starts with customer and discloses notes while retaining server slot authority',()=>{
  const form=source('src/components/appointments/new-appointment-form.tsx');

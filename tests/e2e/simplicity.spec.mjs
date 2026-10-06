@@ -7,7 +7,7 @@ test('daily shell, Today hierarchy and secondary destinations',async({page})=>{
  const nav=page.getByRole('navigation',{name:'Hoofdnavigatie',exact:true});
  await expect(nav.getByRole('link')).toHaveText(['Vandaag','Agenda','Klanten','Meer']);
  await expect(nav.getByRole('link',{name:'Vandaag',exact:true})).toHaveAttribute('aria-current','page');
- await expect(page.getByRole('link',{name:'Nieuwe afspraak',exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Nieuwe afspraak',exact:true})).toHaveCount(1);
  const next=page.locator('[data-orsira-next-appointment]');
  const summary=page.getByRole('region',{name:'Vandaag samengevat'});
  expect((await next.boundingBox()).y).toBeLessThan((await summary.boundingBox()).y);
@@ -54,6 +54,9 @@ test('rebook retains customer and booking uses authoritative slots with retryabl
  expect(payload.customer.phone).toBe(await page.locator('input[name="phone"]').inputValue());
  expect(payload.customer.email).toBe(await page.locator('input[name="email"]').inputValue());
  await expect(page.locator('form').getByRole('alert')).toContainText('zojuist geboekt');
+ await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeDisabled();
+ await expect(time).toBeVisible();
+ await time.click();
  await expect(page.getByRole('button',{name:'Afspraak opslaan'})).toBeEnabled();
 });
 
@@ -86,13 +89,16 @@ test('secondary destructive actions can be dismissed without changing appointmen
 
 
 test('new appointment finishes and confirmed cancellation applies only to disposable booking',async({page})=>{
- const db=qaDatabase();const customerName=`QA simplicity ${randomUUID()}`;
+ const db=qaDatabase();const customerName=`QA simplicity ${randomUUID()}`;const testStaff=randomUUID(),testService=randomUUID();
  const {data:salon,error:salonError}=await db.from('salons').select('id,timezone').eq('slug','salon').single();if(salonError)throw salonError;
  try{
+  for(const query of [db.from('staff').insert({id:testStaff,salon_id:salon.id,name:customerName,active:true}),db.from('services').insert({id:testService,salon_id:salon.id,name:customerName,duration_minutes:30,buffer_minutes:0,price_cents:1000,active:true})]){const r=await query;if(r.error)throw r.error}
+  for(const query of [db.from('staff_services').insert({salon_id:salon.id,staff_id:testStaff,service_id:testService}),db.from('staff_schedules').insert(Array.from({length:7},(_,weekday)=>({salon_id:salon.id,staff_id:testStaff,weekday,is_working:true,start_time:'09:00',end_time:'20:00'})))]){const r=await query;if(r.error)throw r.error}
   await page.goto('/app/calendar/new');
+  await page.getByRole('combobox',{name:/^Behandeling/}).selectOption(testService);
   await page.getByLabel('Klantnaam',{exact:true}).fill(customerName);
   let slot=null;
-  for(let offset=14;offset<21&&!slot;offset++){
+  for(let offset=1;offset<8&&!slot;offset++){
    const date=new Date();date.setUTCDate(date.getUTCDate()+offset);const dateString=date.toISOString().slice(0,10);
    const response=page.waitForResponse(r=>r.url().includes('/api/internal/availability?')&&new URL(r.url()).searchParams.get('date')===dateString);
    await page.getByLabel('Datum',{exact:true}).fill(dateString);
@@ -115,5 +121,6 @@ test('new appointment finishes and confirmed cancellation applies only to dispos
  }finally{
   const {data:customers,error}=await db.from('customers').select('id').eq('salon_id',salon.id).eq('name',customerName);if(error)throw error;
   for(const customer of customers??[]){const deleted=await db.from('appointments').delete().eq('salon_id',salon.id).eq('customer_id',customer.id);if(deleted.error)throw deleted.error;const cleaned=await db.from('customers').delete().eq('salon_id',salon.id).eq('id',customer.id).eq('name',customerName);if(cleaned.error)throw cleaned.error;}
+  for(const query of [db.from('appointments').delete().eq('salon_id',salon.id).eq('staff_id',testStaff),db.from('staff').delete().eq('salon_id',salon.id).eq('id',testStaff),db.from('services').delete().eq('salon_id',salon.id).eq('id',testService)]){const r=await query;if(r.error)throw r.error}
  }
 });

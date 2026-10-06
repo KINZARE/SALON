@@ -62,6 +62,18 @@ try {
     await checked(db.from('appointment_self_service_tokens').insert({ salon_id: tenant, appointment_id: selfAppointment, token_hash: tokenHash, expires_at: at(day(base + 8), 20) }));
     await race('self-service reschedule vs booking', db.rpc('self_service_reschedule_appointment', { p_token_hash: tokenHash, p_staff_id: staff, p_starts_at: at(day(base + 7), 15) }), book(day(base + 7), 15), ['23P01']);
     await race('self-service cancel replay', db.rpc('self_service_cancel_appointment', { p_token_hash: tokenHash }), db.rpc('self_service_cancel_appointment', { p_token_hash: tokenHash }), ['APPOINTMENT_NOT_CANCELLABLE']);
+    const daily=await checked(book(day(base+8),10));
+    const dailyAction=(action,status,started=null,note=null)=>db.rpc('daily_appointment_action',{p_salon_id:tenant,p_id:daily,p_action:action,p_expected_status:status,p_expected_started_at:started,p_note:note,p_expected_note:null});
+    await race('daily check-in replay',dailyAction('check_in','confirmed'),dailyAction('check_in','confirmed'),['PT409']);
+    await race('daily start replay',dailyAction('start','checked_in'),dailyAction('start','checked_in'),['PT409']);
+    const begun=await checked(db.from('appointments').select('treatment_started_at').eq('id',daily).single());
+    await race('daily note lost-update protection',dailyAction('note','checked_in',begun.treatment_started_at,'First'),dailyAction('note','checked_in',begun.treatment_started_at,'Second'),['PT409']);
+    await race('daily finish replay',dailyAction('finish','checked_in',begun.treatment_started_at),dailyAction('finish','checked_in',begun.treatment_started_at),['PT409']);
+    const key=randomUUID();const blockPayload={p_salon_id:tenant,p_staff_id:staff,p_starts_at:at(day(base+8),14),p_ends_at:at(day(base+8),15),p_reason:'Synthetic idempotent pause',p_request_id:key};
+    const replay=await Promise.all([db.rpc('daily_create_block',blockPayload),db.rpc('daily_create_block',blockPayload)]);
+    assert.ok(replay.every(r=>!r.error),'Both identical block submissions resolve safely');assert.equal(replay[0].data,replay[1].data,'Duplicate block creates one resource');
+    results.push({name:'daily block duplicate replay',committed:1,replayed:1});
+
   }
 } finally {
   // Only the random tenant created by this process; never delete existing salon data.

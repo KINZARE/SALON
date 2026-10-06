@@ -11,7 +11,7 @@ export async function getAppointmentsForDate(salonId: string, timezone: string, 
   const end = fromZonedTime(`${nextDate}T00:00:00`, timezone);
   const { data, error } = await supabase
     .from("appointments")
-    .select("id,starts_at,service_ends_at,occupied_until,status,payment_status,customer_name_snapshot,service_name_snapshot,price_cents_snapshot,currency_snapshot,duration_minutes_snapshot,customer_id,staff_id,service_id,note,customer:customers!appointments_salon_id_customer_id_fkey(name),staff:staff!appointments_salon_id_staff_id_fkey(name)")
+    .select("id,starts_at,service_ends_at,occupied_until,status,treatment_started_at,payment_status,customer_name_snapshot,service_name_snapshot,price_cents_snapshot,currency_snapshot,duration_minutes_snapshot,customer_id,staff_id,service_id,note,customer:customers!appointments_salon_id_customer_id_fkey(name),staff:staff!appointments_salon_id_staff_id_fkey(name)")
     .eq("salon_id", salonId)
     .gte("starts_at", start.toISOString())
     .lt("starts_at", end.toISOString())

@@ -98,3 +98,17 @@ a { text-decoration: none; }
     transition-duration: .01ms !important;
   }
 }
+
+/* One work surface: native modal sheet on touch widths, inline context on desktop. */
+.daily-context {
+  position: fixed; inset: auto 0 0; width: 100%; max-width: none;
+  max-height: 88dvh; margin: 0; padding: 0 0 env(safe-area-inset-bottom);
+  border: 1px solid var(--border); border-radius: 18px 18px 0 0;
+  background: white; color: var(--ink); overflow-y: auto; overscroll-behavior: contain;
+}
+.daily-context::backdrop { background: rgb(25 25 22 / .28); }
+.daily-context button, .daily-context a { touch-action: manipulation; }
+@media (min-width: 1024px) {
+  .daily-context { position: sticky; top: 24px; inset-inline: auto; bottom: auto;
+    width: 100%; max-height: calc(100dvh - 48px); border-radius: 12px; }
+}

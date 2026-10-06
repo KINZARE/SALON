@@ -49,7 +49,7 @@ async function noBodyOverflow(label) {
 
   await page.getByTestId("today-command-centre").waitFor();
   await page.getByRole("region", { name: "Vandaag samengevat" }).waitFor();
-  await page.getByRole("link", { name: "Nieuwe afspraak", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Nieuwe afspraak", exact: true }).waitFor();
 
 
   const workspacePaths = [

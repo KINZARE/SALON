@@ -113,7 +113,7 @@ test("calendar presentation keeps drag, rollback and mobile contracts intact", a
 
 test("critical operational and customer-facing surfaces remain wired to existing behavior", async () => {
   const [today, appointment, bookingPage, smartPage, embedPage, bookingFlow, smartFlow, selfService] = await Promise.all([
-    read("src/app/app/today/page.tsx"),
+    read("src/components/workspace/daily/daily-workspace.tsx"),
     read("src/app/app/appointments/[id]/page.tsx"),
     read("src/app/book/[salonSlug]/page.tsx"),
     read("src/app/book-link/[token]/page.tsx"),
