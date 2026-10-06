@@ -124,7 +124,7 @@ export async function findWaitlistMatchesForGaps(salonId:string,date:string,gaps
         serviceDurationMinutes:service.duration_minutes,
         bufferMinutes:service.buffer_minutes,
       })){
-        matches.push({entryId:entry.id,customerName:entry.customer_name,serviceName:service.name,gap});
+        matches.push({entryId:entry.id,customerName:entry.customer_name,serviceId:entry.service_id,serviceName:service.name,phone:entry.phone,email:entry.email,gap});
         break;
       }
     }

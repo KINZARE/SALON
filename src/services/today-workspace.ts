@@ -2,6 +2,7 @@ import "server-only";
 
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { computeCapacitySummary, computeStaffGaps, type CapacityInterval } from "@/domain/day-capacity";
+import { selectCurrentNext } from "@/domain/today-actions";
 import { calculateAppointmentKpis } from "@/domain/reporting";
 import { getAppointmentsForDate, getBlocks, getDayOpening } from "@/services/app-data";
 import { getTodayStaffSchedule } from "@/services/workspace-data";
@@ -29,6 +30,10 @@ export type TodayWorkspaceData = {
   appointments: Appointments;
   activeAppointments: Appointments;
   nextAppointment: TodayAppointment | null;
+  currentAppointment: TodayAppointment | null;
+  blocks: Awaited<ReturnType<typeof getBlocks>>;
+  breaks: {staffId:string;staffName:string;start:Date;end:Date}[];
+  waitlistMatches: Awaited<ReturnType<typeof findWaitlistMatchesForGaps>>;
   appointmentCount: number;
   plannedValueCents: number;
   completedCount: number;
@@ -72,6 +77,7 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
 
   const dayBlocks = blocks.filter((block) => new Date(block.starts_at) < dayEnd && new Date(block.ends_at) > dayStart);
   const gaps: TodayGap[] = [];
+  const dayBreaks: {staffId:string;staffName:string;start:Date;end:Date}[] = [];
   let workingStaffCount = 0;
   let bookableMinutes = 0;
   let occupiedMinutes = 0;
@@ -89,6 +95,7 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
       const memberBreaks = member.breaks
         .filter((row) => row.weekday === weekday)
         .map((row) => localInterval(date, timezone, row.start_time, row.end_time));
+      dayBreaks.push(...memberBreaks.map(interval=>({staffId:member.id,staffName:member.name,...interval})));
       const memberBlocks = dayBlocks
         .filter((block) => block.staff_id === null || block.staff_id === member.id)
         .map((block) => ({ start: new Date(block.starts_at), end: new Date(block.ends_at) }));
@@ -115,44 +122,29 @@ export async function getTodayWorkspace(salonId: string, timezone: string, optio
         blocks: memberBlocks,
         appointments: memberAppointments,
       })) {
-        if (gap.end > now) gaps.push({ staffId: member.id, staffName: member.name, ...gap });
+        if (gap.end > now) { const start = new Date(Math.max(gap.start.getTime(),now.getTime())); const durationMinutes=Math.floor((gap.end.getTime()-start.getTime())/60000); if(durationMinutes>=30) gaps.push({staffId:member.id,staffName:member.name,start,end:gap.end,durationMinutes}); }
       }
     }
   }
 
   const activeAppointments = appointments.filter((item) => !["cancelled", "no_show"].includes(item.status));
-  const upcoming = appointments.filter((item) => ["pending", "confirmed"].includes(item.status) && new Date(item.starts_at) > now);
-  const nextAppointment = upcoming[0] ?? null;
+  const {current:currentAppointment,next:nextAppointment}=selectCurrentNext(appointments,now);
   const appointmentKpis = calculateAppointmentKpis(appointments);
   const freeCapacityMinutes = Math.max(0, bookableMinutes - occupiedMinutes);
   const occupancyPercent = bookableMinutes ? Math.round((occupiedMinutes / bookableMinutes) * 1_000) / 10 : 0;
 
-  const cancelled = appointmentKpis.cancellations;
-  const noShows = appointmentKpis.noShows;
-  const largeGap = gaps
-    .filter((gap) => gap.durationMinutes >= 90 && gap.end > now)
-    .toSorted((a, b) => a.start.getTime() - b.start.getTime())[0];
-
   const waitlistMatches = options.includeWaitlist ? await findWaitlistMatchesForGaps(salonId, date, gaps) : [];
   const attention: TodayAttention[] = [];
-  if (cancelled) attention.push({ kind: "cancellation", label: `${cancelled} geannuleerde afspraak${cancelled === 1 ? "" : "en"} vandaag`, href: "/app/calendar" });
-  if (noShows) attention.push({ kind: "no_show", label: `${noShows} no-show${noShows === 1 ? "" : "s"} vandaag`, href: "/app/calendar" });
-  if (largeGap) attention.push({
-    kind: "capacity",
-    label: `${largeGap.staffName} heeft ${largeGap.durationMinutes} min vrije ruimte vanaf ${formatInTimeZone(largeGap.start, timezone, "HH:mm")}`,
-    href: "/app/calendar",
-  });
-  if (waitlistMatches.length) attention.push({
-    kind: "waitlist",
-    label: `${waitlistMatches.length} wachtlijstmatch${waitlistMatches.length===1?"":"es"} voor vrije ruimte vandaag`,
-    href: "/app/waitlist",
-  });
 
   return {
     date,
     appointments,
     activeAppointments,
     nextAppointment,
+    currentAppointment,
+    blocks:dayBlocks,
+    breaks:dayBreaks,
+    waitlistMatches,
     appointmentCount: appointmentKpis.appointments,
     plannedValueCents: appointmentKpis.plannedValueCents,
     completedCount: appointmentKpis.completed,
