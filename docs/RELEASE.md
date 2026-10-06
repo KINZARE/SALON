@@ -10,3 +10,9 @@ Scope: local shared expenses, no connected external services. User authorized pu
 - Visual screenshots inspected in a desktop/mobile batch; accessibility includes labels, inline alerts, modal focus trapping, reduced motion, skip navigation and 44px controls. Automated testing used Chromium; no claim of full browser or WCAG certification.
 
 Release target: one Render static site from the dedicated deploymentbranch. Live deployment identity and live smoke results are verified separately after publication. No secrets or production user data are included in source.
+
+## Published result
+
+Runtime source commit `d5d555ac0a8ef26cee609ac9086cc6de30d27dbf`; Render service `srv-db2cg8mi0phs73e6fiv0`; deployment `dep-db2cg9ei0phs73e6fkt0` reached live. Public URL: https://shared-money-kwin.onrender.com/. All 51 Git blob hashes matched the locally verified source. SALON main remained unchanged.
+
+Live cloud-browser smoke verified group creation, a 12.00 expense split into 4.00 per person with 8.00 owed back, editing it to 15.00 with 5.00 per person and 10.00 owed back, and reload persistence. The offline and concurrency tests passed against the same production runtime locally. Outbound local Chromium navigation was unavailable; the cloud browser verified the hosted UI. Final publication changes only these release documents; runtime code is unchanged.

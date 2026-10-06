@@ -29,5 +29,5 @@ Files: src/components/app.tsx, ui.tsx, expense-form.tsx, group-forms.tsx, group-
 Files: render.yaml, README.md, docs/RELEASE.md.
 - [x] Typecheck, unit suite, lint and production build.
 - [x] Independent review, address blocking findings and retest.
-- [ ] Publish exact source to dedicated deploy/shared-money branch; create one Render static site.
-- [ ] Confirm deploy live, then smoke test live core flows and deliver URL.
+- [x] Publish exact source to dedicated deploy/shared-money branch; create one Render static site.
+- [x] Confirm deploy live, then smoke test live core flows and deliver URL.
