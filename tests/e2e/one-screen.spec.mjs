@@ -127,7 +127,7 @@ test('booking conflict refreshes slots without losing customer draft',async({pag
  await page.getByLabel('Klantnaam',{exact:true}).fill('Synthetic preserved customer');
  await page.getByRole('button',{name:/^\d\d:\d\d$/}).first().click();
  await page.getByRole('button',{name:'Afspraak opslaan',exact:true}).click();
- await expect(page.getByRole('alert')).toHaveText('Tijdstip intussen geboekt.');
+ await expect(page.locator('form').getByRole('alert')).toHaveText('Tijdstip intussen geboekt.');
  await expect(page.getByRole('button',{name:'Afspraak opslaan',exact:true})).toBeDisabled();
  await expect(page.getByLabel('Klantnaam',{exact:true})).toHaveValue('Synthetic preserved customer');
  await expect.poll(()=>availabilityReads).toBeGreaterThan(1);
