@@ -1,8 +1,3 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  poweredByHeader: false,
-};
-
-export default nextConfig;
+import type { NextConfig } from 'next';
+const config: NextConfig = { output: 'export', images: { unoptimized: true }, poweredByHeader: false };
+export default config;

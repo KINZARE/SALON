@@ -1,30 +1,6 @@
-import type { Metadata } from "next";
-import { Inter, Manrope } from "next/font/google";
-import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-inter",
-});
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-manrope",
-});
-
-export const metadata: Metadata = {
-  title: { default: "ORSIRA", template: "%s · ORSIRA" },
-  description: "Rustige planning, klanten en salonbeheer in één heldere werkplek.",
-};
-
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="nl" className={`${inter.variable} ${manrope.variable}`}>
-      <body>{children}</body>
-    </html>
-  );
-}
+import type { Metadata,Viewport } from 'next';
+import '@fontsource-variable/dm-sans/wght.css';
+import './globals.css';
+export const metadata:Metadata={title:'Shared Money — samen delen, zonder gedoe',description:'Houd gezamenlijke uitgaven eenvoudig bij. Eerlijke verdelingen, heldere saldi en geen verplichte login.',manifest:'/manifest.webmanifest',icons:{icon:'/icon.svg',apple:'/icon-192.png'},appleWebApp:{capable:true,statusBarStyle:'default',title:'Shared Money'}};
+export const viewport:Viewport={width:'device-width',initialScale:1,themeColor:'#fafaf7'};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="nl"><body>{children}</body></html>;}

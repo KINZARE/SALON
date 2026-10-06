@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: shared-money-kwin
+    runtime: static
+    branch: deploy/shared-money
+    buildCommand: npm ci --no-audit --no-fund && npm run build
+    staticPublishPath: out
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
