@@ -60,7 +60,7 @@ test('synthetic full workday stays on Today and removes every fixture',async({pa
    await page.getByRole('heading',{name:'Vrije ruimte',exact:true}).locator('..').getByText('Meer',{exact:true}).click();await page.getByRole('button',{name:mode,exact:true}).filter({visible:true}).first().click();const sheet=page.getByRole('dialog',{name:mode,exact:true});await sheet.getByRole('combobox',{name:/^Medewerker/}).selectOption(st);await sheet.getByLabel('Start',{exact:true}).fill(`${date}T${start}`);await sheet.getByLabel('Einde',{exact:true}).fill(`${date}T${end}`);await sheet.getByRole('button',{name:mode,exact:true}).click();await expect(sheet).not.toBeVisible();
   };
   await addBlock('Pauze toevoegen','16:00','16:15');await addBlock('Tijd blokkeren','16:30','16:45');
-  await expect(page.locator('[data-daily-timeline]').getByText('Pauze',{exact:true})).toBeVisible();await expect(page).toHaveURL(/\/app\/today/);
+  const pauseRow=page.locator('[data-daily-timeline] > div').filter({hasText:'16:00'}).filter({hasText:'tot 16:15'});await expect(pauseRow.getByText('Pauze',{exact:true})).toBeVisible();await expect(page).toHaveURL(/\/app\/today/);
   expect(runtimeErrors).toEqual([]);
   const final=await checked(db.from('appointments').select('status,note,treatment_started_at').eq('id',ids[0]).single());expect(final.status).toBe('completed');expect(final.note).toBe('Synthetic workday note');expect(final.treatment_started_at).not.toBeNull();
   expect(mutations.filter(url=>url.includes('/today')).length).toBe(7);
@@ -112,7 +112,7 @@ test('desktop context replacement resets booking and block drafts',async({page})
  const more=page.getByRole('heading',{name:'Vrije ruimte',exact:true}).locator('..').getByText('Meer',{exact:true});
  await more.click();await page.getByRole('button',{name:'Tijd blokkeren',exact:true}).filter({visible:true}).first().click();
  await page.getByLabel('Reden (optioneel)').fill('Synthetic abandoned block');
- page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Pauze toevoegen',exact:true}).filter({visible:true}).first().click();
+ await more.click();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Pauze toevoegen',exact:true}).filter({visible:true}).first().click();
  await expect(page.getByLabel('Reden (optioneel)')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'15 min',exact:true})).toBeVisible();
 });
