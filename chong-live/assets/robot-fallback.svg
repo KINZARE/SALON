@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1500" role="img" aria-labelledby="title desc">
+  <title id="title">Abstract character fallback</title>
+  <desc id="desc">A graphic poster of an abstract humanoid form on a dark studio background.</desc>
+  <defs>
+    <radialGradient id="bg" cx="55%" cy="38%" r="72%">
+      <stop offset="0" stop-color="#34312b"/><stop offset=".56" stop-color="#151411"/><stop offset="1" stop-color="#090909"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff3e8"/><stop offset=".28" stop-color="#b9a89b"/><stop offset=".52" stop-color="#3d3935"/><stop offset=".74" stop-color="#f5d8c5"/><stop offset="1" stop-color="#191816"/>
+    </linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="36" stdDeviation="38" flood-color="#000" flood-opacity=".55"/></filter>
+  </defs>
+  <rect width="1200" height="1500" fill="url(#bg)"/>
+  <g opacity=".16" stroke="#f2eee8" stroke-width="1">
+    <path d="M0 180h1200M0 420h1200M0 660h1200M0 900h1200M0 1140h1200M0 1380h1200"/>
+    <path d="M120 0v1500M360 0v1500M600 0v1500M840 0v1500M1080 0v1500"/>
+  </g>
+  <g filter="url(#shadow)" transform="translate(600 720)">
+    <ellipse cx="0" cy="-330" rx="150" ry="132" fill="url(#metal)"/>
+    <rect x="-182" y="-180" width="364" height="390" rx="150" fill="#ff5b36"/>
+    <path d="M-174-72-360 80-306 158-118 48z" fill="url(#metal)"/>
+    <path d="M174-72 360 70 306 158 116 48z" fill="url(#metal)"/>
+    <path d="M-106 164-188 482-82 510 20 204z" fill="url(#metal)"/>
+    <path d="M104 164 195 474 86 512-20 204z" fill="url(#metal)"/>
+    <circle cx="-52" cy="-350" r="16" fill="#090909"/><circle cx="52" cy="-350" r="16" fill="#090909"/>
+    <rect x="-62" y="-298" width="124" height="9" rx="5" fill="#090909" opacity=".72"/>
+  </g>
+  <text x="70" y="90" fill="#f2eee8" font-family="monospace" font-size="19" letter-spacing="4">3D FALLBACK / TJONG TJONG</text>
+  <text x="70" y="1420" fill="#97928b" font-family="monospace" font-size="16" letter-spacing="3">WEBGL OFFLINE · CONTENT REMAINS AVAILABLE</text>
+</svg>
