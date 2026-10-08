@@ -1,0 +1,4 @@
+artifact=chong-site.zip
+sha256=366b8e6a8352252c82ac0e1dfdb86a5935ef77905e9e16edcf4d28f85bb52a0e
+source_commit=6d36efd6a68671f3462219ce421bb8826b74d3eb
+chunks=3
