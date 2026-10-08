@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "postinstall": "if [ -f .deploy/tjong-v2/site.zip.b64.00 ]; then rm -rf chong-live /tmp/tjong-v2.zip /tmp/tjong-v2.b64; mkdir -p chong-live; cat .deploy/tjong-v2/site.zip.b64.* | tr -d '[:space:]' > /tmp/tjong-v2.b64; base64 -d /tmp/tjong-v2.b64 > /tmp/tjong-v2.zip; echo '0a043bea1202619cca88a77ed757e23746b5ca795c7430110995bc7fbb8501c5  /tmp/tjong-v2.zip' | sha256sum -c -; unzip -q /tmp/tjong-v2.zip -d chong-live; fi"
   },
   "dependencies": {
     "@date-fns/utc": "2.1.1",
